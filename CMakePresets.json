@@ -4,11 +4,26 @@
     {
       "name": "base",
       "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "base-vs",
+      "hidden": true,
       "generator": "Visual Studio 18 2026",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
       }
     },
     {
@@ -26,19 +41,45 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "debug-vs",
+      "displayName": "Debug (VS/Windows)",
+      "inherits": "base-vs",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release-vs",
+      "displayName": "Release (VS/Windows)",
+      "inherits": "base-vs",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
     {
       "name": "debug",
       "displayName": "Build Debug",
-      "configurePreset": "debug",
-      "configuration": "Debug"
+      "configurePreset": "debug"
     },
     {
       "name": "release",
       "displayName": "Build Release",
-      "configurePreset": "release",
+      "configurePreset": "release"
+    },
+    {
+      "name": "debug-vs",
+      "displayName": "Build Debug (VS/Windows)",
+      "configurePreset": "debug-vs",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release-vs",
+      "displayName": "Build Release (VS/Windows)",
+      "configurePreset": "release-vs",
       "configuration": "Release"
     }
   ]
