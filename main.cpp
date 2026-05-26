@@ -3,6 +3,7 @@
 #include <iostream>
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #define GLFW_INCLUDE_VULKAN
@@ -354,6 +355,53 @@ private:
     // -------------------------
     // 后续逐步实现的占位函数（先搭框架）
     // -------------------------
+    static const char *deviceTypeToString(VkPhysicalDeviceType type)
+    {
+        switch (type)
+        {
+        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+            return "Integrated GPU";
+        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+            return "Discrete GPU";
+        case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+            return "Virtual GPU";
+        case VK_PHYSICAL_DEVICE_TYPE_CPU:
+            return "CPU";
+        default:
+            return "Other";
+        }
+    }
+
+    static std::string queueFlagsToString(VkQueueFlags flags)
+    {
+        std::string result;
+
+        if ((flags & VK_QUEUE_GRAPHICS_BIT) != 0)
+        {
+            result += "GRAPHICS|";
+        }
+        if ((flags & VK_QUEUE_COMPUTE_BIT) != 0)
+        {
+            result += "COMPUTE|";
+        }
+        if ((flags & VK_QUEUE_TRANSFER_BIT) != 0)
+        {
+            result += "TRANSFER|";
+        }
+        if ((flags & VK_QUEUE_SPARSE_BINDING_BIT) != 0)
+        {
+            result += "SPARSE_BINDING|";
+        }
+
+        if (result.empty())
+        {
+            return "NONE";
+        }
+
+        result.pop_back(); // Remove trailing '|'.
+        return result;
+    }
+
     void createSurface()
     {
         if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
@@ -362,12 +410,17 @@ private:
         }
     }
 
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice candidate) const
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice candidate, bool verbose = false) const
     {
         QueueFamilyIndices indices;
 
         uint32_t queueFamilyCount = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(candidate, &queueFamilyCount, nullptr);
+
+        if (verbose)
+        {
+            std::cout << "  [Queue] Family count = " << queueFamilyCount << '\n';
+        }
 
         std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
         vkGetPhysicalDeviceQueueFamilyProperties(candidate, &queueFamilyCount, queueFamilies.data());
@@ -376,9 +429,20 @@ private:
         {
             const VkQueueFamilyProperties &queueFamily = queueFamilies[i];
 
+            if (verbose)
+            {
+                std::cout << "    [Queue#" << i << "] flags="
+                          << queueFlagsToString(queueFamily.queueFlags)
+                          << ", queueCount=" << queueFamily.queueCount;
+            }
+
             if ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0)
             {
                 indices.graphicsFamily = i;
+                if (verbose)
+                {
+                    std::cout << " -> supports GRAPHICS";
+                }
             }
 
             VkBool32 presentSupport = VK_FALSE;
@@ -386,10 +450,23 @@ private:
             if (presentSupport == VK_TRUE)
             {
                 indices.presentFamily = i;
+                if (verbose)
+                {
+                    std::cout << " -> supports PRESENT";
+                }
+            }
+
+            if (verbose)
+            {
+                std::cout << '\n';
             }
 
             if (indices.isComplete())
             {
+                if (verbose)
+                {
+                    std::cout << "  [Queue] Requirements met, stop scanning queue families.\n";
+                }
                 break;
             }
         }
@@ -405,8 +482,12 @@ private:
 
     void pickPhysicalDevice()
     {
+        std::cout << "[Step] Enumerating physical devices...\n";
+
         uint32_t deviceCount = 0;
         vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+
+        std::cout << "[Step] Found " << deviceCount << " Vulkan-capable device(s).\n";
 
         if (deviceCount == 0)
         {
@@ -416,13 +497,29 @@ private:
         std::vector<VkPhysicalDevice> devices(deviceCount);
         vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
-        for (const VkPhysicalDevice &candidate : devices)
+        for (size_t deviceIndex = 0; deviceIndex < devices.size(); ++deviceIndex)
         {
-            if (isDeviceSuitable(candidate))
+            const VkPhysicalDevice candidate = devices[deviceIndex];
+
+            VkPhysicalDeviceProperties props{};
+            vkGetPhysicalDeviceProperties(candidate, &props);
+
+            std::cout << "[Step] Checking device #" << deviceIndex << ": "
+                      << props.deviceName
+                      << " (" << deviceTypeToString(props.deviceType) << ")\n";
+
+            const QueueFamilyIndices indices = findQueueFamilies(candidate, true);
+            const bool suitable = indices.isComplete();
+
+            if (suitable)
             {
                 physicalDevice = candidate;
+                std::cout << "[Step] Device accepted. graphicsFamily=" << *indices.graphicsFamily
+                          << ", presentFamily=" << *indices.presentFamily << "\n";
                 break;
             }
+
+            std::cout << "[Step] Device rejected: missing required queue family support.\n";
         }
 
         if (physicalDevice == VK_NULL_HANDLE)
@@ -432,7 +529,7 @@ private:
 
         VkPhysicalDeviceProperties props{};
         vkGetPhysicalDeviceProperties(physicalDevice, &props);
-        std::cout << "[OK] Selected GPU: " << props.deviceName << '\n';
+        std::cout << "[OK] Selected GPU: " << props.deviceName << "\n";
     }
 
     void createLogicalDevice()
