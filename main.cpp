@@ -13,6 +13,11 @@
 class VulkanApp
 {
 public:
+    void setPreferIntegratedGpu(bool enabled)
+    {
+        preferIntegratedGpu = enabled;
+    }
+
     void run()
     {
         initWindow();
@@ -63,6 +68,7 @@ private:
     std::vector<VkImage> swapChainImages;
     VkFormat swapChainImageFormat = VK_FORMAT_UNDEFINED;
     VkExtent2D swapChainExtent{};
+    bool preferIntegratedGpu = false;
 
     struct QueueFamilyIndices
     {
@@ -451,7 +457,7 @@ private:
                           << ", queueCount=" << queueFamily.queueCount;
             }
 
-            if ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0)
+            if ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0 && !indices.graphicsFamily.has_value())
             {
                 indices.graphicsFamily = i;
                 if (verbose)
@@ -462,7 +468,7 @@ private:
 
             VkBool32 presentSupport = VK_FALSE;
             vkGetPhysicalDeviceSurfaceSupportKHR(candidate, i, surface, &presentSupport);
-            if (presentSupport == VK_TRUE)
+            if (presentSupport == VK_TRUE && !indices.presentFamily.has_value())
             {
                 indices.presentFamily = i;
                 if (verbose)
@@ -476,12 +482,8 @@ private:
                 std::cout << '\n';
             }
 
-            if (indices.isComplete())
+            if (indices.isComplete() && !verbose)
             {
-                if (verbose)
-                {
-                    std::cout << "  [Queue] Requirements met, stop scanning queue families.\n";
-                }
                 break;
             }
         }
@@ -521,6 +523,43 @@ private:
         std::vector<VkPhysicalDevice> devices(deviceCount);
         vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
+        auto deviceScore = [this](VkPhysicalDeviceType type) -> int
+        {
+            if (preferIntegratedGpu)
+            {
+                switch (type)
+                {
+                case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+                    return 1000;
+                case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+                    return 900;
+                case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+                    return 200;
+                case VK_PHYSICAL_DEVICE_TYPE_CPU:
+                    return 100;
+                default:
+                    return 50;
+                }
+            }
+
+            switch (type)
+            {
+            case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+                return 1000;
+            case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+                return 900;
+            case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+                return 200;
+            case VK_PHYSICAL_DEVICE_TYPE_CPU:
+                return 100;
+            default:
+                return 50;
+            }
+        };
+
+        VkPhysicalDevice bestDevice = VK_NULL_HANDLE;
+        int bestScore = -1;
+
         for (size_t deviceIndex = 0; deviceIndex < devices.size(); ++deviceIndex)
         {
             const VkPhysicalDevice candidate = devices[deviceIndex];
@@ -533,18 +572,28 @@ private:
                       << " (" << deviceTypeToString(props.deviceType) << ")\n";
 
             const QueueFamilyIndices indices = findQueueFamilies(candidate, true);
-            const bool suitable = indices.isComplete();
+            const bool suitable = isDeviceSuitable(candidate);
 
             if (suitable)
             {
-                physicalDevice = candidate;
+                const int score = deviceScore(props.deviceType);
                 std::cout << "[Step] Device accepted. graphicsFamily=" << *indices.graphicsFamily
-                          << ", presentFamily=" << *indices.presentFamily << "\n";
-                break;
+                          << ", presentFamily=" << *indices.presentFamily
+                          << ", score=" << score << "\n";
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestDevice = candidate;
+                }
+
+                continue;
             }
 
-            std::cout << "[Step] Device rejected: missing required queue family support.\n";
+            std::cout << "[Step] Device rejected: not suitable for swapchain rendering.\n";
         }
+
+        physicalDevice = bestDevice;
 
         if (physicalDevice == VK_NULL_HANDLE)
         {
@@ -594,17 +643,9 @@ private:
         createInfo.pEnabledFeatures = &deviceFeatures;
         createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
         createInfo.ppEnabledExtensionNames = deviceExtensions.data();
-
-        if (enableValidationLayers)
-        {
-            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-            createInfo.ppEnabledLayerNames = validationLayers.data();
-        }
-        else
-        {
-            createInfo.enabledLayerCount = 0;
-            createInfo.ppEnabledLayerNames = nullptr;
-        }
+        // Device layers are legacy and ignored by modern Vulkan loaders.
+        createInfo.enabledLayerCount = 0;
+        createInfo.ppEnabledLayerNames = nullptr;
 
         if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
         {
@@ -817,9 +858,21 @@ private:
     }
 };
 
-int main()
+int main(int argc, char *argv[])
 {
     VulkanApp app;
+
+    for (int i = 1; i < argc; ++i)
+    {
+        if (std::strcmp(argv[i], "--integrated") == 0)
+        {
+            app.setPreferIntegratedGpu(true);
+        }
+        else if (std::strcmp(argv[i], "--discrete") == 0)
+        {
+            app.setPreferIntegratedGpu(false);
+        }
+    }
 
     try
     {
