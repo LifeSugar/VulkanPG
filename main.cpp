@@ -61,7 +61,7 @@ private:
     VkInstance instance = VK_NULL_HANDLE;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
 
-    // 后续步骤会逐步启用这些对象：
+    // 逐步启用这些对象：
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device = VK_NULL_HANDLE;
@@ -78,6 +78,12 @@ private:
     VkPipeline graphicsPipeline = VK_NULL_HANDLE;
     VkFormat swapChainImageFormat = VK_FORMAT_UNDEFINED;
     VkExtent2D swapChainExtent{};
+    static constexpr uint32_t kMaxFramesInFlight = 2;
+    std::vector<VkSemaphore> imageAvailableSemaphores;
+    std::vector<VkSemaphore> renderFinishedSemaphores;
+    std::vector<VkFence> inFlightFences;
+    uint32_t currentFrame = 0;
+    
     bool preferIntegratedGpu = false;
 
     struct QueueFamilyIndices
@@ -140,9 +146,9 @@ private:
         createFramebuffers();
         createCommandPool();
         createCommandBuffers();
+        createSyncObjects();
 
         // 2) 预留：后续逐步实现
-        // createSyncObjects();
     }
 
     void mainLoop()
@@ -150,9 +156,7 @@ private:
         while (!glfwWindowShouldClose(window))
         {
             glfwPollEvents();
-
-            // 后续替换成 drawFrame()：
-            // drawFrame();
+            drawFrame();
         }
     }
 
@@ -176,6 +180,24 @@ private:
             vkDestroyFramebuffer(device, framebuffer, nullptr);
         }
         swapChainFramebuffers.clear();
+
+        for (VkSemaphore semaphore : renderFinishedSemaphores)
+        {
+            vkDestroySemaphore(device, semaphore, nullptr);
+        }
+        renderFinishedSemaphores.clear();
+
+        for (VkSemaphore semaphore : imageAvailableSemaphores)
+        {
+            vkDestroySemaphore(device, semaphore, nullptr);
+        }
+        imageAvailableSemaphores.clear();
+
+        for (VkFence fence : inFlightFences)
+        {
+            vkDestroyFence(device, fence, nullptr);
+        }
+        inFlightFences.clear();
 
         if (graphicsPipeline != VK_NULL_HANDLE)
         {
@@ -1253,12 +1275,98 @@ private:
 
     void createSyncObjects()
     {
-        // TODO: 创建信号量和栅栏，协调 acquire/submit/present。
+        imageAvailableSemaphores.resize(kMaxFramesInFlight);
+        renderFinishedSemaphores.resize(kMaxFramesInFlight);
+        inFlightFences.resize(kMaxFramesInFlight);
+
+        VkSemaphoreCreateInfo semaphoreInfo{};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+        for (uint32_t i = 0; i < kMaxFramesInFlight; ++i)
+        {
+            if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
+                vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
+                vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
+            {
+                throw std::runtime_error("Failed to create synchronization objects!");
+            }
+        }
+
+        std::cout << "[OK] Sync objects created. framesInFlight=" << kMaxFramesInFlight << "\n";
     }
 
     void drawFrame()
     {
-        // TODO: acquire image -> submit command buffer -> present。
+        if (commandBuffers.empty())
+        {
+            throw std::runtime_error("Cannot draw frame: command buffers are empty.");
+        }
+
+        vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+
+        uint32_t imageIndex = 0;
+        VkResult acquireResult = vkAcquireNextImageKHR(
+            device,
+            swapChain,
+            UINT64_MAX,
+            imageAvailableSemaphores[currentFrame],
+            VK_NULL_HANDLE,
+            &imageIndex);
+
+        if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            throw std::runtime_error("Swapchain is out of date. Resize handling is not implemented yet.");
+        }
+        if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR)
+        {
+            throw std::runtime_error("Failed to acquire swap chain image!");
+        }
+
+        vkResetFences(device, 1, &inFlightFences[currentFrame]);
+
+        VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
+        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to submit draw command buffer!");
+        }
+
+        VkSwapchainKHR swapChains[] = {swapChain};
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = signalSemaphores;
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = swapChains;
+        presentInfo.pImageIndices = &imageIndex;
+
+        VkResult presentResult = vkQueuePresentKHR(presentQueue, &presentInfo);
+        if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
+        {
+            throw std::runtime_error("Swapchain is out of date/suboptimal. Resize handling is not implemented yet.");
+        }
+        if (presentResult != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to present swap chain image!");
+        }
+
+        currentFrame = (currentFrame + 1) % kMaxFramesInFlight;
     }
 };
 
