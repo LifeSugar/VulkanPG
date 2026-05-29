@@ -1,14 +1,44 @@
-cmake_minimum_required(VERSION 3.10)
-project(VulkanProject)
+cmake_minimum_required(VERSION 3.20)
+project(VulkanProject LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(Vulkan REQUIRED)
 
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 
-add_executable(VulkanApp main.cpp)
+set(VULKAN_APP_SOURCES
+    main.cpp
+)
+
+if(EXISTS "${CMAKE_SOURCE_DIR}/src")
+    file(GLOB_RECURSE VULKAN_APP_SRC_FILES CONFIGURE_DEPENDS
+        "${CMAKE_SOURCE_DIR}/src/*.c"
+        "${CMAKE_SOURCE_DIR}/src/*.cc"
+        "${CMAKE_SOURCE_DIR}/src/*.cpp"
+        "${CMAKE_SOURCE_DIR}/src/*.cxx"
+    )
+    list(APPEND VULKAN_APP_SOURCES ${VULKAN_APP_SRC_FILES})
+endif()
+
+add_executable(VulkanApp
+    ${VULKAN_APP_SOURCES}
+    VKApp.h
+)
+
+target_include_directories(VulkanApp PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+# In some setups IntelliSense does not infer Vulkan headers from transitive
+# includes in headers; add them explicitly when provided by find_package.
+if(DEFINED Vulkan_INCLUDE_DIRS)
+    target_include_directories(VulkanApp PRIVATE ${Vulkan_INCLUDE_DIRS})
+endif()
 
 # Keep runtime assets next to the executable so relative paths like
 # shaders/triangle.vert.spv work regardless of build folder layout.
