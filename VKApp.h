@@ -70,4 +70,20 @@ private:
         std::vector<VkSurfaceFormatKHR> formats;
         std::vector<VkPresentModeKHR> presentModes;
     };
+private:
+    void initWindow();
+    void initVulkan();
+    void mainLoop();
+    void cleanup();
+
+private:
+    bool checkValidationLayerSupport() const;
+    std::vector<const char *> getRequiredExtensions() const;
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+        void *pUserData);
+
+
 };
