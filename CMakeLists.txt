@@ -10,9 +10,7 @@ find_package(Vulkan REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 
-set(VULKAN_APP_SOURCES
-    main.cpp
-)
+set(VULKAN_APP_SOURCES)
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/src")
     file(GLOB_RECURSE VULKAN_APP_SRC_FILES CONFIGURE_DEPENDS
@@ -24,13 +22,22 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/src")
     list(APPEND VULKAN_APP_SOURCES ${VULKAN_APP_SRC_FILES})
 endif()
 
+# 添加head目录的头文件
+if(EXISTS "${CMAKE_SOURCE_DIR}/head")
+    file(GLOB_RECURSE VULKAN_APP_HEAD_FILES CONFIGURE_DEPENDS
+        "${CMAKE_SOURCE_DIR}/head/*.h"
+        "${CMAKE_SOURCE_DIR}/head/*.hpp"
+    )
+    list(APPEND VULKAN_APP_SOURCES ${VULKAN_APP_HEAD_FILES})
+endif()
+
 add_executable(VulkanApp
     ${VULKAN_APP_SOURCES}
-    VKApp.h
 )
 
 target_include_directories(VulkanApp PRIVATE
     ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/head
     ${CMAKE_SOURCE_DIR}/src
 )
 
