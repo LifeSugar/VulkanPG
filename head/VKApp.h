@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 #include <optional>
+#include <string>
 
 class VulkanApp
 {
@@ -79,24 +80,55 @@ private:
 private:
     bool checkValidationLayerSupport() const;
     std::vector<const char *> getRequiredExtensions() const;
-    
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType,
         const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
         void *pUserData);
     static void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
-    static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,
+    static VkResult CreateDebugUtilsMessengerEXT(
+        VkInstance inInstance,
         const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
         const VkAllocationCallbacks *pAllocator,
         VkDebugUtilsMessengerEXT *pDebugMessenger);
-    static void DestroyDebugUtilsMessengerEXT(VkInstance instance,
+    static void DestroyDebugUtilsMessengerEXT(
+        VkInstance instance,
         VkDebugUtilsMessengerEXT debugMessenger,
         const VkAllocationCallbacks *pAllocator);
+    void setupDebugMessenger();
 
-    
+    void createInstance();
 
-    
+    static const char *deviceTypeString(VkPhysicalDeviceType type);
+    static std::string queueFamilyIndicesString(VkQueueFlags flags);
+
+    void createSurface();
+
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice candidate) const;
+    bool checkDeviceExtensionSupport(VkPhysicalDevice candidate) const;
+    bool isDeviceSuitable(VkPhysicalDevice candidate) const;
+    void pickPhysicalDevice();
+    void createLogicalDevice();
+
+    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice candidate) const;
+    static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
+    static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
+    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities) const;
+    void createSwapChain();
+
+    void createImageViews();
+    void createRenderPass();
+    VkShaderModule createShaderModule(const std::vector<char> &code) const;
+    void createGraphicsPipeline();
+
+    void createFramebuffers();
+    void createCommandPool();
+    void createCommandBuffers();
+    void createSyncObjects();
+
+    void drawFrame();
+
+        
 
 
 };
