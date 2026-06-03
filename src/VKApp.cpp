@@ -118,3 +118,18 @@ void VulkanApp::setupDebugMessenger()
     }
 }
 
+VkResult VulkanApp::CreateDebugUtilsMessengerEXT(
+        VkInstance instance,
+        const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
+        const VkAllocationCallbacks *pAllocator,
+        VkDebugUtilsMessengerEXT *pDebugMessenger)
+{
+    auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
+        vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT")
+    );
+    if (func != nullptr){
+        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    }
+}
+
+
