@@ -98,11 +98,10 @@ private:
     void setupDebugMessenger();
 
     void createInstance();
-
-    static const char *deviceTypeString(VkPhysicalDeviceType type);
-    static std::string queueFamilyIndicesString(VkQueueFlags flags);
-
     void createSurface();
+
+    static const char *PhysicalDeviceTypeToString(VkPhysicalDeviceType type);
+    static std::string queueFamilyIndicesString(VkQueueFlags flags);
 
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice candidate) const;
     bool checkDeviceExtensionSupport(VkPhysicalDevice candidate) const;
