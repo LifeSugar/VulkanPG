@@ -71,6 +71,10 @@ private:
         std::vector<VkSurfaceFormatKHR> formats;
         std::vector<VkPresentModeKHR> presentModes;
     };
+
+    SwapChainSupportDetails swapChainSupport;
+
+
 private:
     void initWindow();
     void initVulkan();
