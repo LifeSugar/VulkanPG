@@ -9,6 +9,7 @@ find_package(Vulkan REQUIRED)
 
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
+find_package(assimp CONFIG REQUIRED)
 
 set(VULKAN_APP_SOURCES)
 
@@ -41,6 +42,10 @@ target_include_directories(VulkanApp PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
+target_compile_options(VulkanApp PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/utf-8>
+)
+
 # In some setups IntelliSense does not infer Vulkan headers from transitive
 # includes in headers; add them explicitly when provided by find_package.
 if(DEFINED Vulkan_INCLUDE_DIRS)
@@ -61,4 +66,5 @@ target_link_libraries(VulkanApp PRIVATE
     Vulkan::Vulkan 
     glfw 
     glm::glm
+    assimp::assimp
 )

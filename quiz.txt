@@ -1,0 +1,25 @@
+判断
+F T F T F T T T F T
+排序：C F G E I B H J A D K L M
+简答
+1 Instance是全局上下文的起点，是应用程序与VK驱动库的第一个连接，处于程序的最顶端。Surface用于将渲染结果显示在窗口上，与硬件无关，但是它的创建依赖于instance和操作系统。Physical Device的pick同样依赖于instance。
+并且不是所用硬件都用于显示的queue family，因此在pick时要和对应操作系统的surface做相亲测试
+2 swapchain format创建的时候是从硬件的支持的format中选择，创建imageview的format则是向Vk程序指明swapchain image的用法
+3 RenderPass中绑定的资源的格式，msaa采样数（MSAA 关） 进入这个pass clear此image，结束pass将渲染结果储存在image（对应片上内存的操作），初始布局未定义，结束后用于显示在窗口上
+4 renderpss定义了状态，描述了在一段渲染操作期间，GPU需要用到那些附件（即现存图像），以及这些附件在渲染开始和结束时要如何处理。一个renderpass可以包含多个subpass，subpass之间可以通过input attachment可以在现存上读取上一个subpass的结果。renderpass及其attachment imageview要和Framebuffer绑定才能进入执行队列
+5 因为这个函数来自拓展，并非vulkan核心api，不是所用硬件都支持
+6 表示在样条模式下，顶点结构体中会存在断开几何结构的标记，和顶点复用不是一回事
+代码理解
+1 VkViewport Create在pipeline 几何阶段和光栅化之间，定义了视口的起始位置，大小，深度范围
+2 因为这个函数来自拓展，并非vulkan核心api，不是所用硬件都支持
+3 这个imageview只处理颜色通道的数据；取mip0，并且此image只有一层mip。起始的纹理数组或者cubemap切片设置为1并且取第一张和唯一的一张
+4 这里我们的swapchain用于显示颜色，并且采用独占模式 swapchain image在任意时刻只属于一个queue family。所以可以不填。如果需要在不同family中转移所有权（比如present 和 graphic分属不同 queuefamily）需要手动通过pipeline barrier或信号量转移所有权。如果用并发模式且不同queuefamily则要填
+
+综合设计题
+
+从三角形到模型渲染
+1. 新增资源：Vertex Buffer、Index Buffer、Uniform Buffer (UBO)、Descriptor Set + Layout、Staging Buffer
+2. 顶点数据 → VK_BUFFER_USAGE_VERTEX_BUFFER_BIT（DEVICE_LOCAL）；索引数据 → VK_BUFFER_USAGE_INDEX_BUFFER_BIT（DEVICE_LOCAL）。通过 Staging Buffer 从 CPU 上传到显存
+3. Pipeline 不一定重建。如果顶点输入布局、shader、renderpass 不变，只需更新 buffer 内容即可复用
+4. 窗口尺寸改变需重建：Swapchain、ImageViews、Framebuffers、Command Buffers。不需重建：Device、RenderPass、Pipeline（若使用 dynamic viewport/scissor）、Buffer、DescriptorSetLayout
+5. 只替换模型数据不需要重建 Swchain。Swapchain 只与窗口表面有关，与几何数据无关。只需更新 buffer 内容并重新录制 command Buffer（HOST_VISIBLE    
