@@ -3,6 +3,7 @@
 #include <vector>
 #include <optional>
 #include <string>
+#include <GLBTypes.h>
 
 class VulkanApp
 {
@@ -119,6 +120,16 @@ private:
     static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities) const;
     void createSwapChain();
+
+    void createBuffer(VkDevice device,
+        VkDeviceSize size, 
+        VkBufferUsageFlags usage, 
+        VkMemoryPropertyFlags properties, 
+        VkBuffer &buffer, 
+        VkDeviceMemory &bufferMemory);
+    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+    void ceateVertexBuffer(GLBPrimitive& primitive, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory);
+    void createIndexBuffer(GLBPrimitive& primitive, VkBuffer& indexBuffer, VkDeviceMemory& indexBufferMemory);
 
     void createImageViews();
     void createRenderPass();
