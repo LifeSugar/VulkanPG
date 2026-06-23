@@ -617,6 +617,41 @@ void VulkanApp::createBuffer(
     vkBindBufferMemory(device, buffer, bufferMemory, 0);
 }
 
+void VulkanApp::createVertexBuffer(GLBPrimitive& primitive, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory)
+{
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+
+    VkDeviceSize bufferSize = sizeof(primitive.vertices[0]) * primitive.vertices.size();
+    createBuffer(
+        device,
+        bufferSize,
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer,
+        stagingBufferMemory
+    );
+
+    void* data;
+    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, primitive.vertices.data(), (size_t)bufferSize);
+    vkUnmapMemory(device, stagingBufferMemory);
+
+    createBuffer(
+        device,
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        vertexBuffer,
+        vertexBufferMemory
+    );
+    // copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+}
+
 
 void VulkanApp::createImageViews()
 {

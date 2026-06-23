@@ -128,7 +128,7 @@ private:
         VkBuffer &buffer, 
         VkDeviceMemory &bufferMemory);
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
-    void ceateVertexBuffer(GLBPrimitive& primitive, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory);
+    void createVertexBuffer(GLBPrimitive& primitive, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory);
     void createIndexBuffer(GLBPrimitive& primitive, VkBuffer& indexBuffer, VkDeviceMemory& indexBufferMemory);
 
     void createImageViews();
