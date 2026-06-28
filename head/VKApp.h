@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <GLBTypes.h>
+#include "GLBLoader.h"
 
 class VulkanApp
 {
@@ -48,6 +49,17 @@ private:
     VkRenderPass renderPass = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     VkPipeline graphicPipeline;
+
+    VkBuffer vertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
+    VkBuffer indexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
+
+    GLBLoader loader;
+    std::unique_ptr<GLBModel> model;
+    std::string modelPath = "models/triangle.glb";
+    uint32_t indexCount = 0;
+
     VkExtent2D swapChainExtent{};
     static constexpr uint32_t kMaxFramesInFlight = 2;
     std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -130,6 +142,11 @@ private:
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
     void createVertexBuffer(GLBPrimitive& primitive, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory);
     void createIndexBuffer(GLBPrimitive& primitive, VkBuffer& indexBuffer, VkDeviceMemory& indexBufferMemory);
+    void loadModel();
+    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+    
+    VkCommandBuffer beginSingleTimeCommands();
+    void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
     void createImageViews();
     void createRenderPass();

@@ -1,19 +1,21 @@
-// Minimal vertex shader: generate a full triangle from SV_VertexID.
+// Vertex shader: receives position and color from vertex buffer.
+
+struct VSInput
+{
+    float3 position : POSITION;
+    float3 color    : COLOR0;
+};
 
 struct VSOutput
 {
     float4 position : SV_Position;
+    float3 color    : COLOR0;
 };
 
-VSOutput main(uint vertexIndex : SV_VertexID)
+VSOutput main(VSInput input)
 {
-    const float2 positions[3] = {
-        float2(0.0f, -0.5f),
-        float2(0.5f, 0.5f),
-        float2(-0.5f, 0.5f)
-    };
-
     VSOutput output;
-    output.position = float4(positions[vertexIndex], 0.0f, 1.0f);
+    output.position = float4(input.position, 1.0);
+    output.color    = input.color;
     return output;
 }

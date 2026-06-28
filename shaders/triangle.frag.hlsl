@@ -1,6 +1,12 @@
-// Minimal fragment shader: output a solid orange color.
+// Fragment shader: receives interpolated color from vertex shader.
 
-float4 main() : SV_Target
+struct PSInput
 {
-    return float4(1.0f, 0.5f, 0.1f, 1.0f);
+    float4 position : SV_Position;
+    float3 color    : COLOR0;
+};
+
+float4 main(PSInput input) : SV_Target
+{
+    return float4(input.color, 1.0f);
 }
