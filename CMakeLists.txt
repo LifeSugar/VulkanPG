@@ -53,12 +53,24 @@ if(DEFINED Vulkan_INCLUDE_DIRS)
 endif()
 
 # Keep runtime assets next to the executable so relative paths like
-# shaders/triangle.vert.spv work regardless of build folder layout.
+# Assets/shaders/triangle.vert.spv work regardless of build folder layout.
 add_custom_command(TARGET VulkanApp POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_SOURCE_DIR}/shaders"
-            "$<TARGET_FILE_DIR:VulkanApp>/shaders"
+            "${CMAKE_SOURCE_DIR}/Assets/shaders"
+            "$<TARGET_FILE_DIR:VulkanApp>/Assets/shaders"
     COMMENT "Copying shaders to output directory"
+)
+
+add_custom_command(TARGET VulkanApp POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/Assets/Models"
+            "$<TARGET_FILE_DIR:VulkanApp>/Assets/Models"
+    COMMENT "Copying models to output directory"
+)
+
+# 编译期嵌入源码根目录，运行时若相对路径找不到则回退到源码目录
+target_compile_definitions(VulkanApp PRIVATE
+    PROJECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
 
 # 3. 链接所有库

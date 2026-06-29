@@ -5,6 +5,7 @@
 #include <set>
 #include <fstream>
 #include <array>
+#include <filesystem>
 
 void VulkanApp::run()
 {
@@ -629,7 +630,7 @@ void VulkanApp::createBuffer(
 
 void VulkanApp::loadModel()
 {
-    model = loader.load(modelPath);
+    model = loader.load(resolveAssetPath(modelPath));
     if (!model)
     {
         throw std::runtime_error("Failed to load model: " + modelPath + "\n" + loader.getLastError());
@@ -838,9 +839,25 @@ void VulkanApp::createRenderPass()
     }
 }
 
+std::string VulkanApp::resolveAssetPath(const std::string& relativePath)
+{
+    // 1. 先尝试相对路径（构建目录已复制 assets 时可用）
+    if (std::filesystem::exists(relativePath))
+        return relativePath;
+
+    // 2. 回退到源码树中的 Assets 目录
+    std::string sourcePath = std::string(PROJECT_SOURCE_DIR) + "/" + relativePath;
+    if (std::filesystem::exists(sourcePath))
+        return sourcePath;
+
+    // 都不存在则返回原始路径，让后续的 open 报错
+    return relativePath;
+}
+
 std::vector<char> VulkanApp::readFile(const std::string &filename) 
 {
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+    std::string resolved = resolveAssetPath(filename);
+    std::ifstream file(resolved, std::ios::ate | std::ios::binary);
     if (!file.is_open())
     {
         throw std::runtime_error("failed to open file: " + filename);
@@ -876,8 +893,8 @@ void VulkanApp::createGraphicsPipeline()
         throw std::runtime_error("Cannot create graphics pipeline: render pass has not been created yet.");
     }
 
-    std::vector<char> vertShaderCode = readFile("shaders/triangle.vert.spv");
-    std::vector<char> fragShaderCode = readFile("shaders/triangle.frag.spv");
+    std::vector<char> vertShaderCode = readFile("Assets/shaders/triangle.vert.spv");
+    std::vector<char> fragShaderCode = readFile("Assets/shaders/triangle.frag.spv");
 
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);

@@ -57,7 +57,7 @@ private:
 
     GLBLoader loader;
     std::unique_ptr<GLBModel> model;
-    std::string modelPath = "models/triangle.glb";
+    std::string modelPath = "Assets/Models/Suzanne.glb";
     uint32_t indexCount = 0;
 
     VkExtent2D swapChainExtent{};
@@ -150,6 +150,7 @@ private:
 
     void createImageViews();
     void createRenderPass();
+    static std::string resolveAssetPath(const std::string& relativePath);
     static std::vector<char> readFile(const std::string &filename);
     VkShaderModule createShaderModule(const std::vector<char> &code) const;
     void createGraphicsPipeline();
