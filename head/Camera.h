@@ -2,6 +2,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+
 class Camera
 {
 public:
@@ -29,9 +30,9 @@ public:
     void setRotation(const glm::vec3 &rotation);
     const glm::vec3 &getRotation() const;
 
-    glm::mat4 getViewMatrix() const;
-    glm::mat4 getProjectionMatrix() const;
-    glm::mat4 getViewProjectionMatrix() const;
+    const glm::mat4 &getViewMatrix() const;
+    const glm::mat4 &getProjectionMatrix() const;
+    const glm::mat4 &getViewProjectionMatrix() const;
 
     void setAspect(float aspect);
 
@@ -46,14 +47,14 @@ private:
     glm::vec3 m_rotation;
     Config m_config;
 
-    glm::mat4 m_viewMatrix;
-    glm::mat4 m_projectionMatrix;
-    glm::mat4 m_viewProjectionMatrix;
+    mutable glm::mat4 m_viewMatrix;
+    mutable glm::mat4 m_projectionMatrix;
+    mutable glm::mat4 m_viewProjectionMatrix;
 
-    bool m_isViewDirty = true;
-    bool m_isProjectionDirty = true;
+    mutable bool m_isViewDirty = true;
+    mutable bool m_isProjectionDirty = true;
 
 private:
-    void recalculateViewMatrix();
-    void recalculateProjectionMatrix();
+    void recalculateViewMatrix() const;
+    void recalculateProjectionMatrix() const;
 };

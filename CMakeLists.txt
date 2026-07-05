@@ -71,6 +71,7 @@ add_custom_command(TARGET VulkanApp POST_BUILD
 # 编译期嵌入源码根目录，运行时若相对路径找不到则回退到源码目录
 target_compile_definitions(VulkanApp PRIVATE
     PROJECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+    GLM_FORCE_DEPTH_ZERO_TO_ONE
 )
 
 # 3. 链接所有库
