@@ -280,7 +280,7 @@ void VulkanApp::createSurface()
 
 void VulkanApp::setupCamera()
 {
-    camera.setPosition(glm::vec3(0.0f, 0.0f, 3.0f));
+    camera.setPosition(glm::vec3(0.0f, 0.0f, 5.0f));
     camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
     camera.setAspect(static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height));
 }
