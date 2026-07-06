@@ -1,9 +1,14 @@
+#pragma once
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <vector>
 #include <optional>
 #include <string>
+#include <memory>
+#include <glm/glm.hpp>
 #include <GLBTypes.h>
+#include "Camera.h"
 #include "GLBLoader.h"
 
 class VulkanApp
@@ -46,7 +51,11 @@ private:
     std::vector<VkImageView> swapChainImageViews;
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkFormat swapChainImageFormat = VK_FORMAT_UNDEFINED;
+    VkImage depthImage = VK_NULL_HANDLE;
+    VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
+    VkImageView depthImageView = VK_NULL_HANDLE;
     VkRenderPass renderPass = VK_NULL_HANDLE;
+    VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     VkPipeline graphicPipeline;
 
@@ -54,17 +63,30 @@ private:
     VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
     VkBuffer indexBuffer = VK_NULL_HANDLE;
     VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
+    std::vector<VkBuffer> uniformBuffers;
+    std::vector<VkDeviceMemory> uniformBuffersMemory;
+    VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+    std::vector<VkDescriptorSet> descriptorSets;
+
+    struct UniformBufferObject
+    {
+        alignas(16) glm::mat4 model{1.0f};
+        alignas(16) glm::mat4 view{1.0f};
+        alignas(16) glm::mat4 proj{1.0f};
+    };
 
     GLBLoader loader;
     std::unique_ptr<GLBModel> model;
     std::string modelPath = "Assets/Models/Suzanne.glb";
     uint32_t indexCount = 0;
+    Camera camera;
 
     VkExtent2D swapChainExtent{};
     static constexpr uint32_t kMaxFramesInFlight = 2;
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
+    std::vector<VkFence> imagesInFlight;
     uint32_t currentFrame = 0;
     bool preferIntegratedGpu = false;
 
@@ -117,6 +139,7 @@ private:
 
     void createInstance();
     void createSurface();
+    void setupCamera();
 
     static const char *PhysicalDeviceTypeToString(VkPhysicalDeviceType type);
     static std::string queueFamilyIndicesString(VkQueueFlags flags);
@@ -139,9 +162,28 @@ private:
         VkMemoryPropertyFlags properties, 
         VkBuffer &buffer, 
         VkDeviceMemory &bufferMemory);
+    void createImage(
+        uint32_t width,
+        uint32_t height,
+        VkFormat format,
+        VkImageTiling tiling,
+        VkImageUsageFlags usage,
+        VkMemoryPropertyFlags properties,
+        VkImage &image,
+        VkDeviceMemory &imageMemory);
+    VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+    VkFormat findSupportedFormat(
+        const std::vector<VkFormat> &candidates,
+        VkImageTiling tiling,
+        VkFormatFeatureFlags features) const;
+    VkFormat findDepthFormat() const;
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
     void createVertexBuffer(GLBPrimitive& primitive, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory);
     void createIndexBuffer(GLBPrimitive& primitive, VkBuffer& indexBuffer, VkDeviceMemory& indexBufferMemory);
+    void createUniformBuffers();
+    void updateUniformBuffer(uint32_t imageIndex);
+    void createDescriptorPool();
+    void createDescriptorSets();
     void loadModel();
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     
@@ -149,10 +191,12 @@ private:
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
     void createImageViews();
+    void createDepthResources();
     void createRenderPass();
     static std::string resolveAssetPath(const std::string& relativePath);
     static std::vector<char> readFile(const std::string &filename);
     VkShaderModule createShaderModule(const std::vector<char> &code) const;
+    void createDescriptorSetLayout();
     void createGraphicsPipeline();
 
     void createFramebuffers();

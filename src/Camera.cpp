@@ -1,6 +1,5 @@
 #include "Camera.h"
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/euler_angles.hpp>
 
 Camera::Camera()
     : m_position(0.0f, 0.0f, 0.0f)
@@ -13,8 +12,6 @@ Camera::Camera()
     , m_isProjectionDirty(true)
 {
 }
-
-Camera::~Camera() = default;
 
 void Camera::setConfig(const Config &config)
 {
