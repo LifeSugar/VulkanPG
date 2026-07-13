@@ -118,5 +118,5 @@
 
 - [ ] 拆分 `VKApp.cpp`：`VKBuffers.cpp` / `VKPipeline.cpp` / `VKDescriptor.cpp` / `VKTexture.cpp`
 - [ ] 封装 `VKHelpers.h` 公共工具函数（`createBuffer`, `copyBuffer`, `createImage` 等）
-- [ ] 添加 swapchain recreation（窗口 resize 时自动重建）
+- [x] 添加 swapchain recreation（窗口 resize 时自动重建，并在连续拖动时防抖）
 - [ ] 添加 ImGui 用于调试面板（显示 FPS、模型信息等）

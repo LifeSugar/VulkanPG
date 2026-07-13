@@ -57,7 +57,7 @@ private:
     VkRenderPass renderPass = VK_NULL_HANDLE;
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-    VkPipeline graphicPipeline;
+    VkPipeline graphicPipeline = VK_NULL_HANDLE;
 
     VkBuffer vertexBuffer = VK_NULL_HANDLE;
     VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
@@ -89,6 +89,9 @@ private:
     std::vector<VkFence> imagesInFlight;
     uint32_t currentFrame = 0;
     bool preferIntegratedGpu = false;
+    bool swapChainRecreationRequested = false;
+    double lastFramebufferResizeTime = 0.0;
+    static constexpr double kSwapChainResizeDebounceSeconds = 0.15;
 
     struct QueueFamilyIndices
     {
@@ -116,6 +119,7 @@ private:
     void initVulkan();
     void mainLoop();
     void cleanup();
+    static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
 private:
     bool checkValidationLayerSupport() const;
@@ -154,7 +158,11 @@ private:
     static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
     static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities) const;
-    void createSwapChain();
+    void createSwapChain(VkSwapchainKHR oldSwapChain = VK_NULL_HANDLE);
+    void cleanupSwapChain();
+    void recreateSwapChain();
+    void requestSwapChainRecreation();
+    bool isSwapChainRecreationDue() const;
 
     void createBuffer(VkDevice device,
         VkDeviceSize size, 
