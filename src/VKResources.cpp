@@ -22,40 +22,6 @@ uint32_t VulkanApp::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags pr
     throw std::runtime_error("failed to find suitable memory type!");
 }
 
-void VulkanApp::createBuffer(
-    VkDevice device,
-    VkDeviceSize size,
-    VkBufferUsageFlags usage,
-    VkMemoryPropertyFlags properties,
-    VkBuffer &buffer,
-    VkDeviceMemory &bufferMemory
-)
-{
-    VkBufferCreateInfo bufferInfo{};
-    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = size;
-    bufferInfo.usage = usage;
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create buffer!");
-    }
-
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
-
-    VkMemoryAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
-    if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to allocate buffer memory!");
-    }
-    vkBindBufferMemory(device, buffer, bufferMemory, 0);
-}
-
 void VulkanApp::createImage(
     uint32_t width,
     uint32_t height,
@@ -178,73 +144,50 @@ void VulkanApp::loadModel()
     indexCount = static_cast<uint32_t>(prim.indices.size());
 }
 
-void VulkanApp::createVertexBuffer(GLBPrimitive& primitive, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory)
+void VulkanApp::createVertexBuffer(const GLBPrimitive& primitive, VulkanBuffer& targetBuffer)
 {
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-
-    VkDeviceSize bufferSize = sizeof(primitive.vertices[0]) * primitive.vertices.size();
-    createBuffer(
+    const VkDeviceSize bufferSize = sizeof(primitive.vertices[0]) * primitive.vertices.size();
+    VulkanBuffer stagingBuffer(
+        physicalDevice,
         device,
         bufferSize,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        stagingBuffer,
-        stagingBufferMemory
-    );
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, primitive.vertices.data(), (size_t)bufferSize);
-    vkUnmapMemory(device, stagingBufferMemory);
+    void* data = stagingBuffer.map();
+    memcpy(data, primitive.vertices.data(), static_cast<size_t>(bufferSize));
+    stagingBuffer.unmap();
 
-    createBuffer(
+    targetBuffer.create(
+        physicalDevice,
         device,
         bufferSize,
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        vertexBuffer,
-        vertexBufferMemory
-    );
-    copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-    vkDestroyBuffer(device, stagingBuffer, nullptr);
-    vkFreeMemory(device, stagingBufferMemory, nullptr);
-
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    copyBuffer(stagingBuffer.get(), targetBuffer.get(), bufferSize);
 }
 
-void VulkanApp::createIndexBuffer(GLBPrimitive& primitive, VkBuffer& indexBuffer, VkDeviceMemory& indexBufferMemory)
+void VulkanApp::createIndexBuffer(const GLBPrimitive& primitive, VulkanBuffer& targetBuffer)
 {
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-
-    VkDeviceSize bufferSize = sizeof(primitive.indices[0]) * primitive.indices.size();
-    createBuffer(
+    const VkDeviceSize bufferSize = sizeof(primitive.indices[0]) * primitive.indices.size();
+    VulkanBuffer stagingBuffer(
+        physicalDevice,
         device,
         bufferSize,
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        stagingBuffer,
-        stagingBufferMemory
-    );
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, primitive.indices.data(), (size_t)bufferSize);
-    vkUnmapMemory(device, stagingBufferMemory);
+    void* data = stagingBuffer.map();
+    memcpy(data, primitive.indices.data(), static_cast<size_t>(bufferSize));
+    stagingBuffer.unmap();
 
-    createBuffer(
+    targetBuffer.create(
+        physicalDevice,
         device,
         bufferSize,
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        indexBuffer,
-        indexBufferMemory
-    );
-    copyBuffer(stagingBuffer, indexBuffer, bufferSize);
-
-    vkDestroyBuffer(device, stagingBuffer, nullptr);
-    vkFreeMemory(device, stagingBufferMemory, nullptr);
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    copyBuffer(stagingBuffer.get(), targetBuffer.get(), bufferSize);
 }
 
 void VulkanApp::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
@@ -304,4 +247,3 @@ void VulkanApp::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 
     vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
-

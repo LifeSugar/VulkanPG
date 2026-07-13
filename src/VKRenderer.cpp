@@ -18,6 +18,7 @@ void VulkanApp::createCommandPool()
 
 void VulkanApp::createCommandBuffers()
 {
+    const VkExtent2D extent = swapChain.extent();
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.commandPool = commandPool;
@@ -45,7 +46,7 @@ void VulkanApp::createCommandBuffers()
         renderPassInfo.renderPass = renderPass;
         renderPassInfo.framebuffer = swapChainFramebuffers[i];
         renderPassInfo.renderArea.offset = {0, 0};
-        renderPassInfo.renderArea.extent = swapChainExtent;
+        renderPassInfo.renderArea.extent = extent;
 
         std::array<VkClearValue, 2> clearValues{};
         clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
@@ -57,8 +58,9 @@ void VulkanApp::createCommandBuffers()
         vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicPipeline);
 
         VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer, offsets);
-        vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        const VkBuffer vertexBufferHandle = vertexBuffer.get();
+        vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBufferHandle, offsets);
+        vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.get(), 0, VK_INDEX_TYPE_UINT32);
         vkCmdBindDescriptorSets(
             commandBuffers[i],
             VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -85,7 +87,7 @@ void VulkanApp::createSyncObjects()
     imageAvailableSemaphores.resize(kMaxFramesInFlight);
     renderFinishedSemaphores.resize(kMaxFramesInFlight);
     inFlightFences.resize(kMaxFramesInFlight);
-    imagesInFlight.resize(swapChainImages.size(), VK_NULL_HANDLE);
+    imagesInFlight.resize(swapChain.imageCount(), VK_NULL_HANDLE);
 
     VkSemaphoreCreateInfo semaphoreInfo{};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -109,7 +111,13 @@ void VulkanApp::drawFrame()
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
     uint32_t imageIndex = 0;
-    VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(
+        device,
+        swapChain.get(),
+        UINT64_MAX,
+        imageAvailableSemaphores[currentFrame],
+        VK_NULL_HANDLE,
+        &imageIndex);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
@@ -157,7 +165,7 @@ void VulkanApp::drawFrame()
         throw std::runtime_error("failed to submit draw command buffer!");
     }
 
-    VkSwapchainKHR swapChains[] = { swapChain };
+    const VkSwapchainKHR swapchainHandle = swapChain.get();
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
@@ -165,7 +173,7 @@ void VulkanApp::drawFrame()
     presentInfo.pWaitSemaphores = signalSemaphores;
 
     presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = swapChains;
+    presentInfo.pSwapchains = &swapchainHandle;
     presentInfo.pImageIndices = &imageIndex;
 
     VkResult resultPresent = vkQueuePresentKHR(presentQueue, &presentInfo);
@@ -180,4 +188,3 @@ void VulkanApp::drawFrame()
 
     currentFrame = (currentFrame + 1) % kMaxFramesInFlight;
 }
-

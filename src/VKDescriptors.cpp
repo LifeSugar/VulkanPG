@@ -7,20 +7,19 @@
 void VulkanApp::createUniformBuffers()
 {
     const VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+    const size_t imageCount = swapChain.imageCount();
 
-    uniformBuffers.resize(swapChainImages.size());
-    uniformBuffersMemory.resize(swapChainImages.size());
+    uniformBuffers.clear();
+    uniformBuffers.reserve(imageCount);
 
-    for (size_t i = 0; i < swapChainImages.size(); ++i)
+    for (size_t i = 0; i < imageCount; ++i)
     {
-        createBuffer(
+        uniformBuffers.emplace_back(
+            physicalDevice,
             device,
             bufferSize,
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            uniformBuffers[i],
-            uniformBuffersMemory[i]
-        );
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     }
 }
 
@@ -38,23 +37,23 @@ void VulkanApp::updateUniformBuffer(uint32_t imageIndex)
     ubo.view = camera.getViewMatrix();
     ubo.proj = camera.getProjectionMatrix();
 
-    void* data = nullptr;
-    vkMapMemory(device, uniformBuffersMemory[imageIndex], 0, sizeof(ubo), 0, &data);
+    void* data = uniformBuffers[imageIndex].map();
     memcpy(data, &ubo, sizeof(ubo));
-    vkUnmapMemory(device, uniformBuffersMemory[imageIndex]);
+    uniformBuffers[imageIndex].unmap();
 }
 
 void VulkanApp::createDescriptorPool()
 {
+    const uint32_t imageCount = static_cast<uint32_t>(swapChain.imageCount());
     VkDescriptorPoolSize poolSize{};
     poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSize.descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+    poolSize.descriptorCount = imageCount;
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.poolSizeCount = 1;
     poolInfo.pPoolSizes = &poolSize;
-    poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
+    poolInfo.maxSets = imageCount;
 
     if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
     {
@@ -64,24 +63,25 @@ void VulkanApp::createDescriptorPool()
 
 void VulkanApp::createDescriptorSets()
 {
-    std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
+    const size_t imageCount = swapChain.imageCount();
+    std::vector<VkDescriptorSetLayout> layouts(imageCount, descriptorSetLayout);
 
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(imageCount);
     allocInfo.pSetLayouts = layouts.data();
 
-    descriptorSets.resize(swapChainImages.size());
+    descriptorSets.resize(imageCount);
     if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
-    for (size_t i = 0; i < swapChainImages.size(); ++i)
+    for (size_t i = 0; i < imageCount; ++i)
     {
         VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = uniformBuffers[i];
+        bufferInfo.buffer = uniformBuffers[i].get();
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(UniformBufferObject);
 
@@ -117,4 +117,3 @@ void VulkanApp::createDescriptorSetLayout()
         throw std::runtime_error("failed to create descriptor set layout!");
     }
 }
-

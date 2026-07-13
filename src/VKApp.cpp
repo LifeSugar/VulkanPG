@@ -33,9 +33,8 @@ void VulkanApp::initVulkan()
     createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
-    createSwapChain();
+    swapChain = makeSwapChain();
     setupCamera();
-    createImageViews();
     createRenderPass();
     createDescriptorSetLayout();
     createGraphicsPipeline();
@@ -44,8 +43,8 @@ void VulkanApp::initVulkan()
     createCommandPool();
     loadModel();
     GLBPrimitive& primitive = model->meshes[0].primitives[0];
-    createVertexBuffer(primitive, vertexBuffer, vertexBufferMemory);
-    createIndexBuffer(primitive, indexBuffer, indexBufferMemory);
+    createVertexBuffer(primitive, vertexBuffer);
+    createIndexBuffer(primitive, indexBuffer);
     createUniformBuffers();
     createDescriptorPool();
     createDescriptorSets();
@@ -65,10 +64,8 @@ void VulkanApp::cleanup()
 
     vkDestroyCommandPool(device, commandPool, nullptr);
 
-    vkDestroyBuffer(device, indexBuffer, nullptr);
-    vkFreeMemory(device, indexBufferMemory, nullptr);
-    vkDestroyBuffer(device, vertexBuffer, nullptr);
-    vkFreeMemory(device, vertexBufferMemory, nullptr);
+    indexBuffer.reset();
+    vertexBuffer.reset();
 
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
     vkDestroyDevice(device, nullptr);
@@ -86,7 +83,8 @@ void VulkanApp::setupCamera()
 {
     camera.setPosition(glm::vec3(0.0f, 0.0f, 5.0f));
     camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
-    camera.setAspect(static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height));
+    const VkExtent2D extent = swapChain.extent();
+    camera.setAspect(static_cast<float>(extent.width) / static_cast<float>(extent.height));
 }
 
 void VulkanApp::mainLoop()
@@ -111,4 +109,3 @@ void VulkanApp::mainLoop()
     }
     vkDeviceWaitIdle(device);
 }
-

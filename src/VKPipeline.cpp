@@ -11,7 +11,7 @@ void VulkanApp::createRenderPass()
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 
     VkAttachmentDescription colorAttachment{};
-    colorAttachment.format = swapChainImageFormat;
+    colorAttachment.format = swapChain.format();
     colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
     colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -183,7 +183,7 @@ void VulkanApp::createGraphicsPipeline()
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-    VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+    const VkExtent2D extent = swapChain.extent();
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -281,4 +281,3 @@ void VulkanApp::createGraphicsPipeline()
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
 }
-

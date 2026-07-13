@@ -93,29 +93,6 @@ bool VulkanApp::checkDeviceExtensionSupport(VkPhysicalDevice candidate) const
     return requiredExtensions.empty();
 }
 
-VulkanApp::SwapChainSupportDetails VulkanApp::querySwapChainSupport(VkPhysicalDevice candidate) const
-{
-    SwapChainSupportDetails details;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(candidate, surface, &details.capabilities);
-
-    uint32_t formatCount = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(candidate, surface, &formatCount, nullptr);
-    if (formatCount != 0)
-    {
-        details.formats.resize(formatCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(candidate, surface, &formatCount, details.formats.data());
-    }
-
-    uint32_t presentModeCount = 0; 
-    vkGetPhysicalDeviceSurfacePresentModesKHR(candidate, surface, &presentModeCount, nullptr);
-    if (presentModeCount != 0)
-    {
-        details.presentModes.resize(presentModeCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(candidate, surface, &presentModeCount, details.presentModes.data());
-    }
-    return details;
-}
-
 bool VulkanApp::isDeviceSuitable(VkPhysicalDevice candidate) const
 {
     const QueueFamilyIndices indices = findQueueFamilies(candidate);
@@ -123,7 +100,8 @@ bool VulkanApp::isDeviceSuitable(VkPhysicalDevice candidate) const
     bool swapchainAdequate = false;
     if (extensionsSupported)
     {
-        const SwapChainSupportDetails support = querySwapChainSupport(candidate);
+        const VulkanSwapchain::SupportDetails support =
+            VulkanSwapchain::querySupport(candidate, surface);
         swapchainAdequate = !support.formats.empty() && !support.presentModes.empty();
     }
     return indices.isComplete() && extensionsSupported && swapchainAdequate;
@@ -187,7 +165,6 @@ void VulkanApp::pickPhysicalDevice()
     {
         throw std::runtime_error("failed to find a suitable GPU!");
     }
-    swapChainSupport = querySwapChainSupport(physicalDevice);
 }
 
 void VulkanApp::createLogicalDevice()
@@ -239,4 +216,3 @@ void VulkanApp::createLogicalDevice()
     vkGetDeviceQueue(device, *indices.graphicsFamily, 0, &graphicsQueue);
     vkGetDeviceQueue(device, *indices.presentFamily,  0, &presentQueue);
 }
-

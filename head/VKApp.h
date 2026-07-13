@@ -10,6 +10,8 @@
 #include <GLBTypes.h>
 #include "Camera.h"
 #include "GLBLoader.h"
+#include "VulkanBuffer.h"
+#include "VulkanSwapchain.h"
 
 class VulkanApp
 {
@@ -41,16 +43,13 @@ private:
 
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    VkDevice device;
+    VkDevice device = VK_NULL_HANDLE;
     VkQueue graphicsQueue = VK_NULL_HANDLE;
     VkQueue presentQueue = VK_NULL_HANDLE;
-    VkSwapchainKHR swapChain = VK_NULL_HANDLE;
+    VulkanSwapchain swapChain;
     VkCommandPool commandPool = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> commandBuffers;
-    std::vector<VkImage> swapChainImages;
-    std::vector<VkImageView> swapChainImageViews;
     std::vector<VkFramebuffer> swapChainFramebuffers;
-    VkFormat swapChainImageFormat = VK_FORMAT_UNDEFINED;
     VkImage depthImage = VK_NULL_HANDLE;
     VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
     VkImageView depthImageView = VK_NULL_HANDLE;
@@ -59,12 +58,9 @@ private:
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     VkPipeline graphicPipeline = VK_NULL_HANDLE;
 
-    VkBuffer vertexBuffer = VK_NULL_HANDLE;
-    VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
-    VkBuffer indexBuffer = VK_NULL_HANDLE;
-    VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
-    std::vector<VkBuffer> uniformBuffers;
-    std::vector<VkDeviceMemory> uniformBuffersMemory;
+    VulkanBuffer vertexBuffer;
+    VulkanBuffer indexBuffer;
+    std::vector<VulkanBuffer> uniformBuffers;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> descriptorSets;
 
@@ -81,7 +77,6 @@ private:
     uint32_t indexCount = 0;
     Camera camera;
 
-    VkExtent2D swapChainExtent{};
     static constexpr uint32_t kMaxFramesInFlight = 2;
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -103,16 +98,6 @@ private:
             return graphicsFamily.has_value() && presentFamily.has_value();
         }
     };
-
-    struct SwapChainSupportDetails
-    {
-        VkSurfaceCapabilitiesKHR capabilities{};
-        std::vector<VkSurfaceFormatKHR> formats;
-        std::vector<VkPresentModeKHR> presentModes;
-    };
-
-    SwapChainSupportDetails swapChainSupport;
-
 
 private:
     void initWindow();
@@ -154,22 +139,13 @@ private:
     void pickPhysicalDevice();
     void createLogicalDevice();
 
-    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice candidate) const;
-    static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
-    static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
-    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities) const;
-    void createSwapChain(VkSwapchainKHR oldSwapChain = VK_NULL_HANDLE);
+    VulkanSwapchain makeSwapChain(VkSwapchainKHR oldSwapChain = VK_NULL_HANDLE) const;
+    void cleanupSwapChainDependents();
     void cleanupSwapChain();
     void recreateSwapChain();
     void requestSwapChainRecreation();
     bool isSwapChainRecreationDue() const;
 
-    void createBuffer(VkDevice device,
-        VkDeviceSize size, 
-        VkBufferUsageFlags usage, 
-        VkMemoryPropertyFlags properties, 
-        VkBuffer &buffer, 
-        VkDeviceMemory &bufferMemory);
     void createImage(
         uint32_t width,
         uint32_t height,
@@ -186,8 +162,8 @@ private:
         VkFormatFeatureFlags features) const;
     VkFormat findDepthFormat() const;
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
-    void createVertexBuffer(GLBPrimitive& primitive, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory);
-    void createIndexBuffer(GLBPrimitive& primitive, VkBuffer& indexBuffer, VkDeviceMemory& indexBufferMemory);
+    void createVertexBuffer(const GLBPrimitive& primitive, VulkanBuffer& targetBuffer);
+    void createIndexBuffer(const GLBPrimitive& primitive, VulkanBuffer& targetBuffer);
     void createUniformBuffers();
     void updateUniformBuffer(uint32_t imageIndex);
     void createDescriptorPool();
@@ -198,7 +174,6 @@ private:
     VkCommandBuffer beginSingleTimeCommands();
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
-    void createImageViews();
     void createDepthResources();
     void createRenderPass();
     static std::string resolveAssetPath(const std::string& relativePath);
