@@ -192,6 +192,16 @@ void VulkanApp::recreateSwapChain()
     createDescriptorSets();
     createCommandBuffers();
     imagesInFlight.assign(swapChain.imageCount(), VK_NULL_HANDLE);
+    renderFinishedSemaphores.resize(swapChain.imageCount());
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    for (size_t i = 0; i < swapChain.imageCount(); i++)
+    {
+        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create synchronization objects for a frame!");
+        }
+    }
 
     swapChainRecreationRequested = false;
 }

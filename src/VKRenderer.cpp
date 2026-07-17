@@ -85,7 +85,7 @@ void VulkanApp::createCommandBuffers()
 void VulkanApp::createSyncObjects()
 {
     imageAvailableSemaphores.resize(kMaxFramesInFlight);
-    renderFinishedSemaphores.resize(kMaxFramesInFlight);
+    renderFinishedSemaphores.resize(swapChain.imageCount());
     inFlightFences.resize(kMaxFramesInFlight);
     imagesInFlight.resize(swapChain.imageCount(), VK_NULL_HANDLE);
 
@@ -98,8 +98,16 @@ void VulkanApp::createSyncObjects()
     for (size_t i = 0; i < kMaxFramesInFlight; i++)
     {
         if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-            vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
+           
             vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create synchronization objects for a frame!");
+        }
+    }
+
+    for (size_t i = 0; i < swapChain.imageCount(); i++)
+    {
+        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to create synchronization objects for a frame!");
         }
@@ -137,6 +145,7 @@ void VulkanApp::drawFrame()
     {
         vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
     }
+
     imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
     updateUniformBuffer(imageIndex);
@@ -145,18 +154,15 @@ void VulkanApp::drawFrame()
 
     VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-    VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+    VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[imageIndex] };
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
-
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
-
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
@@ -168,15 +174,14 @@ void VulkanApp::drawFrame()
     const VkSwapchainKHR swapchainHandle = swapChain.get();
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
     presentInfo.waitSemaphoreCount = 1;
     presentInfo.pWaitSemaphores = signalSemaphores;
-
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = &swapchainHandle;
     presentInfo.pImageIndices = &imageIndex;
 
     VkResult resultPresent = vkQueuePresentKHR(presentQueue, &presentInfo);
+
     if (resultPresent == VK_ERROR_OUT_OF_DATE_KHR || resultPresent == VK_SUBOPTIMAL_KHR)
     {
         requestSwapChainRecreation();

@@ -56,9 +56,13 @@ void VulkanApp::cleanup()
 {
     for (size_t i = 0; i < kMaxFramesInFlight; ++i)
     {
-        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+        
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
         vkDestroyFence(device, inFlightFences[i], nullptr);
+    }
+    for (size_t i = 0; i < swapChain.imageCount(); ++i)
+    {
+        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
     }
     cleanupSwapChain();
 
