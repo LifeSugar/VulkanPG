@@ -1,11 +1,14 @@
-#include "VulkanSwapchain.h"
+#include "Swapchain.h"
 
 #include <algorithm>
 #include <array>
 #include <stdexcept>
 #include <utility>
 
-VulkanSwapchain::VulkanSwapchain(
+namespace VkRenderer
+{
+
+Swapchain::Swapchain(
     VkPhysicalDevice physicalDevice,
     VkDevice device,
     VkSurfaceKHR surface,
@@ -24,12 +27,12 @@ VulkanSwapchain::VulkanSwapchain(
         oldSwapchain);
 }
 
-VulkanSwapchain::~VulkanSwapchain()
+Swapchain::~Swapchain()
 {
     reset();
 }
 
-VulkanSwapchain::VulkanSwapchain(VulkanSwapchain&& other) noexcept
+Swapchain::Swapchain(Swapchain&& other) noexcept
     : device_(std::exchange(other.device_, VK_NULL_HANDLE)),
       swapchain_(std::exchange(other.swapchain_, VK_NULL_HANDLE)),
       images_(std::move(other.images_)),
@@ -39,7 +42,7 @@ VulkanSwapchain::VulkanSwapchain(VulkanSwapchain&& other) noexcept
 {
 }
 
-VulkanSwapchain& VulkanSwapchain::operator=(VulkanSwapchain&& other) noexcept
+Swapchain& Swapchain::operator=(Swapchain&& other) noexcept
 {
     if (this != &other)
     {
@@ -54,7 +57,7 @@ VulkanSwapchain& VulkanSwapchain::operator=(VulkanSwapchain&& other) noexcept
     return *this;
 }
 
-void VulkanSwapchain::create(
+void Swapchain::create(
     VkPhysicalDevice physicalDevice,
     VkDevice device,
     VkSurfaceKHR surface,
@@ -65,7 +68,7 @@ void VulkanSwapchain::create(
 {
     if (physicalDevice == VK_NULL_HANDLE || device == VK_NULL_HANDLE || surface == VK_NULL_HANDLE)
     {
-        throw std::invalid_argument("cannot create a VulkanSwapchain with an invalid device or surface");
+        throw std::invalid_argument("cannot create a Swapchain with an invalid device or surface");
     }
 
     const SupportDetails support = querySupport(physicalDevice, surface);
@@ -116,7 +119,7 @@ void VulkanSwapchain::create(
 
     VkSwapchainKHR newSwapchain = VK_NULL_HANDLE;
     std::vector<VkImage> newImages;
-    std::vector<VkImageView> newImageViews;
+    std::vector<ImageView> newImageViews;
 
     if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &newSwapchain) != VK_SUCCESS)
     {
@@ -142,35 +145,17 @@ void VulkanSwapchain::create(
         newImageViews.reserve(newImages.size());
         for (VkImage image : newImages)
         {
-            VkImageViewCreateInfo viewInfo{};
-            viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            viewInfo.image = image;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            viewInfo.format = surfaceFormat.format;
-            viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-            viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-            viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-            viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-            viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            viewInfo.subresourceRange.baseMipLevel = 0;
-            viewInfo.subresourceRange.levelCount = 1;
-            viewInfo.subresourceRange.baseArrayLayer = 0;
-            viewInfo.subresourceRange.layerCount = 1;
-
-            VkImageView imageView = VK_NULL_HANDLE;
-            if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
-            {
-                throw std::runtime_error("failed to create swapchain image view!");
-            }
-            newImageViews.push_back(imageView);
+            newImageViews.emplace_back(
+                device,
+                image,
+                surfaceFormat.format,
+                VK_IMAGE_ASPECT_COLOR_BIT);
         }
     }
     catch (...)
     {
-        for (VkImageView imageView : newImageViews)
-        {
-            vkDestroyImageView(device, imageView, nullptr);
-        }
+        // Image views must be destroyed before their owning swapchain.
+        newImageViews.clear();
         vkDestroySwapchainKHR(device, newSwapchain, nullptr);
         throw;
     }
@@ -184,14 +169,11 @@ void VulkanSwapchain::create(
     extent_ = extent;
 }
 
-void VulkanSwapchain::reset() noexcept
+void Swapchain::reset() noexcept
 {
     if (device_ != VK_NULL_HANDLE)
     {
-        for (VkImageView imageView : imageViews_)
-        {
-            vkDestroyImageView(device_, imageView, nullptr);
-        }
+        imageViews_.clear();
         if (swapchain_ != VK_NULL_HANDLE)
         {
             vkDestroySwapchainKHR(device_, swapchain_, nullptr);
@@ -206,7 +188,7 @@ void VulkanSwapchain::reset() noexcept
     extent_ = {};
 }
 
-VulkanSwapchain::SupportDetails VulkanSwapchain::querySupport(
+Swapchain::SupportDetails Swapchain::querySupport(
     VkPhysicalDevice physicalDevice,
     VkSurfaceKHR surface)
 {
@@ -242,7 +224,7 @@ VulkanSwapchain::SupportDetails VulkanSwapchain::querySupport(
     return details;
 }
 
-VkSurfaceFormatKHR VulkanSwapchain::chooseSurfaceFormat(
+VkSurfaceFormatKHR Swapchain::chooseSurfaceFormat(
     const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
     if (availableFormats.size() == 1 && availableFormats[0].format == VK_FORMAT_UNDEFINED)
@@ -261,7 +243,7 @@ VkSurfaceFormatKHR VulkanSwapchain::chooseSurfaceFormat(
     return availableFormats.front();
 }
 
-VkPresentModeKHR VulkanSwapchain::choosePresentMode(
+VkPresentModeKHR Swapchain::choosePresentMode(
     const std::vector<VkPresentModeKHR>& availablePresentModes)
 {
     for (VkPresentModeKHR availablePresentMode : availablePresentModes)
@@ -274,7 +256,7 @@ VkPresentModeKHR VulkanSwapchain::choosePresentMode(
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D VulkanSwapchain::chooseExtent(
+VkExtent2D Swapchain::chooseExtent(
     const VkSurfaceCapabilitiesKHR& capabilities,
     VkExtent2D framebufferExtent)
 {
@@ -293,3 +275,5 @@ VkExtent2D VulkanSwapchain::chooseExtent(
         capabilities.maxImageExtent.height);
     return framebufferExtent;
 }
+
+} // namespace VkRenderer

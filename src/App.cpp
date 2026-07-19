@@ -1,6 +1,14 @@
-#include "VKApp.h"
+#include "App.h"
 
-void VulkanApp::run()
+namespace VkRenderer
+{
+
+void App::setPreferIntegratedGPU(bool enabled)
+{
+    preferIntegratedGpu = enabled;
+}
+
+void App::run()
 {
     initWindow();
     initVulkan();
@@ -8,7 +16,7 @@ void VulkanApp::run()
     cleanup();
 }
 
-void VulkanApp::initWindow()
+void App::initWindow()
 {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -17,22 +25,21 @@ void VulkanApp::initWindow()
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 }
 
-void VulkanApp::framebufferResizeCallback(GLFWwindow* window, int, int)
+void App::framebufferResizeCallback(GLFWwindow* window, int, int)
 {
-    auto* app = static_cast<VulkanApp*>(glfwGetWindowUserPointer(window));
+    auto* app = static_cast<App*>(glfwGetWindowUserPointer(window));
     if (app != nullptr)
     {
         app->requestSwapChainRecreation();
     }
 }
 
-void VulkanApp::initVulkan()
+void App::initVulkan()
 {
     createInstance();
     setupDebugMessenger();
     createSurface();
-    pickPhysicalDevice();
-    createLogicalDevice();
+    device.create(instance, surface, preferIntegratedGpu);
     swapChain = makeSwapChain();
     setupCamera();
     createRenderPass();
@@ -41,10 +48,9 @@ void VulkanApp::initVulkan()
     createDepthResources();
     createFramebuffers();
     createCommandPool();
-    loadModel();
-    GLBPrimitive& primitive = model->meshes[0].primitives[0];
-    createVertexBuffer(primitive, vertexBuffer);
-    createIndexBuffer(primitive, indexBuffer);
+    const MeshData meshData = loadModel();
+    UploadContext uploadContext(device, commandPool);
+    mesh.create(uploadContext, meshData);
     createUniformBuffers();
     createDescriptorPool();
     createDescriptorSets();
@@ -52,27 +58,26 @@ void VulkanApp::initVulkan()
     createSyncObjects();
 }
 
-void VulkanApp::cleanup()
+void App::cleanup()
 {
     for (size_t i = 0; i < kMaxFramesInFlight; ++i)
     {
         
-        vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
-        vkDestroyFence(device, inFlightFences[i], nullptr);
+        vkDestroySemaphore(device.get(), imageAvailableSemaphores[i], nullptr);
+        vkDestroyFence(device.get(), inFlightFences[i], nullptr);
     }
     for (size_t i = 0; i < swapChain.imageCount(); ++i)
     {
-        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(device.get(), renderFinishedSemaphores[i], nullptr);
     }
     cleanupSwapChain();
 
-    vkDestroyCommandPool(device, commandPool, nullptr);
+    commandPool.reset();
 
-    indexBuffer.reset();
-    vertexBuffer.reset();
+    mesh.reset();
 
-    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-    vkDestroyDevice(device, nullptr);
+    vkDestroyDescriptorSetLayout(device.get(), descriptorSetLayout, nullptr);
+    device.reset();
     if (enableValidationLayers)
     {
         DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
@@ -83,7 +88,7 @@ void VulkanApp::cleanup()
     glfwTerminate();
 }
 
-void VulkanApp::setupCamera()
+void App::setupCamera()
 {
     camera.setPosition(glm::vec3(0.0f, 0.0f, 5.0f));
     camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -91,7 +96,7 @@ void VulkanApp::setupCamera()
     camera.setAspect(static_cast<float>(extent.width) / static_cast<float>(extent.height));
 }
 
-void VulkanApp::mainLoop()
+void App::mainLoop()
 {
     while (!glfwWindowShouldClose(window))
     {
@@ -111,5 +116,7 @@ void VulkanApp::mainLoop()
 
         drawFrame();
     }
-    vkDeviceWaitIdle(device);
+    device.waitIdle();
 }
+
+} // namespace VkRenderer

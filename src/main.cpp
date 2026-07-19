@@ -1,4 +1,4 @@
-#include "VKApp.h"
+#include "App.h"
 
 #include <cstdlib>
 #include <exception>
@@ -6,7 +6,7 @@
 
 int main()
 {
-    VulkanApp app;
+    VkRenderer::App app;
 
     try
     {

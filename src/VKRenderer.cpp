@@ -1,35 +1,23 @@
-#include "VKApp.h"
+#include "App.h"
 #include <array>
 #include <stdexcept>
 
-void VulkanApp::createCommandPool()
+namespace VkRenderer
 {
-    const QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
-    VkCommandPoolCreateInfo poolInfo{};
-    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.queueFamilyIndex = *queueFamilyIndices.graphicsFamily;
-    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create command pool!");
-    }
-    
+
+void App::createCommandPool()
+{
+    commandPool.create(
+        device,
+        device.graphicsQueueFamily(),
+        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 }
 
-void VulkanApp::createCommandBuffers()
+void App::createCommandBuffers()
 {
     const VkExtent2D extent = swapChain.extent();
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = commandPool;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = static_cast<uint32_t>(swapChainFramebuffers.size());
-    commandBuffers.resize(swapChainFramebuffers.size());
-
-    if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to allocate command buffers!");
-    }
+    commandBuffers = commandPool.allocatePrimary(
+        static_cast<uint32_t>(swapChainFramebuffers.size()));
 
     for (size_t i = 0; i < commandBuffers.size(); i++)
     {
@@ -57,10 +45,7 @@ void VulkanApp::createCommandBuffers()
         vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicPipeline);
 
-        VkDeviceSize offsets[] = { 0 };
-        const VkBuffer vertexBufferHandle = vertexBuffer.get();
-        vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBufferHandle, offsets);
-        vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.get(), 0, VK_INDEX_TYPE_UINT32);
+        mesh.bind(commandBuffers[i]);
         vkCmdBindDescriptorSets(
             commandBuffers[i],
             VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -71,7 +56,28 @@ void VulkanApp::createCommandBuffers()
             0,
             nullptr
         );
-        vkCmdDrawIndexed(commandBuffers[i], indexCount, 1, 0, 0, 0);
+        for (const SubmeshData& submesh : mesh.submeshes())
+        {
+            if (submesh.indexed())
+            {
+                vkCmdDrawIndexed(
+                    commandBuffers[i],
+                    submesh.indexCount,
+                    1,
+                    submesh.firstIndex,
+                    0,
+                    0);
+            }
+            else
+            {
+                vkCmdDraw(
+                    commandBuffers[i],
+                    submesh.vertexCount,
+                    1,
+                    submesh.firstVertex,
+                    0);
+            }
+        }
 
         vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -82,7 +88,7 @@ void VulkanApp::createCommandBuffers()
     }
 }
 
-void VulkanApp::createSyncObjects()
+void App::createSyncObjects()
 {
     imageAvailableSemaphores.resize(kMaxFramesInFlight);
     renderFinishedSemaphores.resize(swapChain.imageCount());
@@ -97,9 +103,9 @@ void VulkanApp::createSyncObjects()
 
     for (size_t i = 0; i < kMaxFramesInFlight; i++)
     {
-        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
+        if (vkCreateSemaphore(device.get(), &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
            
-            vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
+            vkCreateFence(device.get(), &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to create synchronization objects for a frame!");
         }
@@ -107,20 +113,20 @@ void VulkanApp::createSyncObjects()
 
     for (size_t i = 0; i < swapChain.imageCount(); i++)
     {
-        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS)
+        if (vkCreateSemaphore(device.get(), &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to create synchronization objects for a frame!");
         }
     }
 }
 
-void VulkanApp::drawFrame()
+void App::drawFrame()
 {
-    vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    vkWaitForFences(device.get(), 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
     uint32_t imageIndex = 0;
     VkResult result = vkAcquireNextImageKHR(
-        device,
+        device.get(),
         swapChain.get(),
         UINT64_MAX,
         imageAvailableSemaphores[currentFrame],
@@ -143,14 +149,14 @@ void VulkanApp::drawFrame()
 
     if (imagesInFlight[imageIndex] != VK_NULL_HANDLE)
     {
-        vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+        vkWaitForFences(device.get(), 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
     }
 
     imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
     updateUniformBuffer(imageIndex);
 
-    vkResetFences(device, 1, &inFlightFences[currentFrame]);
+    vkResetFences(device.get(), 1, &inFlightFences[currentFrame]);
 
     VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -166,7 +172,7 @@ void VulkanApp::drawFrame()
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
+    if (vkQueueSubmit(device.graphicsQueue(), 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
@@ -180,7 +186,7 @@ void VulkanApp::drawFrame()
     presentInfo.pSwapchains = &swapchainHandle;
     presentInfo.pImageIndices = &imageIndex;
 
-    VkResult resultPresent = vkQueuePresentKHR(presentQueue, &presentInfo);
+    VkResult resultPresent = vkQueuePresentKHR(device.presentQueue(), &presentInfo);
 
     if (resultPresent == VK_ERROR_OUT_OF_DATE_KHR || resultPresent == VK_SUBOPTIMAL_KHR)
     {
@@ -193,3 +199,5 @@ void VulkanApp::drawFrame()
 
     currentFrame = (currentFrame + 1) % kMaxFramesInFlight;
 }
+
+} // namespace VkRenderer

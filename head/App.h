@@ -3,17 +3,24 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <vector>
-#include <optional>
 #include <string>
 #include <memory>
 #include <glm/glm.hpp>
 #include <GLBTypes.h>
 #include "Camera.h"
 #include "GLBLoader.h"
-#include "VulkanBuffer.h"
-#include "VulkanSwapchain.h"
+#include "Buffer.h"
+#include "CommandPool.h"
+#include "Device.h"
+#include "Image.h"
+#include "ImageView.h"
+#include "Mesh.h"
+#include "Swapchain.h"
 
-class VulkanApp
+namespace VkRenderer
+{
+
+class App
 {
 public:
     void setPreferIntegratedGPU(bool enabled);
@@ -27,9 +34,6 @@ private:
     const std::vector<const char *> validationLayers = {
         "VK_LAYER_KHRONOS_validation"};
 
-    const std::vector<const char *> deviceExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
 #else
@@ -42,25 +46,20 @@ private:
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
 
     VkSurfaceKHR surface = VK_NULL_HANDLE;
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    VkDevice device = VK_NULL_HANDLE;
-    VkQueue graphicsQueue = VK_NULL_HANDLE;
-    VkQueue presentQueue = VK_NULL_HANDLE;
-    VulkanSwapchain swapChain;
-    VkCommandPool commandPool = VK_NULL_HANDLE;
+    Device device;
+    Swapchain swapChain;
+    CommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
     std::vector<VkFramebuffer> swapChainFramebuffers;
-    VkImage depthImage = VK_NULL_HANDLE;
-    VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
-    VkImageView depthImageView = VK_NULL_HANDLE;
+    Image depthImage;
+    ImageView depthImageView;
     VkRenderPass renderPass = VK_NULL_HANDLE;
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     VkPipeline graphicPipeline = VK_NULL_HANDLE;
 
-    VulkanBuffer vertexBuffer;
-    VulkanBuffer indexBuffer;
-    std::vector<VulkanBuffer> uniformBuffers;
+    Mesh mesh;
+    std::vector<Buffer> uniformBuffers;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> descriptorSets;
 
@@ -74,7 +73,6 @@ private:
     GLBLoader loader;
     std::unique_ptr<GLBModel> model;
     std::string modelPath = "Assets/Models/Suzanne.glb";
-    uint32_t indexCount = 0;
     Camera camera;
 
     static constexpr uint32_t kMaxFramesInFlight = 2;
@@ -87,17 +85,6 @@ private:
     bool swapChainRecreationRequested = false;
     double lastFramebufferResizeTime = 0.0;
     static constexpr double kSwapChainResizeDebounceSeconds = 0.15;
-
-    struct QueueFamilyIndices
-    {
-        std::optional<uint32_t> graphicsFamily;
-        std::optional<uint32_t> presentFamily;
-
-        bool isComplete() const
-        {
-            return graphicsFamily.has_value() && presentFamily.has_value();
-        }
-    };
 
 private:
     void initWindow();
@@ -130,49 +117,23 @@ private:
     void createSurface();
     void setupCamera();
 
-    static const char *PhysicalDeviceTypeToString(VkPhysicalDeviceType type);
-    static std::string queueFamilyIndicesString(VkQueueFlags flags);
-
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice candidate) const;
-    bool checkDeviceExtensionSupport(VkPhysicalDevice candidate) const;
-    bool isDeviceSuitable(VkPhysicalDevice candidate) const;
-    void pickPhysicalDevice();
-    void createLogicalDevice();
-
-    VulkanSwapchain makeSwapChain(VkSwapchainKHR oldSwapChain = VK_NULL_HANDLE) const;
+    Swapchain makeSwapChain(VkSwapchainKHR oldSwapChain = VK_NULL_HANDLE) const;
     void cleanupSwapChainDependents();
     void cleanupSwapChain();
     void recreateSwapChain();
     void requestSwapChainRecreation();
     bool isSwapChainRecreationDue() const;
 
-    void createImage(
-        uint32_t width,
-        uint32_t height,
-        VkFormat format,
-        VkImageTiling tiling,
-        VkImageUsageFlags usage,
-        VkMemoryPropertyFlags properties,
-        VkImage &image,
-        VkDeviceMemory &imageMemory);
-    VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
     VkFormat findSupportedFormat(
         const std::vector<VkFormat> &candidates,
         VkImageTiling tiling,
         VkFormatFeatureFlags features) const;
     VkFormat findDepthFormat() const;
-    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
-    void createVertexBuffer(const GLBPrimitive& primitive, VulkanBuffer& targetBuffer);
-    void createIndexBuffer(const GLBPrimitive& primitive, VulkanBuffer& targetBuffer);
     void createUniformBuffers();
     void updateUniformBuffer(uint32_t imageIndex);
     void createDescriptorPool();
     void createDescriptorSets();
-    void loadModel();
-    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-    
-    VkCommandBuffer beginSingleTimeCommands();
-    void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+    [[nodiscard]] MeshData loadModel();
 
     void createDepthResources();
     void createRenderPass();
@@ -193,3 +154,5 @@ private:
 
 
 };
+
+} // namespace VkRenderer

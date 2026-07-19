@@ -1,11 +1,14 @@
-#include "VKApp.h"
+#include "App.h"
 #include <array>
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
 
-void VulkanApp::createRenderPass()
+namespace VkRenderer
+{
+
+void App::createRenderPass()
 {
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -60,13 +63,13 @@ void VulkanApp::createRenderPass()
     renderPassInfo.pSubpasses = &subpass;
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies = &dependency;
-    if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
+    if (vkCreateRenderPass(device.get(), &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create render pass!");
     }
 }
 
-std::string VulkanApp::resolveAssetPath(const std::string& relativePath)
+std::string App::resolveAssetPath(const std::string& relativePath)
 {
     // 1. å…ˆå°è¯•ç›¸å¯¹è·¯å¾„ï¼ˆæž„å»ºç›®å½•å·²å¤åˆ¶ assets æ—¶å¯ç”¨ï¼‰
     if (std::filesystem::exists(relativePath))
@@ -81,7 +84,7 @@ std::string VulkanApp::resolveAssetPath(const std::string& relativePath)
     return relativePath;
 }
 
-std::vector<char> VulkanApp::readFile(const std::string &filename) 
+std::vector<char> App::readFile(const std::string &filename)
 {
     std::string resolved = resolveAssetPath(filename);
     std::ifstream file(resolved, std::ios::ate | std::ios::binary);
@@ -97,7 +100,7 @@ std::vector<char> VulkanApp::readFile(const std::string &filename)
     return buffer;
 }
 
-VkShaderModule VulkanApp::createShaderModule(const std::vector<char> &code) const
+VkShaderModule App::createShaderModule(const std::vector<char> &code) const
 {
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -106,14 +109,14 @@ VkShaderModule VulkanApp::createShaderModule(const std::vector<char> &code) cons
     createInfo.codeSize = code.size();
     createInfo.pCode = reinterpret_cast<const uint32_t *>(code.data());
     VkShaderModule shaderModule;
-    if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+    if (vkCreateShaderModule(device.get(), &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create shader module!");
     }
     return shaderModule;
 }
 
-void VulkanApp::createGraphicsPipeline()
+void App::createGraphicsPipeline()
 {
     if (renderPass == VK_NULL_HANDLE)
     {
@@ -149,7 +152,7 @@ void VulkanApp::createGraphicsPipeline()
 
     VkVertexInputBindingDescription bindingDescription{};
     bindingDescription.binding = 0;
-    bindingDescription.stride = sizeof(GLBVertex);
+    bindingDescription.stride = sizeof(Vertex);
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
     std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
@@ -157,17 +160,17 @@ void VulkanApp::createGraphicsPipeline()
     attributeDescriptions[0].binding = 0;
     attributeDescriptions[0].location = 0;
     attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[0].offset = offsetof(GLBVertex, position);
-    // location 1: color (float3 from GLBVertex::color)
+    attributeDescriptions[0].offset = offsetof(Vertex, position);
+    // location 1: color (float3 from Vertex::color)
     attributeDescriptions[1].binding = 0;
     attributeDescriptions[1].location = 1;
     attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[1].offset = offsetof(GLBVertex, color);
+    attributeDescriptions[1].offset = offsetof(Vertex, color);
     // location 2: normal (float3)
     attributeDescriptions[2].binding = 0;
     attributeDescriptions[2].location = 2;
     attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[2].offset = offsetof(GLBVertex, normal);
+    attributeDescriptions[2].offset = offsetof(Vertex, normal);
     
 
     
@@ -250,7 +253,7 @@ void VulkanApp::createGraphicsPipeline()
     pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 
-    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+    if (vkCreatePipelineLayout(device.get(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create pipeline layout!");
     }
@@ -273,11 +276,13 @@ void VulkanApp::createGraphicsPipeline()
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
     pipelineInfo.basePipelineIndex = -1;
 
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicPipeline) != VK_SUCCESS)
+    if (vkCreateGraphicsPipelines(device.get(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicPipeline) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create graphics pipeline!");
     }
 
-    vkDestroyShaderModule(device, fragShaderModule, nullptr);
-    vkDestroyShaderModule(device, vertShaderModule, nullptr);
+    vkDestroyShaderModule(device.get(), fragShaderModule, nullptr);
+    vkDestroyShaderModule(device.get(), vertShaderModule, nullptr);
 }
+
+} // namespace VkRenderer

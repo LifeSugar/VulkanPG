@@ -1,7 +1,10 @@
-#include "VulkanBuffer.h"
+#include "Buffer.h"
 
 #include <stdexcept>
 #include <utility>
+
+namespace VkRenderer
+{
 
 namespace
 {
@@ -28,7 +31,7 @@ uint32_t findMemoryType(
 }
 }
 
-VulkanBuffer::VulkanBuffer(
+Buffer::Buffer(
     VkPhysicalDevice physicalDevice,
     VkDevice device,
     VkDeviceSize size,
@@ -38,12 +41,12 @@ VulkanBuffer::VulkanBuffer(
     create(physicalDevice, device, size, usage, memoryProperties);
 }
 
-VulkanBuffer::~VulkanBuffer()
+Buffer::~Buffer()
 {
     reset();
 }
 
-VulkanBuffer::VulkanBuffer(VulkanBuffer&& other) noexcept
+Buffer::Buffer(Buffer&& other) noexcept
     : device_(std::exchange(other.device_, VK_NULL_HANDLE)),
       buffer_(std::exchange(other.buffer_, VK_NULL_HANDLE)),
       memory_(std::exchange(other.memory_, VK_NULL_HANDLE)),
@@ -52,7 +55,7 @@ VulkanBuffer::VulkanBuffer(VulkanBuffer&& other) noexcept
 {
 }
 
-VulkanBuffer& VulkanBuffer::operator=(VulkanBuffer&& other) noexcept
+Buffer& Buffer::operator=(Buffer&& other) noexcept
 {
     if (this != &other)
     {
@@ -66,7 +69,7 @@ VulkanBuffer& VulkanBuffer::operator=(VulkanBuffer&& other) noexcept
     return *this;
 }
 
-void VulkanBuffer::create(
+void Buffer::create(
     VkPhysicalDevice physicalDevice,
     VkDevice device,
     VkDeviceSize size,
@@ -75,7 +78,7 @@ void VulkanBuffer::create(
 {
     if (physicalDevice == VK_NULL_HANDLE || device == VK_NULL_HANDLE || size == 0)
     {
-        throw std::invalid_argument("cannot create a VulkanBuffer with an invalid device or zero size");
+        throw std::invalid_argument("cannot create a Buffer with an invalid device or zero size");
     }
 
     VkBuffer newBuffer = VK_NULL_HANDLE;
@@ -130,7 +133,7 @@ void VulkanBuffer::create(
     size_ = size;
 }
 
-void VulkanBuffer::reset() noexcept
+void Buffer::reset() noexcept
 {
     unmap();
 
@@ -149,15 +152,15 @@ void VulkanBuffer::reset() noexcept
     size_ = 0;
 }
 
-void* VulkanBuffer::map(VkDeviceSize offset, VkDeviceSize size)
+void* Buffer::map(VkDeviceSize offset, VkDeviceSize size)
 {
     if (memory_ == VK_NULL_HANDLE)
     {
-        throw std::logic_error("cannot map an empty VulkanBuffer");
+        throw std::logic_error("cannot map an empty Buffer");
     }
     if (mappedData_ != nullptr)
     {
-        throw std::logic_error("VulkanBuffer memory is already mapped");
+        throw std::logic_error("Buffer memory is already mapped");
     }
 
     if (vkMapMemory(device_, memory_, offset, size, 0, &mappedData_) != VK_SUCCESS)
@@ -168,7 +171,7 @@ void* VulkanBuffer::map(VkDeviceSize offset, VkDeviceSize size)
     return mappedData_;
 }
 
-void VulkanBuffer::unmap() noexcept
+void Buffer::unmap() noexcept
 {
     if (device_ != VK_NULL_HANDLE && memory_ != VK_NULL_HANDLE && mappedData_ != nullptr)
     {
@@ -176,3 +179,5 @@ void VulkanBuffer::unmap() noexcept
         mappedData_ = nullptr;
     }
 }
+
+} // namespace VkRenderer

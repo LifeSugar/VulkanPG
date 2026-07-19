@@ -8,23 +8,14 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include "MeshData.h"
+
 // ============================================================================
 // GLB / glTF 下游数据结构 —— 基于 GLM 数学库
 // ============================================================================
 
 // ── 顶点 ────────────────────────────────────────────────────────────────────
-struct GLBVertex {
-    glm::vec3 position   = glm::vec3(0);
-    glm::vec3 normal     = glm::vec3(0);
-    glm::vec2 texCoord   = glm::vec2(0);
-    glm::vec3 tangent    = glm::vec3(0);   // 可选
-    glm::vec2 texCoord2  = glm::vec2(0);   // 第二套 UV（可选）
-    glm::vec4 color      = glm::vec4(1);   // 顶点色（可选）
-
-    // 骨骼蒙皮
-    std::array<int32_t, 4> boneIds      = { -1, -1, -1, -1 };
-    std::array<float, 4>   boneWeights  = { 0, 0, 0, 0 };
-};
+using GLBVertex = VkRenderer::Vertex;
 
 // ── 网格图元（Primitive） ───────────────────────────────────────────────────
 struct GLBPrimitive {

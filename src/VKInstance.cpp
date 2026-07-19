@@ -1,9 +1,12 @@
-#include "VKApp.h"
+#include "App.h"
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
 
-bool VulkanApp::checkValidationLayerSupport() const
+namespace VkRenderer
+{
+
+bool App::checkValidationLayerSupport() const
 {
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -28,7 +31,7 @@ bool VulkanApp::checkValidationLayerSupport() const
     return true;
 }
 
-std::vector<const char *> VulkanApp::getRequiredExtensions() const
+std::vector<const char *> App::getRequiredExtensions() const
 {
     uint32_t glfwExtensionCount = 0;
     const char **glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -40,7 +43,7 @@ std::vector<const char *> VulkanApp::getRequiredExtensions() const
     return extensions;
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL VulkanApp::debugCallback(
+VKAPI_ATTR VkBool32 VKAPI_CALL App::debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType,
     const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
@@ -67,7 +70,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanApp::debugCallback(
     return VK_FALSE;
 }
 
-void VulkanApp::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo)
+void App::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo)
 {
     createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -82,7 +85,7 @@ void VulkanApp::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfo
     createInfo.pfnUserCallback = debugCallback;
 }
 
-void VulkanApp::setupDebugMessenger()
+void App::setupDebugMessenger()
 {
     if (!enableValidationLayers)
         return;
@@ -94,7 +97,7 @@ void VulkanApp::setupDebugMessenger()
     }
 }
 
-VkResult VulkanApp::CreateDebugUtilsMessengerEXT(
+VkResult App::CreateDebugUtilsMessengerEXT(
         VkInstance instance,
         const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
         const VkAllocationCallbacks *pAllocator,
@@ -109,7 +112,7 @@ VkResult VulkanApp::CreateDebugUtilsMessengerEXT(
     return VK_ERROR_EXTENSION_NOT_PRESENT;
 }
 
-void VulkanApp::DestroyDebugUtilsMessengerEXT(
+void App::DestroyDebugUtilsMessengerEXT(
     VkInstance instance,
     VkDebugUtilsMessengerEXT debugMessenger,
     const VkAllocationCallbacks *pAllocator
@@ -124,7 +127,7 @@ void VulkanApp::DestroyDebugUtilsMessengerEXT(
     }
 }
 
-void VulkanApp::createInstance()
+void App::createInstance()
 {
     if (enableValidationLayers && !checkValidationLayerSupport())
     {
@@ -171,11 +174,13 @@ void VulkanApp::createInstance()
     }
 }
 
-void VulkanApp::createSurface()
+void App::createSurface()
 {
     if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create window surface!");
     }
 }
+
+} // namespace VkRenderer
 

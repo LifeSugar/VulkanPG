@@ -1,10 +1,13 @@
-#include "VKApp.h"
+#include "App.h"
 #include <chrono>
 #include <cstring>
 #include <stdexcept>
 #include <glm/gtc/matrix_transform.hpp>
 
-void VulkanApp::createUniformBuffers()
+namespace VkRenderer
+{
+
+void App::createUniformBuffers()
 {
     const VkDeviceSize bufferSize = sizeof(UniformBufferObject);
     const size_t imageCount = swapChain.imageCount();
@@ -15,15 +18,15 @@ void VulkanApp::createUniformBuffers()
     for (size_t i = 0; i < imageCount; ++i)
     {
         uniformBuffers.emplace_back(
-            physicalDevice,
-            device,
+            device.physical(),
+            device.get(),
             bufferSize,
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     }
 }
 
-void VulkanApp::updateUniformBuffer(uint32_t imageIndex)
+void App::updateUniformBuffer(uint32_t imageIndex)
 {
     static const auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -42,7 +45,7 @@ void VulkanApp::updateUniformBuffer(uint32_t imageIndex)
     uniformBuffers[imageIndex].unmap();
 }
 
-void VulkanApp::createDescriptorPool()
+void App::createDescriptorPool()
 {
     const uint32_t imageCount = static_cast<uint32_t>(swapChain.imageCount());
     VkDescriptorPoolSize poolSize{};
@@ -55,13 +58,13 @@ void VulkanApp::createDescriptorPool()
     poolInfo.pPoolSizes = &poolSize;
     poolInfo.maxSets = imageCount;
 
-    if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+    if (vkCreateDescriptorPool(device.get(), &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create descriptor pool!");
     }
 }
 
-void VulkanApp::createDescriptorSets()
+void App::createDescriptorSets()
 {
     const size_t imageCount = swapChain.imageCount();
     std::vector<VkDescriptorSetLayout> layouts(imageCount, descriptorSetLayout);
@@ -73,7 +76,7 @@ void VulkanApp::createDescriptorSets()
     allocInfo.pSetLayouts = layouts.data();
 
     descriptorSets.resize(imageCount);
-    if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
+    if (vkAllocateDescriptorSets(device.get(), &allocInfo, descriptorSets.data()) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
@@ -94,11 +97,11 @@ void VulkanApp::createDescriptorSets()
         descriptorWrite.descriptorCount = 1;
         descriptorWrite.pBufferInfo = &bufferInfo;
 
-        vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+        vkUpdateDescriptorSets(device.get(), 1, &descriptorWrite, 0, nullptr);
     }
 }
 
-void VulkanApp::createDescriptorSetLayout()
+void App::createDescriptorSetLayout()
 {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
     uboLayoutBinding.binding = 0;
@@ -112,8 +115,10 @@ void VulkanApp::createDescriptorSetLayout()
     layoutInfo.bindingCount = 1;
     layoutInfo.pBindings = &uboLayoutBinding;
 
-    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
+    if (vkCreateDescriptorSetLayout(device.get(), &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
 }
+
+} // namespace VkRenderer

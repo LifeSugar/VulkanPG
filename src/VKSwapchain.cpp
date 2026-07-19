@@ -1,17 +1,14 @@
-#include "VKApp.h"
+#include "App.h"
 #include <algorithm>
 #include <array>
 #include <stdexcept>
 #include <utility>
 
-VulkanSwapchain VulkanApp::makeSwapChain(VkSwapchainKHR oldSwapChain) const
+namespace VkRenderer
 {
-    const QueueFamilyIndices queueFamilies = findQueueFamilies(physicalDevice);
-    if (!queueFamilies.isComplete())
-    {
-        throw std::runtime_error("failed to find queue families required by the swapchain!");
-    }
 
+Swapchain App::makeSwapChain(VkSwapchainKHR oldSwapChain) const
+{
     int width = 0;
     int height = 0;
     glfwGetFramebufferSize(window, &width, &height);
@@ -20,42 +17,52 @@ VulkanSwapchain VulkanApp::makeSwapChain(VkSwapchainKHR oldSwapChain) const
         static_cast<uint32_t>(std::max(height, 0))
     };
 
-    return VulkanSwapchain(
-        physicalDevice,
-        device,
+    return Swapchain(
+        device.physical(),
+        device.get(),
         surface,
-        *queueFamilies.graphicsFamily,
-        *queueFamilies.presentFamily,
+        device.graphicsQueueFamily(),
+        device.presentQueueFamily(),
         framebufferExtent,
         oldSwapChain);
 }
 
-void VulkanApp::createDepthResources()
+void App::createDepthResources()
 {
     const VkFormat depthFormat = findDepthFormat();
     const VkExtent2D extent = swapChain.extent();
 
-    createImage(
+    Image newDepthImage(
+        device.physical(),
+        device.get(),
         extent.width,
         extent.height,
         depthFormat,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        depthImage,
-        depthImageMemory);
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    ImageView newDepthImageView(
+        device.get(),
+        newDepthImage.get(),
+        depthFormat,
+        VK_IMAGE_ASPECT_DEPTH_BIT);
 
-    depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+    // Replace the view before the image so an old view never outlives its image.
+    depthImageView = std::move(newDepthImageView);
+    depthImage = std::move(newDepthImage);
 }
 
-void VulkanApp::createFramebuffers()
+void App::createFramebuffers()
 {
-    const std::vector<VkImageView>& imageViews = swapChain.imageViews();
+    const std::vector<ImageView>& imageViews = swapChain.imageViews();
     const VkExtent2D extent = swapChain.extent();
     swapChainFramebuffers.resize(imageViews.size());
     for (size_t i = 0; i < imageViews.size(); ++i)
     {
-        const std::array<VkImageView, 2> attachments = { imageViews[i], depthImageView };
+        const std::array<VkImageView, 2> attachments = {
+            imageViews[i].get(),
+            depthImageView.get()
+        };
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferInfo.renderPass = renderPass;
@@ -65,7 +72,7 @@ void VulkanApp::createFramebuffers()
         framebufferInfo.height = extent.height;
         framebufferInfo.layers = 1;
 
-        if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
+        if (vkCreateFramebuffer(device.get(), &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to create framebuffer!");
         }
@@ -73,13 +80,13 @@ void VulkanApp::createFramebuffers()
 
 }
 
-void VulkanApp::requestSwapChainRecreation()
+void App::requestSwapChainRecreation()
 {
     swapChainRecreationRequested = true;
     lastFramebufferResizeTime = glfwGetTime();
 }
 
-bool VulkanApp::isSwapChainRecreationDue() const
+bool App::isSwapChainRecreationDue() const
 {
     int width = 0;
     int height = 0;
@@ -89,59 +96,42 @@ bool VulkanApp::isSwapChainRecreationDue() const
         glfwGetTime() - lastFramebufferResizeTime >= kSwapChainResizeDebounceSeconds;
 }
 
-void VulkanApp::cleanupSwapChainDependents()
+void App::cleanupSwapChainDependents()
 {
     if (!commandBuffers.empty())
     {
-        vkFreeCommandBuffers(
-            device,
-            commandPool,
-            static_cast<uint32_t>(commandBuffers.size()),
-            commandBuffers.data());
+        commandPool.free(commandBuffers);
         commandBuffers.clear();
     }
 
     for (VkFramebuffer framebuffer : swapChainFramebuffers)
     {
-        vkDestroyFramebuffer(device, framebuffer, nullptr);
+        vkDestroyFramebuffer(device.get(), framebuffer, nullptr);
     }
     swapChainFramebuffers.clear();
 
-    if (depthImageView != VK_NULL_HANDLE)
-    {
-        vkDestroyImageView(device, depthImageView, nullptr);
-        depthImageView = VK_NULL_HANDLE;
-    }
-    if (depthImage != VK_NULL_HANDLE)
-    {
-        vkDestroyImage(device, depthImage, nullptr);
-        depthImage = VK_NULL_HANDLE;
-    }
-    if (depthImageMemory != VK_NULL_HANDLE)
-    {
-        vkFreeMemory(device, depthImageMemory, nullptr);
-        depthImageMemory = VK_NULL_HANDLE;
-    }
+    depthImageView.reset();
+    depthImage.reset();
 
     if (graphicPipeline != VK_NULL_HANDLE)
     {
-        vkDestroyPipeline(device, graphicPipeline, nullptr);
+        vkDestroyPipeline(device.get(), graphicPipeline, nullptr);
         graphicPipeline = VK_NULL_HANDLE;
     }
     if (pipelineLayout != VK_NULL_HANDLE)
     {
-        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        vkDestroyPipelineLayout(device.get(), pipelineLayout, nullptr);
         pipelineLayout = VK_NULL_HANDLE;
     }
     if (renderPass != VK_NULL_HANDLE)
     {
-        vkDestroyRenderPass(device, renderPass, nullptr);
+        vkDestroyRenderPass(device.get(), renderPass, nullptr);
         renderPass = VK_NULL_HANDLE;
     }
 
     if (descriptorPool != VK_NULL_HANDLE)
     {
-        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+        vkDestroyDescriptorPool(device.get(), descriptorPool, nullptr);
         descriptorPool = VK_NULL_HANDLE;
     }
     descriptorSets.clear();
@@ -151,13 +141,13 @@ void VulkanApp::cleanupSwapChainDependents()
     imagesInFlight.clear();
 }
 
-void VulkanApp::cleanupSwapChain()
+void App::cleanupSwapChain()
 {
     cleanupSwapChainDependents();
     swapChain.reset();
 }
 
-void VulkanApp::recreateSwapChain()
+void App::recreateSwapChain()
 {
     int width = 0;
     int height = 0;
@@ -168,11 +158,11 @@ void VulkanApp::recreateSwapChain()
         glfwGetFramebufferSize(window, &width, &height);
     }
 
-    vkDeviceWaitIdle(device);
+    device.waitIdle();
 
     // Construct the replacement first. If creation fails, the current swapchain
     // and all of its dependent resources remain intact.
-    VulkanSwapchain newSwapChain = makeSwapChain(swapChain.get());
+    Swapchain newSwapChain = makeSwapChain(swapChain.get());
     cleanupSwapChainDependents();
     swapChain = std::move(newSwapChain);
 
@@ -197,7 +187,7 @@ void VulkanApp::recreateSwapChain()
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     for (size_t i = 0; i < swapChain.imageCount(); i++)
     {
-        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS)
+        if (vkCreateSemaphore(device.get(), &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to create synchronization objects for a frame!");
         }
@@ -205,3 +195,5 @@ void VulkanApp::recreateSwapChain()
 
     swapChainRecreationRequested = false;
 }
+
+} // namespace VkRenderer

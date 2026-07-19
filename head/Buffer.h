@@ -2,23 +2,26 @@
 
 #include <vulkan/vulkan.h>
 
-class VulkanBuffer final
+namespace VkRenderer
+{
+
+class Buffer final
 {
 public:
-    VulkanBuffer() = default;
-    VulkanBuffer(
+    Buffer() = default;
+    Buffer(
         VkPhysicalDevice physicalDevice,
         VkDevice device,
         VkDeviceSize size,
         VkBufferUsageFlags usage,
         VkMemoryPropertyFlags memoryProperties);
-    ~VulkanBuffer();
+    ~Buffer();
 
-    VulkanBuffer(const VulkanBuffer&) = delete;
-    VulkanBuffer& operator=(const VulkanBuffer&) = delete;
+    Buffer(const Buffer&) = delete;
+    Buffer& operator=(const Buffer&) = delete;
 
-    VulkanBuffer(VulkanBuffer&& other) noexcept;
-    VulkanBuffer& operator=(VulkanBuffer&& other) noexcept;
+    Buffer(Buffer&& other) noexcept;
+    Buffer& operator=(Buffer&& other) noexcept;
 
     void create(
         VkPhysicalDevice physicalDevice,
@@ -43,3 +46,5 @@ private:
     VkDeviceSize size_ = 0;
     void* mappedData_ = nullptr;
 };
+
+} // namespace VkRenderer
