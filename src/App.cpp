@@ -60,17 +60,22 @@ void App::initVulkan()
 
 void App::cleanup()
 {
-    for (size_t i = 0; i < kMaxFramesInFlight; ++i)
-    {
-        
-        vkDestroySemaphore(device.get(), imageAvailableSemaphores[i], nullptr);
-        vkDestroyFence(device.get(), inFlightFences[i], nullptr);
-    }
-    for (size_t i = 0; i < swapChain.imageCount(); ++i)
-    {
-        vkDestroySemaphore(device.get(), renderFinishedSemaphores[i], nullptr);
-    }
     cleanupSwapChain();
+
+    for (FrameInFlight& frame : framesInFlight)
+    {
+        if (frame.imageAvailable != VK_NULL_HANDLE)
+        {
+            vkDestroySemaphore(device.get(), frame.imageAvailable, nullptr);
+            frame.imageAvailable = VK_NULL_HANDLE;
+        }
+        if (frame.inFlight != VK_NULL_HANDLE)
+        {
+            vkDestroyFence(device.get(), frame.inFlight, nullptr);
+            frame.inFlight = VK_NULL_HANDLE;
+        }
+    }
+    framesInFlight.clear();
 
     commandPool.reset();
 

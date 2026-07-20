@@ -56,7 +56,8 @@ void App::createFramebuffers()
 {
     const std::vector<ImageView>& imageViews = swapChain.imageViews();
     const VkExtent2D extent = swapChain.extent();
-    swapChainFramebuffers.resize(imageViews.size());
+    swapchainFrames.clear();
+    swapchainFrames.resize(imageViews.size());
     for (size_t i = 0; i < imageViews.size(); ++i)
     {
         const std::array<VkImageView, 2> attachments = {
@@ -72,7 +73,11 @@ void App::createFramebuffers()
         framebufferInfo.height = extent.height;
         framebufferInfo.layers = 1;
 
-        if (vkCreateFramebuffer(device.get(), &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
+        if (vkCreateFramebuffer(
+                device.get(),
+                &framebufferInfo,
+                nullptr,
+                &swapchainFrames[i].framebuffer) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to create framebuffer!");
         }
@@ -98,17 +103,35 @@ bool App::isSwapChainRecreationDue() const
 
 void App::cleanupSwapChainDependents()
 {
+    std::vector<VkCommandBuffer> commandBuffers;
+    commandBuffers.reserve(swapchainFrames.size());
+    for (SwapchainFrame& frame : swapchainFrames)
+    {
+        if (frame.commandBuffer != VK_NULL_HANDLE)
+        {
+            commandBuffers.push_back(frame.commandBuffer);
+            frame.commandBuffer = VK_NULL_HANDLE;
+        }
+    }
     if (!commandBuffers.empty())
     {
         commandPool.free(commandBuffers);
-        commandBuffers.clear();
     }
 
-    for (VkFramebuffer framebuffer : swapChainFramebuffers)
+    for (SwapchainFrame& frame : swapchainFrames)
     {
-        vkDestroyFramebuffer(device.get(), framebuffer, nullptr);
+        if (frame.framebuffer != VK_NULL_HANDLE)
+        {
+            vkDestroyFramebuffer(device.get(), frame.framebuffer, nullptr);
+            frame.framebuffer = VK_NULL_HANDLE;
+        }
+        if (frame.renderFinished != VK_NULL_HANDLE)
+        {
+            vkDestroySemaphore(device.get(), frame.renderFinished, nullptr);
+            frame.renderFinished = VK_NULL_HANDLE;
+        }
+        frame.imageInFlight = VK_NULL_HANDLE;
     }
-    swapChainFramebuffers.clear();
 
     depthImageView.reset();
     depthImage.reset();
@@ -134,11 +157,7 @@ void App::cleanupSwapChainDependents()
         vkDestroyDescriptorPool(device.get(), descriptorPool, nullptr);
         descriptorPool = VK_NULL_HANDLE;
     }
-    descriptorSets.clear();
-
-    uniformBuffers.clear();
-
-    imagesInFlight.clear();
+    swapchainFrames.clear();
 }
 
 void App::cleanupSwapChain()
@@ -181,17 +200,7 @@ void App::recreateSwapChain()
     createDescriptorPool();
     createDescriptorSets();
     createCommandBuffers();
-    imagesInFlight.assign(swapChain.imageCount(), VK_NULL_HANDLE);
-    renderFinishedSemaphores.resize(swapChain.imageCount());
-    VkSemaphoreCreateInfo semaphoreInfo{};
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    for (size_t i = 0; i < swapChain.imageCount(); i++)
-    {
-        if (vkCreateSemaphore(device.get(), &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create synchronization objects for a frame!");
-        }
-    }
+    createSwapchainFrameSyncObjects();
 
     swapChainRecreationRequested = false;
 }

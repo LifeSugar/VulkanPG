@@ -10,14 +10,9 @@ namespace VkRenderer
 void App::createUniformBuffers()
 {
     const VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-    const size_t imageCount = swapChain.imageCount();
-
-    uniformBuffers.clear();
-    uniformBuffers.reserve(imageCount);
-
-    for (size_t i = 0; i < imageCount; ++i)
+    for (SwapchainFrame& frame : swapchainFrames)
     {
-        uniformBuffers.emplace_back(
+        frame.uniformBuffer.create(
             device.physical(),
             device.get(),
             bufferSize,
@@ -40,14 +35,15 @@ void App::updateUniformBuffer(uint32_t imageIndex)
     ubo.view = camera.getViewMatrix();
     ubo.proj = camera.getProjectionMatrix();
 
-    void* data = uniformBuffers[imageIndex].map();
+    Buffer& uniformBuffer = swapchainFrames[imageIndex].uniformBuffer;
+    void* data = uniformBuffer.map();
     memcpy(data, &ubo, sizeof(ubo));
-    uniformBuffers[imageIndex].unmap();
+    uniformBuffer.unmap();
 }
 
 void App::createDescriptorPool()
 {
-    const uint32_t imageCount = static_cast<uint32_t>(swapChain.imageCount());
+    const uint32_t imageCount = static_cast<uint32_t>(swapchainFrames.size());
     VkDescriptorPoolSize poolSize{};
     poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSize.descriptorCount = imageCount;
@@ -66,7 +62,7 @@ void App::createDescriptorPool()
 
 void App::createDescriptorSets()
 {
-    const size_t imageCount = swapChain.imageCount();
+    const size_t imageCount = swapchainFrames.size();
     std::vector<VkDescriptorSetLayout> layouts(imageCount, descriptorSetLayout);
 
     VkDescriptorSetAllocateInfo allocInfo{};
@@ -75,7 +71,7 @@ void App::createDescriptorSets()
     allocInfo.descriptorSetCount = static_cast<uint32_t>(imageCount);
     allocInfo.pSetLayouts = layouts.data();
 
-    descriptorSets.resize(imageCount);
+    std::vector<VkDescriptorSet> descriptorSets(imageCount);
     if (vkAllocateDescriptorSets(device.get(), &allocInfo, descriptorSets.data()) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to allocate descriptor sets!");
@@ -84,7 +80,7 @@ void App::createDescriptorSets()
     for (size_t i = 0; i < imageCount; ++i)
     {
         VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = uniformBuffers[i].get();
+        bufferInfo.buffer = swapchainFrames[i].uniformBuffer.get();
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(UniformBufferObject);
 
@@ -98,6 +94,7 @@ void App::createDescriptorSets()
         descriptorWrite.pBufferInfo = &bufferInfo;
 
         vkUpdateDescriptorSets(device.get(), 1, &descriptorWrite, 0, nullptr);
+        swapchainFrames[i].descriptorSet = descriptorSets[i];
     }
 }
 

@@ -12,6 +12,7 @@
 #include "Buffer.h"
 #include "CommandPool.h"
 #include "Device.h"
+#include "FrameResources.h"
 #include "Image.h"
 #include "ImageView.h"
 #include "Mesh.h"
@@ -49,8 +50,7 @@ private:
     Device device;
     Swapchain swapChain;
     CommandPool commandPool;
-    std::vector<VkCommandBuffer> commandBuffers;
-    std::vector<VkFramebuffer> swapChainFramebuffers;
+    std::vector<SwapchainFrame> swapchainFrames;
     Image depthImage;
     ImageView depthImageView;
     VkRenderPass renderPass = VK_NULL_HANDLE;
@@ -59,9 +59,7 @@ private:
     VkPipeline graphicPipeline = VK_NULL_HANDLE;
 
     Mesh mesh;
-    std::vector<Buffer> uniformBuffers;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
-    std::vector<VkDescriptorSet> descriptorSets;
 
     struct UniformBufferObject
     {
@@ -76,10 +74,7 @@ private:
     Camera camera;
 
     static constexpr uint32_t kMaxFramesInFlight = 2;
-    std::vector<VkSemaphore> imageAvailableSemaphores;
-    std::vector<VkSemaphore> renderFinishedSemaphores;
-    std::vector<VkFence> inFlightFences;
-    std::vector<VkFence> imagesInFlight;
+    std::vector<FrameInFlight> framesInFlight;
     uint32_t currentFrame = 0;
     bool preferIntegratedGpu = false;
     bool swapChainRecreationRequested = false;
@@ -147,6 +142,7 @@ private:
     void createCommandPool();
     void createCommandBuffers();
     void createSyncObjects();
+    void createSwapchainFrameSyncObjects();
 
     void drawFrame();
 
