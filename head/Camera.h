@@ -1,6 +1,10 @@
 #pragma once
+#include "RenderData.h"
+
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+
+#include <cstdint>
 
 
 class Camera
@@ -33,6 +37,8 @@ public:
     const glm::mat4 &getViewMatrix() const;
     const glm::mat4 &getProjectionMatrix() const;
     const glm::mat4 &getViewProjectionMatrix() const;
+    [[nodiscard]] VkRenderer::CameraGpuData getGpuData() const;
+    [[nodiscard]] uint64_t revision() const noexcept { return m_revision; }
 
     void setAspect(float aspect);
 
@@ -53,8 +59,10 @@ private:
 
     mutable bool m_isViewDirty = true;
     mutable bool m_isProjectionDirty = true;
+    uint64_t m_revision = 1;
 
 private:
+    void markChanged() noexcept;
     void recalculateViewMatrix() const;
     void recalculateProjectionMatrix() const;
 };

@@ -5,105 +5,125 @@
 namespace VkRenderer
 {
 
-void App::createCommandPool()
+void App::createCommandPools()
 {
-    commandPool.create(
-        device,
-        device.graphicsQueueFamily(),
-        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    framesInFlight.resize(kMaxFramesInFlight);
+    for (FrameInFlight& frame : framesInFlight)
+    {
+        frame.commandPool.create(
+            device,
+            device.graphicsQueueFamily(),
+            VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+    }
 }
 
 void App::createCommandBuffers()
 {
-    const VkExtent2D extent = swapChain.extent();
-    const std::vector<VkCommandBuffer> commandBuffers = commandPool.allocatePrimary(
-        static_cast<uint32_t>(swapchainFrames.size()));
-
-    for (size_t i = 0; i < commandBuffers.size(); i++)
+    for (FrameInFlight& frame : framesInFlight)
     {
-        SwapchainFrame& frame = swapchainFrames[i];
-        frame.commandBuffer = commandBuffers[i];
+        frame.commandBuffer = frame.commandPool.allocatePrimary();
+    }
+}
 
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = 0;
-        if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)
+void App::recordCommandBuffer(
+    VkCommandBuffer commandBuffer,
+    uint32_t imageIndex,
+    VkDescriptorSet descriptorSet)
+{
+    if (imageIndex >= swapchainFrames.size())
+    {
+        throw std::out_of_range("swapchain image index is out of range");
+    }
+
+    const SwapchainFrame& swapchainFrame = swapchainFrames[imageIndex];
+    const VkExtent2D extent = swapChain.extent();
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to begin recording command buffer!");
+    }
+
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = renderPass;
+    renderPassInfo.framebuffer = swapchainFrame.framebuffer;
+    renderPassInfo.renderArea.offset = {0, 0};
+    renderPassInfo.renderArea.extent = extent;
+
+    std::array<VkClearValue, 2> clearValues{};
+    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+    clearValues[1].depthStencil = {1.0f, 0};
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
+
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicPipeline);
+
+    mesh.bind(commandBuffer);
+    vkCmdBindDescriptorSets(
+        commandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        pipelineLayout,
+        0,
+        1,
+        &descriptorSet,
+        0,
+        nullptr
+    );
+
+    const DrawPushConstants pushConstants{};
+    vkCmdPushConstants(
+        commandBuffer,
+        pipelineLayout,
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+        0,
+        sizeof(pushConstants),
+        &pushConstants);
+
+    for (const SubmeshData& submesh : mesh.submeshes())
+    {
+        if (submesh.indexed())
         {
-            throw std::runtime_error("failed to begin recording command buffer!");
+            vkCmdDrawIndexed(
+                commandBuffer,
+                submesh.indexCount,
+                1,
+                submesh.firstIndex,
+                0,
+                0);
         }
-
-        VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = renderPass;
-        renderPassInfo.framebuffer = frame.framebuffer;
-        renderPassInfo.renderArea.offset = {0, 0};
-        renderPassInfo.renderArea.extent = extent;
-
-        std::array<VkClearValue, 2> clearValues{};
-        clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-        clearValues[1].depthStencil = {1.0f, 0};
-        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-        renderPassInfo.pClearValues = clearValues.data();
-
-        vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicPipeline);
-
-        mesh.bind(commandBuffers[i]);
-        vkCmdBindDescriptorSets(
-            commandBuffers[i],
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            pipelineLayout,
-            0,
-            1,
-            &frame.descriptorSet,
-            0,
-            nullptr
-        );
-        for (const SubmeshData& submesh : mesh.submeshes())
+        else
         {
-            if (submesh.indexed())
-            {
-                vkCmdDrawIndexed(
-                    commandBuffers[i],
-                    submesh.indexCount,
-                    1,
-                    submesh.firstIndex,
-                    0,
-                    0);
-            }
-            else
-            {
-                vkCmdDraw(
-                    commandBuffers[i],
-                    submesh.vertexCount,
-                    1,
-                    submesh.firstVertex,
-                    0);
-            }
+            vkCmdDraw(
+                commandBuffer,
+                submesh.vertexCount,
+                1,
+                submesh.firstVertex,
+                0);
         }
+    }
 
-        vkCmdEndRenderPass(commandBuffers[i]);
+    vkCmdEndRenderPass(commandBuffer);
 
-        if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to record command buffer!");
-        }
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to record command buffer!");
     }
 }
 
 void App::createSyncObjects()
 {
-    framesInFlight.resize(kMaxFramesInFlight);
-
     VkSemaphoreCreateInfo semaphoreInfo{};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     VkFenceCreateInfo fenceInfo{};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    for (size_t i = 0; i < kMaxFramesInFlight; i++)
+    for (FrameInFlight& frame : framesInFlight)
     {
-        FrameInFlight& frame = framesInFlight[i];
         if (vkCreateSemaphore(device.get(), &semaphoreInfo, nullptr, &frame.imageAvailable) != VK_SUCCESS ||
             vkCreateFence(device.get(), &fenceInfo, nullptr, &frame.inFlight) != VK_SUCCESS)
         {
@@ -169,7 +189,12 @@ void App::drawFrame()
 
     swapchainFrame.imageInFlight = frame.inFlight;
 
-    updateUniformBuffer(imageIndex);
+    updateFrameData(currentFrame);
+    frame.commandPool.resetCommands();
+    recordCommandBuffer(
+        frame.commandBuffer,
+        imageIndex,
+        frameDataResources.descriptorSet(currentFrame));
 
     vkResetFences(device.get(), 1, &frame.inFlight);
 
@@ -183,7 +208,7 @@ void App::drawFrame()
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &swapchainFrame.commandBuffer;
+    submitInfo.pCommandBuffers = &frame.commandBuffer;
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 

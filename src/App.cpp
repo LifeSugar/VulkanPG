@@ -43,17 +43,18 @@ void App::initVulkan()
     swapChain = makeSwapChain();
     setupCamera();
     createRenderPass();
-    createDescriptorSetLayout();
+    frameDataResources.create(device, kMaxFramesInFlight);
     createGraphicsPipeline();
     createDepthResources();
     createFramebuffers();
-    createCommandPool();
     const MeshData meshData = loadModel();
-    UploadContext uploadContext(device, commandPool);
+    CommandPool uploadCommandPool(
+        device,
+        device.graphicsQueueFamily(),
+        VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+    UploadContext uploadContext(device, uploadCommandPool);
     mesh.create(uploadContext, meshData);
-    createUniformBuffers();
-    createDescriptorPool();
-    createDescriptorSets();
+    createCommandPools();
     createCommandBuffers();
     createSyncObjects();
 }
@@ -77,11 +78,9 @@ void App::cleanup()
     }
     framesInFlight.clear();
 
-    commandPool.reset();
-
     mesh.reset();
 
-    vkDestroyDescriptorSetLayout(device.get(), descriptorSetLayout, nullptr);
+    frameDataResources.reset();
     device.reset();
     if (enableValidationLayers)
     {

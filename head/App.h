@@ -9,12 +9,9 @@
 #include <GLBTypes.h>
 #include "Camera.h"
 #include "GLBLoader.h"
-#include "Buffer.h"
-#include "CommandPool.h"
 #include "Device.h"
+#include "FrameDataResources.h"
 #include "FrameResources.h"
-#include "Image.h"
-#include "ImageView.h"
 #include "Mesh.h"
 #include "Swapchain.h"
 
@@ -49,29 +46,19 @@ private:
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     Device device;
     Swapchain swapChain;
-    CommandPool commandPool;
     std::vector<SwapchainFrame> swapchainFrames;
-    Image depthImage;
-    ImageView depthImageView;
     VkRenderPass renderPass = VK_NULL_HANDLE;
-    VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     VkPipeline graphicPipeline = VK_NULL_HANDLE;
 
     Mesh mesh;
-    VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
-
-    struct UniformBufferObject
-    {
-        alignas(16) glm::mat4 model{1.0f};
-        alignas(16) glm::mat4 view{1.0f};
-        alignas(16) glm::mat4 proj{1.0f};
-    };
+    FrameDataResources frameDataResources;
 
     GLBLoader loader;
     std::unique_ptr<GLBModel> model;
     std::string modelPath = "Assets/Models/Suzanne.glb";
     Camera camera;
+    uint64_t stagedCameraRevision = 0;
 
     static constexpr uint32_t kMaxFramesInFlight = 2;
     std::vector<FrameInFlight> framesInFlight;
@@ -124,10 +111,7 @@ private:
         VkImageTiling tiling,
         VkFormatFeatureFlags features) const;
     VkFormat findDepthFormat() const;
-    void createUniformBuffers();
-    void updateUniformBuffer(uint32_t imageIndex);
-    void createDescriptorPool();
-    void createDescriptorSets();
+    void updateFrameData(uint32_t frameIndex);
     [[nodiscard]] MeshData loadModel();
 
     void createDepthResources();
@@ -135,12 +119,15 @@ private:
     static std::string resolveAssetPath(const std::string& relativePath);
     static std::vector<char> readFile(const std::string &filename);
     VkShaderModule createShaderModule(const std::vector<char> &code) const;
-    void createDescriptorSetLayout();
     void createGraphicsPipeline();
 
     void createFramebuffers();
-    void createCommandPool();
+    void createCommandPools();
     void createCommandBuffers();
+    void recordCommandBuffer(
+        VkCommandBuffer commandBuffer,
+        uint32_t imageIndex,
+        VkDescriptorSet descriptorSet);
     void createSyncObjects();
     void createSwapchainFrameSyncObjects();
 

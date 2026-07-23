@@ -1,6 +1,8 @@
 #include "Camera.h"
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <limits>
+
 Camera::Camera()
     : m_position(0.0f, 0.0f, 0.0f)
     , m_rotation(0.0f, 0.0f, 0.0f)
@@ -15,8 +17,15 @@ Camera::Camera()
 
 void Camera::setConfig(const Config &config)
 {
-    m_config = config;
-    m_isProjectionDirty = true;
+    if (m_config.fov != config.fov ||
+        m_config.aspectRatio != config.aspectRatio ||
+        m_config.nearPlane != config.nearPlane ||
+        m_config.farPlane != config.farPlane)
+    {
+        m_config = config;
+        m_isProjectionDirty = true;
+        markChanged();
+    }
 }
 
 const Camera::Config &Camera::getConfig() const
@@ -30,6 +39,7 @@ void Camera::setPosition(const glm::vec3 &position)
     {
         m_position = position;
         m_isViewDirty = true;
+        markChanged();
     }
 }
 
@@ -44,6 +54,7 @@ void Camera::setRotation(const glm::vec3 &rotation)
     {
         m_rotation = rotation;
         m_isViewDirty = true;
+        markChanged();
     }
 }
 
@@ -84,12 +95,21 @@ const glm::mat4 &Camera::getViewProjectionMatrix() const
     return m_viewProjectionMatrix;
 }
 
+VkRenderer::CameraGpuData Camera::getGpuData() const
+{
+    VkRenderer::CameraGpuData data{};
+    data.viewProjection = getViewProjectionMatrix();
+    data.worldPosition = glm::vec4(m_position, 1.0f);
+    return data;
+}
+
 void Camera::setAspect(float aspect)
 {
     if (m_config.aspectRatio != aspect)
     {
         m_config.aspectRatio = aspect;
         m_isProjectionDirty = true;
+        markChanged();
     }
 }
 
@@ -126,6 +146,18 @@ void Camera::Update()
     if (m_isProjectionDirty)
     {
         recalculateProjectionMatrix();
+    }
+}
+
+void Camera::markChanged() noexcept
+{
+    if (m_revision == std::numeric_limits<uint64_t>::max())
+    {
+        m_revision = 1;
+    }
+    else
+    {
+        ++m_revision;
     }
 }
 

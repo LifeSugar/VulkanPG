@@ -31,38 +31,42 @@ void App::createDepthResources()
 {
     const VkFormat depthFormat = findDepthFormat();
     const VkExtent2D extent = swapChain.extent();
+    swapchainFrames.clear();
+    swapchainFrames.resize(swapChain.imageCount());
 
-    Image newDepthImage(
-        device.physical(),
-        device.get(),
-        extent.width,
-        extent.height,
-        depthFormat,
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    ImageView newDepthImageView(
-        device.get(),
-        newDepthImage.get(),
-        depthFormat,
-        VK_IMAGE_ASPECT_DEPTH_BIT);
-
-    // Replace the view before the image so an old view never outlives its image.
-    depthImageView = std::move(newDepthImageView);
-    depthImage = std::move(newDepthImage);
+    for (SwapchainFrame& frame : swapchainFrames)
+    {
+        frame.depthImage.create(
+            device.physical(),
+            device.get(),
+            extent.width,
+            extent.height,
+            depthFormat,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        frame.depthImageView.create(
+            device.get(),
+            frame.depthImage.get(),
+            depthFormat,
+            VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+    }
 }
 
 void App::createFramebuffers()
 {
     const std::vector<ImageView>& imageViews = swapChain.imageViews();
     const VkExtent2D extent = swapChain.extent();
-    swapchainFrames.clear();
-    swapchainFrames.resize(imageViews.size());
+    if (swapchainFrames.size() != imageViews.size())
+    {
+        throw std::runtime_error("swapchain frame resources do not match swapchain images");
+    }
+
     for (size_t i = 0; i < imageViews.size(); ++i)
     {
         const std::array<VkImageView, 2> attachments = {
             imageViews[i].get(),
-            depthImageView.get()
+            swapchainFrames[i].depthImageView.get()
         };
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -103,19 +107,15 @@ bool App::isSwapChainRecreationDue() const
 
 void App::cleanupSwapChainDependents()
 {
-    std::vector<VkCommandBuffer> commandBuffers;
-    commandBuffers.reserve(swapchainFrames.size());
-    for (SwapchainFrame& frame : swapchainFrames)
+    // Callers wait for the device to become idle before reaching this point.
+    // Reset the per-frame pools so their command buffers stop referencing old
+    // swapchain framebuffers, descriptors, render passes, and pipelines.
+    for (FrameInFlight& frame : framesInFlight)
     {
-        if (frame.commandBuffer != VK_NULL_HANDLE)
+        if (frame.commandPool)
         {
-            commandBuffers.push_back(frame.commandBuffer);
-            frame.commandBuffer = VK_NULL_HANDLE;
+            frame.commandPool.resetCommands();
         }
-    }
-    if (!commandBuffers.empty())
-    {
-        commandPool.free(commandBuffers);
     }
 
     for (SwapchainFrame& frame : swapchainFrames)
@@ -133,9 +133,6 @@ void App::cleanupSwapChainDependents()
         frame.imageInFlight = VK_NULL_HANDLE;
     }
 
-    depthImageView.reset();
-    depthImage.reset();
-
     if (graphicPipeline != VK_NULL_HANDLE)
     {
         vkDestroyPipeline(device.get(), graphicPipeline, nullptr);
@@ -152,11 +149,6 @@ void App::cleanupSwapChainDependents()
         renderPass = VK_NULL_HANDLE;
     }
 
-    if (descriptorPool != VK_NULL_HANDLE)
-    {
-        vkDestroyDescriptorPool(device.get(), descriptorPool, nullptr);
-        descriptorPool = VK_NULL_HANDLE;
-    }
     swapchainFrames.clear();
 }
 
@@ -196,10 +188,6 @@ void App::recreateSwapChain()
     createGraphicsPipeline();
     createDepthResources();
     createFramebuffers();
-    createUniformBuffers();
-    createDescriptorPool();
-    createDescriptorSets();
-    createCommandBuffers();
     createSwapchainFrameSyncObjects();
 
     swapChainRecreationRequested = false;

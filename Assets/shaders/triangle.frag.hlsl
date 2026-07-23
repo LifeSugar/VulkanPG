@@ -1,5 +1,7 @@
 // Fragment shader: simple PBR-style direct lighting with a pale orange material.
 
+#include "RenderData.hlsli"
+
 struct PSInput
 {
     float4 position : SV_Position;
@@ -47,10 +49,11 @@ float3 FresnelSchlick(float cosTheta, float3 f0)
 
 float4 main(PSInput input) : SV_Target
 {
-    const float3 baseColor = float3(1.0f, 0.62f, 0.36f);
+    const float3 baseColor = float3(0.26f, 0.62f, 0.36f);
     const float metallic = 0.0f;
     const float roughness = 0.48f;
-    const float3 cameraPosition = float3(0.0f, 0.0f, 3.0f);
+    const float3 cameraPosition =
+        cameraData[drawPushConstants.cameraIndex].worldPosition.xyz;
     const float3 lightPosition = float3(2.5f, 3.5f, 2.0f);
     const float3 lightColor = float3(5.0f, 4.6f, 4.2f);
     const float3 ambientColor = float3(0.12f, 0.11f, 0.10f);
