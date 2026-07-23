@@ -133,16 +133,7 @@ void App::cleanupSwapChainDependents()
         frame.imageInFlight = VK_NULL_HANDLE;
     }
 
-    if (graphicPipeline != VK_NULL_HANDLE)
-    {
-        vkDestroyPipeline(device.get(), graphicPipeline, nullptr);
-        graphicPipeline = VK_NULL_HANDLE;
-    }
-    if (pipelineLayout != VK_NULL_HANDLE)
-    {
-        vkDestroyPipelineLayout(device.get(), pipelineLayout, nullptr);
-        pipelineLayout = VK_NULL_HANDLE;
-    }
+    graphicsPipeline.reset();
     if (renderPass != VK_NULL_HANDLE)
     {
         vkDestroyRenderPass(device.get(), renderPass, nullptr);

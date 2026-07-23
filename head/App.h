@@ -12,6 +12,7 @@
 #include "Device.h"
 #include "FrameDataResources.h"
 #include "FrameResources.h"
+#include "GraphicsPipeline.h"
 #include "Mesh.h"
 #include "Swapchain.h"
 
@@ -48,11 +49,9 @@ private:
     Swapchain swapChain;
     std::vector<SwapchainFrame> swapchainFrames;
     VkRenderPass renderPass = VK_NULL_HANDLE;
-    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-    VkPipeline graphicPipeline = VK_NULL_HANDLE;
-
-    Mesh mesh;
     FrameDataResources frameDataResources;
+    GraphicsPipeline graphicsPipeline;
+    Mesh mesh;
 
     GLBLoader loader;
     std::unique_ptr<GLBModel> model;
@@ -117,8 +116,6 @@ private:
     void createDepthResources();
     void createRenderPass();
     static std::string resolveAssetPath(const std::string& relativePath);
-    static std::vector<char> readFile(const std::string &filename);
-    VkShaderModule createShaderModule(const std::vector<char> &code) const;
     void createGraphicsPipeline();
 
     void createFramebuffers();

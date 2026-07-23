@@ -60,13 +60,16 @@ void App::recordCommandBuffer(
     renderPassInfo.pClearValues = clearValues.data();
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicPipeline);
+    vkCmdBindPipeline(
+        commandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        graphicsPipeline.get());
 
     mesh.bind(commandBuffer);
     vkCmdBindDescriptorSets(
         commandBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
-        pipelineLayout,
+        graphicsPipeline.layout(),
         0,
         1,
         &descriptorSet,
@@ -77,7 +80,7 @@ void App::recordCommandBuffer(
     const DrawPushConstants pushConstants{};
     vkCmdPushConstants(
         commandBuffer,
-        pipelineLayout,
+        graphicsPipeline.layout(),
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         0,
         sizeof(pushConstants),
