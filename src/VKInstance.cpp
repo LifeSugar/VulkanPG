@@ -40,6 +40,9 @@ std::vector<const char *> App::getRequiredExtensions() const
     {
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
+#if defined(__APPLE__)
+    extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+#endif
     return extensions;
 }
 

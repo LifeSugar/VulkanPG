@@ -14,9 +14,18 @@ namespace VkRenderer
 namespace
 {
 
-constexpr std::array<const char*, 1> kRequiredExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME
-};
+std::vector<const char*> requiredDeviceExtensions()
+{
+    std::vector<const char*> extensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
+#if defined(__APPLE__)
+    // MoltenVK exposes VK_KHR_portability_subset; the spec requires enabling it
+    // whenever the physical device advertises support for it.
+    extensions.push_back("VK_KHR_portability_subset");
+#endif
+    return extensions;
+}
 
 } // namespace
 
@@ -160,12 +169,13 @@ void Device::create(
     }
 
     VkPhysicalDeviceFeatures features{};
+    const std::vector<const char*> deviceExtensions = requiredDeviceExtensions();
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
-    createInfo.enabledExtensionCount = static_cast<uint32_t>(kRequiredExtensions.size());
-    createInfo.ppEnabledExtensionNames = kRequiredExtensions.data();
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+    createInfo.ppEnabledExtensionNames = deviceExtensions.data();
     createInfo.pEnabledFeatures = &features;
 
     VkDevice newDevice = VK_NULL_HANDLE;
@@ -259,9 +269,11 @@ bool Device::supportsRequiredExtensions(VkPhysicalDevice physicalDevice)
         &extensionCount,
         availableExtensions.data());
 
-    std::set<std::string> requiredExtensions(
-        kRequiredExtensions.begin(),
-        kRequiredExtensions.end());
+    std::set<std::string> requiredExtensions;
+    for (const char* extensionName : requiredDeviceExtensions())
+    {
+        requiredExtensions.insert(extensionName);
+    }
     for (const VkExtensionProperties& extension : availableExtensions)
     {
         requiredExtensions.erase(extension.extensionName);
