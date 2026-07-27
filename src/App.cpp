@@ -1,7 +1,17 @@
 #include "App.h"
 
+#include <chrono>
+#include <glm/gtc/matrix_transform.hpp>
+
 namespace VkRenderer
 {
+
+App::~App()
+{
+    // Destruction after an exception must not release resources still in use by
+    // the GPU. Member destruction then proceeds in reverse dependency order.
+    vulkanContext.waitIdle();
+}
 
 void App::setPreferIntegratedGPU(bool enabled)
 {
@@ -18,96 +28,111 @@ void App::run()
 
 void App::initWindow()
 {
-    glfwInit();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    window = glfwCreateWindow(800, 600, "Vulkan", nullptr, nullptr);
-    glfwSetWindowUserPointer(window, this);
-    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-}
-
-void App::framebufferResizeCallback(GLFWwindow* window, int, int)
-{
-    auto* app = static_cast<App*>(glfwGetWindowUserPointer(window));
-    if (app != nullptr)
-    {
-        app->requestSwapChainRecreation();
-    }
+    Window::CreateInfo createInfo{};
+    createInfo.width = kWindowWidth;
+    createInfo.height = kWindowHeight;
+    createInfo.title = "Vulkan";
+    window.create(createInfo);
 }
 
 void App::initVulkan()
 {
-    createInstance();
-    setupDebugMessenger();
-    createSurface();
-    device.create(instance, surface, preferIntegratedGpu);
-    frameDataResources.create(device, kMaxFramesInFlight);
+    VulkanContext::CreateInfo contextCreateInfo{};
+    contextCreateInfo.enableValidationLayers = kEnableValidationLayers;
+    contextCreateInfo.preferIntegratedGpu = preferIntegratedGpu;
+    vulkanContext.create(window, contextCreateInfo);
 
-    SwapchainResources::CreateInfo swapchainCreateInfo{};
-    swapchainCreateInfo.surface = surface;
-    swapchainCreateInfo.framebufferExtent = framebufferExtent();
-    swapchainResources.create(device, swapchainCreateInfo);
-    graphicsPipeline.create(device, makeGraphicsPipelineCreateInfo());
+    VulkanRenderer::CreateInfo rendererCreateInfo{};
+    rendererCreateInfo.context = &vulkanContext;
+    rendererCreateInfo.framebufferExtent = window.framebufferExtent();
+    rendererCreateInfo.framesInFlight = kMaxFramesInFlight;
+    rendererCreateInfo.graphicsPipeline = makeGraphicsPipelineCreateInfo();
+    renderer.create(rendererCreateInfo);
 
     setupCamera();
     const MeshData meshData = loadModel();
+    const Device& device = vulkanContext.device();
     CommandPool uploadCommandPool(
         device,
         device.graphicsQueueFamily(),
         VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
     UploadContext uploadContext(device, uploadCommandPool);
     mesh.create(uploadContext, meshData);
-    createFrameContexts();
 }
 
 void App::cleanup()
 {
-    frameContexts.clear();
-
+    renderer.reset();
     mesh.reset();
-
-    graphicsPipeline.reset();
-    swapchainResources.reset();
-    frameDataResources.reset();
-    device.reset();
-    if (enableValidationLayers)
-    {
-        DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-    }
-    vkDestroySurfaceKHR(instance, surface, nullptr);
-    vkDestroyInstance(instance, nullptr);
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    vulkanContext.reset();
+    window.reset();
 }
 
 void App::setupCamera()
 {
     camera.setPosition(glm::vec3(0.0f, 0.0f, 5.0f));
     camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
-    const VkExtent2D extent = swapchainResources.extent();
+    const VkExtent2D extent = renderer.extent();
     camera.setAspect(static_cast<float>(extent.width) / static_cast<float>(extent.height));
 }
 
 void App::mainLoop()
 {
-    while (!glfwWindowShouldClose(window))
+    while (!window.shouldClose())
     {
-        glfwPollEvents();
+        window.pollEvents();
+
+        if (window.consumeFramebufferResize())
+        {
+            requestSwapChainRecreation();
+        }
 
         if (swapChainRecreationRequested)
         {
             if (!isSwapChainRecreationDue())
             {
                 // During an interactive resize, avoid repeatedly destroying and recreating GPU resources.
-                glfwWaitEventsTimeout(0.016);
+                window.waitEventsTimeout(0.016);
                 continue;
             }
 
             recreateSwapChain();
         }
 
-        drawFrame();
+        const VulkanRenderer::RenderResult renderResult =
+            renderer.render(makeRenderFrame());
+        if (renderResult == VulkanRenderer::RenderResult::NeedsResize)
+        {
+            requestSwapChainRecreation();
+        }
     }
-    device.waitIdle();
+}
+
+RenderFrame App::makeRenderFrame()
+{
+    static const auto startTime =
+        std::chrono::high_resolution_clock::now();
+    const auto currentTime = std::chrono::high_resolution_clock::now();
+    const float time = std::chrono::duration<
+        float,
+        std::chrono::seconds::period>(currentTime - startTime).count();
+
+    camera.Update();
+
+    RenderFrame frame{};
+    frame.view.cameraData = camera.getGpuData();
+    frame.view.cameraRevision = camera.revision();
+
+    RenderObject object{};
+    object.mesh = &mesh;
+    object.objectData.world = glm::rotate(
+        glm::mat4(1.0f),
+        time * glm::radians(45.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f));
+    object.objectData.normalMatrix =
+        glm::transpose(glm::inverse(object.objectData.world));
+    frame.objects.push_back(object);
+    return frame;
 }
 
 } // namespace VkRenderer

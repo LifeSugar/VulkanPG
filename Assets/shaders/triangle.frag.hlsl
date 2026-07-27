@@ -49,7 +49,7 @@ float3 FresnelSchlick(float cosTheta, float3 f0)
 
 float4 main(PSInput input) : SV_Target
 {
-    const float3 baseColor = float3(0.26f, 0.62f, 0.36f);
+    const float3 baseColor = float3(0.0f, 0.702f, 0.686f);
     const float metallic = 0.0f;
     const float roughness = 0.48f;
     const float3 cameraPosition =

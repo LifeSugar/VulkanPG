@@ -9,9 +9,12 @@
 namespace VkRenderer
 {
 
-FrameDataResources::FrameDataResources(const Device& device, uint32_t frameCount)
+FrameDataResources::FrameDataResources(
+    const Device& device,
+    uint32_t frameCount,
+    uint32_t objectCapacity)
 {
-    create(device, frameCount);
+    create(device, frameCount, objectCapacity);
 }
 
 FrameDataResources::~FrameDataResources()
@@ -19,12 +22,15 @@ FrameDataResources::~FrameDataResources()
     reset();
 }
 
-void FrameDataResources::create(const Device& device, uint32_t frameCount)
+void FrameDataResources::create(
+    const Device& device,
+    uint32_t frameCount,
+    uint32_t objectCapacity)
 {
-    if (!device || frameCount == 0)
+    if (!device || frameCount == 0 || objectCapacity == 0)
     {
         throw std::invalid_argument(
-            "cannot create FrameDataResources with an invalid device or zero frames");
+            "cannot create FrameDataResources with an invalid device or empty capacity");
     }
 
     reset();
@@ -53,10 +59,12 @@ void FrameDataResources::create(const Device& device, uint32_t frameCount)
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        const VkDeviceSize objectBufferSize =
+            sizeof(ObjectGpuData) * static_cast<VkDeviceSize>(objectCapacity);
         objectBuffers_.create(
             device,
             frameCount,
-            sizeof(ObjectGpuData),
+            objectBufferSize,
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -82,7 +90,7 @@ void FrameDataResources::create(const Device& device, uint32_t frameCount)
             VkDescriptorBufferInfo objectBufferInfo{};
             objectBufferInfo.buffer = objectBuffers_.get(i);
             objectBufferInfo.offset = 0;
-            objectBufferInfo.range = sizeof(ObjectGpuData);
+            objectBufferInfo.range = objectBufferSize;
 
             std::array<VkWriteDescriptorSet, 2> writes{};
             writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -106,6 +114,7 @@ void FrameDataResources::create(const Device& device, uint32_t frameCount)
                 0,
                 nullptr);
         }
+        objectCapacity_ = objectCapacity;
     }
     catch (...)
     {
@@ -121,6 +130,7 @@ void FrameDataResources::reset() noexcept
     objectBuffers_.reset();
     cameraBuffers_.reset();
     descriptorSetLayout_.reset();
+    objectCapacity_ = 0;
 }
 
 void FrameDataResources::setCameraData(const CameraGpuData& cameraData)
@@ -128,15 +138,30 @@ void FrameDataResources::setCameraData(const CameraGpuData& cameraData)
     cameraBuffers_.setData(&cameraData, sizeof(cameraData));
 }
 
-void FrameDataResources::setObjectData(const ObjectGpuData& objectData)
+void FrameDataResources::setObjectData(
+    const ObjectGpuData* objectData,
+    uint32_t objectCount)
 {
-    objectBuffers_.setData(&objectData, sizeof(objectData));
+    if (objectData == nullptr || objectCount == 0 ||
+        objectCount > objectCapacity_)
+    {
+        throw std::invalid_argument("object data exceeds the frame buffer capacity");
+    }
+    objectBuffers_.setData(
+        objectData,
+        sizeof(ObjectGpuData) * static_cast<VkDeviceSize>(objectCount));
 }
 
 void FrameDataResources::sync(uint32_t frameIndex)
 {
-    cameraBuffers_.sync(frameIndex);
-    objectBuffers_.sync(frameIndex);
+    if (cameraBuffers_.hasStagedData())
+    {
+        cameraBuffers_.sync(frameIndex);
+    }
+    if (objectBuffers_.hasStagedData())
+    {
+        objectBuffers_.sync(frameIndex);
+    }
 }
 
 VkDescriptorSet FrameDataResources::descriptorSet(uint32_t frameIndex) const

@@ -54,6 +54,7 @@ void PerFrameBuffer::reset() noexcept
     stagedData_.clear();
     uploadedVersions_.clear();
     size_ = 0;
+    stagedSize_ = 0;
     version_ = 0;
     hasStagedData_ = false;
 }
@@ -64,12 +65,13 @@ void PerFrameBuffer::setData(const void* data, VkDeviceSize size)
     {
         throw std::logic_error("cannot stage data for an empty PerFrameBuffer");
     }
-    if (data == nullptr || size != size_)
+    if (data == nullptr || size == 0 || size > size_)
     {
         throw std::invalid_argument("per-frame buffer data size is invalid");
     }
 
     std::memcpy(stagedData_.data(), data, static_cast<size_t>(size));
+    stagedSize_ = size;
     hasStagedData_ = true;
 
     if (version_ == std::numeric_limits<uint64_t>::max())
@@ -99,8 +101,11 @@ void PerFrameBuffer::sync(uint32_t frameIndex)
     }
 
     Buffer& buffer = buffers_[frameIndex];
-    void* destination = buffer.map(0, size_);
-    std::memcpy(destination, stagedData_.data(), stagedData_.size());
+    void* destination = buffer.map(0, stagedSize_);
+    std::memcpy(
+        destination,
+        stagedData_.data(),
+        static_cast<size_t>(stagedSize_));
     buffer.unmap();
     uploadedVersions_[frameIndex] = version_;
 }

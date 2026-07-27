@@ -27,15 +27,10 @@ std::string App::resolveAssetPath(const std::string& relativePath)
 GraphicsPipeline::CreateInfo App::makeGraphicsPipelineCreateInfo() const
 {
     GraphicsPipeline::CreateInfo createInfo{};
-    createInfo.renderPass = swapchainResources.renderPass();
     createInfo.vertexShaderPath =
         resolveAssetPath("Assets/shaders/triangle.vert.spv");
     createInfo.fragmentShaderPath =
         resolveAssetPath("Assets/shaders/triangle.frag.spv");
-    createInfo.descriptorSetLayouts = {
-        frameDataResources.descriptorSetLayout()
-    };
-
     VkPushConstantRange pushConstantRange{};
     pushConstantRange.stageFlags =
         VK_SHADER_STAGE_VERTEX_BIT |

@@ -19,7 +19,10 @@ class FrameDataResources final
 {
 public:
     FrameDataResources() = default;
-    FrameDataResources(const Device& device, uint32_t frameCount);
+    FrameDataResources(
+        const Device& device,
+        uint32_t frameCount,
+        uint32_t objectCapacity = 1);
     ~FrameDataResources();
 
     FrameDataResources(const FrameDataResources&) = delete;
@@ -27,11 +30,14 @@ public:
     FrameDataResources(FrameDataResources&&) = delete;
     FrameDataResources& operator=(FrameDataResources&&) = delete;
 
-    void create(const Device& device, uint32_t frameCount);
+    void create(
+        const Device& device,
+        uint32_t frameCount,
+        uint32_t objectCapacity = 1);
     void reset() noexcept;
 
     void setCameraData(const CameraGpuData& cameraData);
-    void setObjectData(const ObjectGpuData& objectData);
+    void setObjectData(const ObjectGpuData* objectData, uint32_t objectCount);
     void sync(uint32_t frameIndex);
 
     [[nodiscard]] VkDescriptorSetLayout descriptorSetLayout() const noexcept
@@ -43,6 +49,10 @@ public:
     {
         return static_cast<uint32_t>(descriptorSets_.size());
     }
+    [[nodiscard]] uint32_t objectCapacity() const noexcept
+    {
+        return objectCapacity_;
+    }
 
 private:
     // Declaration order keeps the implicit destruction order safe:
@@ -52,6 +62,7 @@ private:
     PerFrameBuffer objectBuffers_;
     std::vector<VkDescriptorSet> descriptorSets_;
     DescriptorPool descriptorPool_;
+    uint32_t objectCapacity_ = 0;
 };
 
 } // namespace VkRenderer

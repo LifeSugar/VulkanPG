@@ -35,7 +35,8 @@ public:
         VkMemoryPropertyFlags memoryProperties);
     void reset() noexcept;
 
-    // Replaces the CPU-side snapshot and marks every frame replica stale.
+    // Replaces the used portion of the CPU-side snapshot and marks every frame
+    // replica stale. The uploaded size may be smaller than the buffer capacity.
     void setData(const void* data, VkDeviceSize size);
 
     // Uploads the latest snapshot only when this frame replica is stale.
@@ -43,6 +44,10 @@ public:
 
     [[nodiscard]] VkBuffer get(uint32_t frameIndex) const;
     [[nodiscard]] VkDeviceSize size() const noexcept { return size_; }
+    [[nodiscard]] bool hasStagedData() const noexcept
+    {
+        return hasStagedData_;
+    }
     [[nodiscard]] uint32_t frameCount() const noexcept
     {
         return static_cast<uint32_t>(buffers_.size());
@@ -53,6 +58,7 @@ private:
     std::vector<std::byte> stagedData_;
     std::vector<uint64_t> uploadedVersions_;
     VkDeviceSize size_ = 0;
+    VkDeviceSize stagedSize_ = 0;
     uint64_t version_ = 0;
     bool hasStagedData_ = false;
 };
