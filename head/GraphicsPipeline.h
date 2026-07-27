@@ -16,7 +16,6 @@ public:
     struct CreateInfo
     {
         VkRenderPass renderPass = VK_NULL_HANDLE;
-        VkExtent2D extent{};
         std::string vertexShaderPath;
         std::string fragmentShaderPath;
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;

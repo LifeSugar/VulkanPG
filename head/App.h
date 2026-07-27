@@ -11,10 +11,10 @@
 #include "GLBLoader.h"
 #include "Device.h"
 #include "FrameDataResources.h"
-#include "FrameResources.h"
+#include "FrameContext.h"
 #include "GraphicsPipeline.h"
 #include "Mesh.h"
-#include "Swapchain.h"
+#include "SwapchainResources.h"
 
 namespace VkRenderer
 {
@@ -46,10 +46,8 @@ private:
 
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     Device device;
-    Swapchain swapChain;
-    std::vector<SwapchainFrame> swapchainFrames;
-    VkRenderPass renderPass = VK_NULL_HANDLE;
     FrameDataResources frameDataResources;
+    SwapchainResources swapchainResources;
     GraphicsPipeline graphicsPipeline;
     Mesh mesh;
 
@@ -60,7 +58,7 @@ private:
     uint64_t stagedCameraRevision = 0;
 
     static constexpr uint32_t kMaxFramesInFlight = 2;
-    std::vector<FrameInFlight> framesInFlight;
+    std::vector<FrameContext> frameContexts;
     uint32_t currentFrame = 0;
     bool preferIntegratedGpu = false;
     bool swapChainRecreationRequested = false;
@@ -98,41 +96,23 @@ private:
     void createSurface();
     void setupCamera();
 
-    Swapchain makeSwapChain(VkSwapchainKHR oldSwapChain = VK_NULL_HANDLE) const;
-    void cleanupSwapChainDependents();
-    void cleanupSwapChain();
+    [[nodiscard]] VkExtent2D framebufferExtent() const;
     void recreateSwapChain();
     void requestSwapChainRecreation();
     bool isSwapChainRecreationDue() const;
 
-    VkFormat findSupportedFormat(
-        const std::vector<VkFormat> &candidates,
-        VkImageTiling tiling,
-        VkFormatFeatureFlags features) const;
-    VkFormat findDepthFormat() const;
     void updateFrameData(uint32_t frameIndex);
     [[nodiscard]] MeshData loadModel();
 
-    void createDepthResources();
-    void createRenderPass();
     static std::string resolveAssetPath(const std::string& relativePath);
-    void createGraphicsPipeline();
+    [[nodiscard]] GraphicsPipeline::CreateInfo makeGraphicsPipelineCreateInfo() const;
 
-    void createFramebuffers();
-    void createCommandPools();
-    void createCommandBuffers();
+    void createFrameContexts();
     void recordCommandBuffer(
         VkCommandBuffer commandBuffer,
         uint32_t imageIndex,
         VkDescriptorSet descriptorSet);
-    void createSyncObjects();
-    void createSwapchainFrameSyncObjects();
-
     void drawFrame();
-
-        
-
-
 };
 
 } // namespace VkRenderer

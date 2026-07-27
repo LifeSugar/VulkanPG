@@ -116,8 +116,6 @@ void GraphicsPipeline::create(
 {
     if (!device ||
         createInfo.renderPass == VK_NULL_HANDLE ||
-        createInfo.extent.width == 0 ||
-        createInfo.extent.height == 0 ||
         createInfo.vertexShaderPath.empty() ||
         createInfo.fragmentShaderPath.empty())
     {
@@ -185,22 +183,22 @@ void GraphicsPipeline::create(
         inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-        VkViewport viewport{};
-        viewport.width = static_cast<float>(createInfo.extent.width);
-        viewport.height = static_cast<float>(createInfo.extent.height);
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-
-        VkRect2D scissor{};
-        scissor.extent = createInfo.extent;
-
         VkPipelineViewportStateCreateInfo viewportState{};
         viewportState.sType =
             VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
         viewportState.viewportCount = 1;
-        viewportState.pViewports = &viewport;
         viewportState.scissorCount = 1;
-        viewportState.pScissors = &scissor;
+
+        const std::array<VkDynamicState, 2> dynamicStates = {
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR
+        };
+        VkPipelineDynamicStateCreateInfo dynamicState{};
+        dynamicState.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicState.dynamicStateCount =
+            static_cast<uint32_t>(dynamicStates.size());
+        dynamicState.pDynamicStates = dynamicStates.data();
 
         VkPipelineRasterizationStateCreateInfo rasterizer{};
         rasterizer.sType =
@@ -247,6 +245,7 @@ void GraphicsPipeline::create(
         pipelineInfo.pMultisampleState = &multisampling;
         pipelineInfo.pDepthStencilState = &depthStencil;
         pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.layout = newLayout;
         pipelineInfo.renderPass = createInfo.renderPass;
         pipelineInfo.subpass = 0;

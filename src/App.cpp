@@ -40,13 +40,15 @@ void App::initVulkan()
     setupDebugMessenger();
     createSurface();
     device.create(instance, surface, preferIntegratedGpu);
-    swapChain = makeSwapChain();
-    setupCamera();
-    createRenderPass();
     frameDataResources.create(device, kMaxFramesInFlight);
-    createGraphicsPipeline();
-    createDepthResources();
-    createFramebuffers();
+
+    SwapchainResources::CreateInfo swapchainCreateInfo{};
+    swapchainCreateInfo.surface = surface;
+    swapchainCreateInfo.framebufferExtent = framebufferExtent();
+    swapchainResources.create(device, swapchainCreateInfo);
+    graphicsPipeline.create(device, makeGraphicsPipelineCreateInfo());
+
+    setupCamera();
     const MeshData meshData = loadModel();
     CommandPool uploadCommandPool(
         device,
@@ -54,32 +56,17 @@ void App::initVulkan()
         VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
     UploadContext uploadContext(device, uploadCommandPool);
     mesh.create(uploadContext, meshData);
-    createCommandPools();
-    createCommandBuffers();
-    createSyncObjects();
+    createFrameContexts();
 }
 
 void App::cleanup()
 {
-    cleanupSwapChain();
-
-    for (FrameInFlight& frame : framesInFlight)
-    {
-        if (frame.imageAvailable != VK_NULL_HANDLE)
-        {
-            vkDestroySemaphore(device.get(), frame.imageAvailable, nullptr);
-            frame.imageAvailable = VK_NULL_HANDLE;
-        }
-        if (frame.inFlight != VK_NULL_HANDLE)
-        {
-            vkDestroyFence(device.get(), frame.inFlight, nullptr);
-            frame.inFlight = VK_NULL_HANDLE;
-        }
-    }
-    framesInFlight.clear();
+    frameContexts.clear();
 
     mesh.reset();
 
+    graphicsPipeline.reset();
+    swapchainResources.reset();
     frameDataResources.reset();
     device.reset();
     if (enableValidationLayers)
@@ -96,7 +83,7 @@ void App::setupCamera()
 {
     camera.setPosition(glm::vec3(0.0f, 0.0f, 5.0f));
     camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
-    const VkExtent2D extent = swapChain.extent();
+    const VkExtent2D extent = swapchainResources.extent();
     camera.setAspect(static_cast<float>(extent.width) / static_cast<float>(extent.height));
 }
 
