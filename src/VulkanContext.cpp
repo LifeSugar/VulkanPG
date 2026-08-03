@@ -1,8 +1,11 @@
 #include "VulkanContext.h"
 
+#ifndef __ANDROID__
 #include "Window.h"
+#endif
 
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <stdexcept>
 #include <utility>
@@ -10,12 +13,14 @@
 namespace VkRenderer
 {
 
+#ifndef __ANDROID__
 VulkanContext::VulkanContext(
     const Window& window,
     const CreateInfo& createInfo)
 {
     create(window, createInfo);
 }
+#endif
 
 VulkanContext::~VulkanContext()
 {
@@ -48,6 +53,7 @@ VulkanContext& VulkanContext::operator=(VulkanContext&& other) noexcept
     return *this;
 }
 
+#ifndef __ANDROID__
 void VulkanContext::create(
     const Window& window,
     const CreateInfo& createInfo)
@@ -57,6 +63,47 @@ void VulkanContext::create(
         throw std::invalid_argument(
             "cannot create a VulkanContext without a window");
     }
+
+    const std::vector<const char*> extensions =
+        requiredExtensions(createInfo.enableValidationLayers);
+
+    createInternal(
+        extensions,
+        [&window](VkInstance instance)
+        {
+            return window.createVulkanSurface(instance);
+        },
+        createInfo);
+}
+#endif
+
+void VulkanContext::create(
+    VkSurfaceKHR surface,
+    const CreateInfo& createInfo)
+{
+    if (surface == VK_NULL_HANDLE)
+    {
+        throw std::invalid_argument(
+            "cannot create a VulkanContext with a null surface");
+    }
+
+    const std::vector<const char*> extensions =
+        requiredExtensions(createInfo.enableValidationLayers);
+
+    createInternal(
+        extensions,
+        [surface](VkInstance /*instance*/)
+        {
+            return surface;
+        },
+        createInfo);
+}
+
+void VulkanContext::createInternal(
+    const std::vector<const char*>& extensions,
+    std::function<VkSurfaceKHR(VkInstance)> surfaceFactory,
+    const CreateInfo& createInfo)
+{
     if (createInfo.enableValidationLayers &&
         !checkValidationLayerSupport(createInfo.validationLayers))
     {
@@ -73,9 +120,6 @@ void VulkanContext::create(
     applicationInfo.pEngineName = createInfo.engineName.c_str();
     applicationInfo.engineVersion = createInfo.engineVersion;
     applicationInfo.apiVersion = createInfo.apiVersion;
-
-    const std::vector<const char*> extensions =
-        requiredExtensions(createInfo.enableValidationLayers);
 
     VkInstanceCreateInfo instanceCreateInfo{};
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -119,8 +163,7 @@ void VulkanContext::create(
             createDebugMessenger(replacement.instance_);
     }
 
-    replacement.surface_ =
-        window.createVulkanSurface(replacement.instance_);
+    replacement.surface_ = surfaceFactory(replacement.instance_);
     replacement.device_.create(
         replacement.instance_,
         replacement.surface_,
@@ -129,6 +172,103 @@ void VulkanContext::create(
         createInfo.enableValidationLayers;
 
     *this = std::move(replacement);
+}
+
+void VulkanContext::initInstance(const CreateInfo& createInfo)
+{
+    if (createInfo.enableValidationLayers &&
+        !checkValidationLayerSupport(createInfo.validationLayers))
+    {
+        throw std::runtime_error(
+            "validation layers requested, but not available");
+    }
+
+    // Clean up any previous instance before creating a new one.
+    if (debugMessenger_ != VK_NULL_HANDLE && instance_ != VK_NULL_HANDLE)
+    {
+        destroyDebugMessenger(instance_, debugMessenger_);
+    }
+    debugMessenger_ = VK_NULL_HANDLE;
+
+    if (instance_ != VK_NULL_HANDLE)
+    {
+        vkDestroyInstance(instance_, nullptr);
+    }
+    instance_ = VK_NULL_HANDLE;
+    surface_ = VK_NULL_HANDLE;
+    validationLayersEnabled_ = false;
+
+    const std::vector<const char*> extensions =
+        requiredExtensions(createInfo.enableValidationLayers);
+
+    VkApplicationInfo applicationInfo{};
+    applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    applicationInfo.pApplicationName = createInfo.applicationName.c_str();
+    applicationInfo.applicationVersion = createInfo.applicationVersion;
+    applicationInfo.pEngineName = createInfo.engineName.c_str();
+    applicationInfo.engineVersion = createInfo.engineVersion;
+    applicationInfo.apiVersion = createInfo.apiVersion;
+
+    VkInstanceCreateInfo instanceCreateInfo{};
+    instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    instanceCreateInfo.pApplicationInfo = &applicationInfo;
+    instanceCreateInfo.enabledExtensionCount =
+        static_cast<uint32_t>(extensions.size());
+    instanceCreateInfo.ppEnabledExtensionNames = extensions.data();
+#if defined(__APPLE__)
+    instanceCreateInfo.flags |=
+        VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#endif
+
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+    std::vector<const char*> validationLayerNames;
+    if (createInfo.enableValidationLayers)
+    {
+        validationLayerNames.reserve(createInfo.validationLayers.size());
+        for (const std::string& layerName : createInfo.validationLayers)
+        {
+            validationLayerNames.push_back(layerName.c_str());
+        }
+        instanceCreateInfo.enabledLayerCount =
+            static_cast<uint32_t>(validationLayerNames.size());
+        instanceCreateInfo.ppEnabledLayerNames =
+            validationLayerNames.data();
+        populateDebugMessengerCreateInfo(debugCreateInfo);
+        instanceCreateInfo.pNext = &debugCreateInfo;
+    }
+
+    if (vkCreateInstance(
+            &instanceCreateInfo,
+            nullptr,
+            &instance_) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create Vulkan instance");
+    }
+
+    if (createInfo.enableValidationLayers)
+    {
+        debugMessenger_ = createDebugMessenger(instance_);
+    }
+
+    validationLayersEnabled_ = createInfo.enableValidationLayers;
+}
+
+void VulkanContext::initSurfaceAndDevice(
+    VkSurfaceKHR surface,
+    bool preferIntegratedGpu)
+{
+    if (surface == VK_NULL_HANDLE)
+    {
+        throw std::invalid_argument("surface must not be null");
+    }
+    if (instance_ == VK_NULL_HANDLE)
+    {
+        throw std::runtime_error(
+            "initInstance must be called before initSurfaceAndDevice");
+    }
+
+    surface_ = surface;
+    device_.create(instance_, surface_, preferIntegratedGpu);
 }
 
 void VulkanContext::reset() noexcept
@@ -140,6 +280,28 @@ void VulkanContext::reset() noexcept
     {
         vkDestroySurfaceKHR(instance_, surface_, nullptr);
     }
+    surface_ = VK_NULL_HANDLE;
+
+    if (debugMessenger_ != VK_NULL_HANDLE && instance_ != VK_NULL_HANDLE)
+    {
+        destroyDebugMessenger(instance_, debugMessenger_);
+    }
+    debugMessenger_ = VK_NULL_HANDLE;
+
+    if (instance_ != VK_NULL_HANDLE)
+    {
+        vkDestroyInstance(instance_, nullptr);
+    }
+    instance_ = VK_NULL_HANDLE;
+    validationLayersEnabled_ = false;
+}
+
+void VulkanContext::resetWithoutSurface() noexcept
+{
+    device_.waitIdle();
+    device_.reset();
+
+    // Surface is externally managed (Android), do not destroy it.
     surface_ = VK_NULL_HANDLE;
 
     if (debugMessenger_ != VK_NULL_HANDLE && instance_ != VK_NULL_HANDLE)
@@ -207,8 +369,13 @@ bool VulkanContext::checkValidationLayerSupport(
 std::vector<const char*> VulkanContext::requiredExtensions(
     bool enableValidationLayers)
 {
-    std::vector<const char*> extensions =
-        Window::requiredVulkanInstanceExtensions();
+    std::vector<const char*> extensions;
+#if defined(__ANDROID__)
+    extensions.push_back("VK_KHR_android_surface");
+    extensions.push_back("VK_KHR_surface");
+#else
+    extensions = Window::requiredVulkanInstanceExtensions();
+#endif
     if (enableValidationLayers)
     {
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);

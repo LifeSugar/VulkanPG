@@ -3,6 +3,7 @@
 #include "Device.h"
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -41,7 +42,9 @@ public:
     /// Creates an empty Vulkan context.
     VulkanContext() = default;
     /// Creates a Vulkan context for the supplied window.
+#ifndef __ANDROID__
     VulkanContext(const Window& window, const CreateInfo& createInfo);
+#endif
     /// Releases the device, surface, debug messenger, and instance.
     ~VulkanContext();
 
@@ -54,9 +57,19 @@ public:
     VulkanContext& operator=(VulkanContext&& other) noexcept;
 
     /// Creates or replaces all context-level Vulkan resources.
+#ifndef __ANDROID__
     void create(const Window& window, const CreateInfo& createInfo);
+#endif
+    /// Creates or replaces context for an externally managed surface (Android / headless).
+    void create(VkSurfaceKHR surface, const CreateInfo& createInfo);
+    /// Creates the Vulkan instance and optional debug messenger (Android two-phase init).
+    void initInstance(const CreateInfo& createInfo);
+    /// Creates the device for an externally created surface (Android two-phase init).
+    void initSurfaceAndDevice(VkSurfaceKHR surface, bool preferIntegratedGpu);
     /// Releases all owned Vulkan resources.
     void reset() noexcept;
+    /// Releases Vulkan resources without destroying the surface (Android lifecycle).
+    void resetWithoutSurface() noexcept;
     /// Waits until the logical device has no pending work.
     void waitIdle() const;
 
@@ -99,6 +112,12 @@ private:
     static void destroyDebugMessenger(
         VkInstance instance,
         VkDebugUtilsMessengerEXT debugMessenger) noexcept;
+
+    /// Common Vulkan instance + device creation shared by all create() paths.
+    void createInternal(
+        const std::vector<const char*>& extensions,
+        std::function<VkSurfaceKHR(VkInstance)> surfaceFactory,
+        const CreateInfo& createInfo);
 
     /// Root Vulkan instance owned by this context.
     VkInstance instance_ = VK_NULL_HANDLE;

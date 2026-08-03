@@ -9,7 +9,9 @@
 #include "Mesh.h"
 #include "VulkanContext.h"
 #include "VulkanRenderer.h"
+#ifndef __ANDROID__
 #include "Window.h"
+#endif
 
 namespace VkRenderer
 {
@@ -21,7 +23,19 @@ public:
 
     void setPreferIntegratedGPU(bool enabled);
 
+    /// Desktop: full lifecycle (window init → Vulkan init → main loop → cleanup).
     void run();
+    /// Android: initialize Vulkan with an externally managed surface.
+    void initVulkan(VkSurfaceKHR surface, uint32_t width, uint32_t height);
+    /// Android: render one frame (called from the Android event loop).
+    void renderFrame();
+    /// Android: directly resize swapchain with the given extent.
+    void resizeSwapchain(VkExtent2D newExtent);
+    /// Releases all resources. Safe to call from Android lifecycle.
+    void cleanup();
+
+    /// Mutable access to the Vulkan context (for Android two-phase init).
+    VulkanContext& vulkanContext() { return vulkanContext_; }
 
 private:
     static const uint32_t kWindowWidth = 1280;
@@ -33,8 +47,12 @@ private:
     static constexpr bool kEnableValidationLayers = true;
 #endif
 
+#ifdef __ANDROID__
+    // On Android, VulkanContext holds the surface directly; Window is unused.
+#else
     Window window;
-    VulkanContext vulkanContext;
+#endif
+    VulkanContext vulkanContext_;
     Mesh mesh;
     VulkanRenderer renderer;
 
@@ -47,13 +65,15 @@ private:
     bool preferIntegratedGpu = false;
     bool swapChainRecreationRequested = false;
     double lastFramebufferResizeTime = 0.0;
+    VkExtent2D pendingResizeExtent_{};
     static constexpr double kSwapChainResizeDebounceSeconds = 0.15;
 
 private:
     void initWindow();
     void initVulkan();
+    /// Shared Vulkan initialization after context + renderer are created.
+    void initVulkanCommon(VkExtent2D framebufferExtent);
     void mainLoop();
-    void cleanup();
 
 private:
     void setupCamera();
