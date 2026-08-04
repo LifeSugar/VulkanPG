@@ -132,6 +132,8 @@ void VulkanRenderer::resize(VkExtent2D framebufferExtent)
     }
 }
 
+
+//the First render() 28/7/2026
 VulkanRenderer::RenderResult VulkanRenderer::render(const RenderFrame& frameData)
 {
     if (!*this)
