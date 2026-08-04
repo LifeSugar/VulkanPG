@@ -13,8 +13,34 @@ struct PSInput
     float3 normal        : NORMAL;
 
     [[vk::location(2)]]
-    float3 color         : COLOR0;
+    float4 color         : COLOR0;
+
+    [[vk::location(3)]]
+    float2 texCoord      : TEXCOORD1;
 };
+
+struct MaterialGpuData
+{
+    float4 baseColorFactor;
+    float3 emissiveFactor;
+    float metallicFactor;
+    float roughnessFactor;
+};
+
+[[vk::binding(0, 1)]]
+ConstantBuffer<MaterialGpuData> materialData;
+
+[[vk::binding(1, 1)]] Texture2D<float4> baseColorTexture;
+[[vk::binding(2, 1)]] Texture2D<float4> metallicRoughnessTexture;
+[[vk::binding(3, 1)]] Texture2D<float4> normalTexture;
+[[vk::binding(4, 1)]] Texture2D<float4> occlusionTexture;
+[[vk::binding(5, 1)]] Texture2D<float4> emissiveTexture;
+
+[[vk::binding(6, 1)]] SamplerState baseColorSampler;
+[[vk::binding(7, 1)]] SamplerState metallicRoughnessSampler;
+[[vk::binding(8, 1)]] SamplerState normalSampler;
+[[vk::binding(9, 1)]] SamplerState occlusionSampler;
+[[vk::binding(10, 1)]] SamplerState emissiveSampler;
 
 static const float PI = 3.14159265359f;
 
@@ -49,9 +75,27 @@ float3 FresnelSchlick(float cosTheta, float3 f0)
 
 float4 main(PSInput input) : SV_Target
 {
-    const float3 baseColor = float3(0.0f, 0.702f, 0.686f);
-    const float metallic = 0.0f;
-    const float roughness = 0.48f;
+    const float4 sampledBaseColor =
+        baseColorTexture.Sample(baseColorSampler, input.texCoord);
+    const float4 sampledMetallicRoughness =
+        metallicRoughnessTexture.Sample(
+            metallicRoughnessSampler,
+            input.texCoord);
+    const float occlusion =
+        occlusionTexture.Sample(occlusionSampler, input.texCoord).r;
+    const float3 emissive =
+        emissiveTexture.Sample(emissiveSampler, input.texCoord).rgb *
+        materialData.emissiveFactor;
+    const float3 baseColor =
+        sampledBaseColor.rgb *
+        materialData.baseColorFactor.rgb *
+        input.color.rgb;
+    const float metallic = saturate(
+        materialData.metallicFactor * sampledMetallicRoughness.b);
+    const float roughness = clamp(
+        materialData.roughnessFactor * sampledMetallicRoughness.g,
+        0.04f,
+        1.0f);
     const float3 cameraPosition =
         cameraData[drawPushConstants.cameraIndex].worldPosition.xyz;
     const float3 lightPosition = float3(2.5f, 3.5f, 2.0f);
@@ -80,10 +124,13 @@ float4 main(PSInput input) : SV_Target
     float3 kD = (1.0f - kS) * (1.0f - metallic);
     float nDotL = max(dot(normal, lightDir), 0.0f);
 
-    float3 ambient = ambientColor * baseColor;
+    float3 ambient = ambientColor * baseColor * occlusion;
     float3 color = ambient + (kD * baseColor / PI + specular) * radiance * nDotL;
+    color += emissive;
     color = color / (color + 1.0f);
     color = pow(color, 1.0f / 2.2f);
 
-    return float4(color, 1.0f);
+    return float4(
+        color,
+        sampledBaseColor.a * materialData.baseColorFactor.a * input.color.a);
 }

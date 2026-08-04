@@ -23,6 +23,8 @@ public:
         uint32_t height = 720;
         /// Text displayed in the window title bar.
         std::string title = "Vulkan";
+        /// Whether the native window is shown after creation.
+        bool visible = true;
     };
 
     /// Creates an empty window wrapper.

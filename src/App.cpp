@@ -1,7 +1,11 @@
 #include "App.h"
 
+#include "Render/SceneRenderExtractor.h"
+
 #include <chrono>
 #include <glm/gtc/matrix_transform.hpp>
+#include <iostream>
+#include <stdexcept>
 
 namespace VkRenderer
 {
@@ -20,18 +24,54 @@ void App::setPreferIntegratedGPU(bool enabled)
 
 void App::run()
 {
-    initWindow();
+    initWindow(true);
     initVulkan();
     mainLoop();
     cleanup();
 }
 
-void App::initWindow()
+void App::runAssetImportTest()
+{
+    createDemoAssets();
+}
+
+void App::runRenderTest()
+{
+    initWindow(false);
+    initVulkan();
+    for (uint32_t frame = 0; frame < 3; ++frame)
+    {
+        window.pollEvents();
+        const RenderFrame renderFrame = makeRenderFrame();
+        if (renderFrame.objects.empty())
+        {
+            throw std::runtime_error(
+                "scene extraction produced no render objects");
+        }
+        if (frame == 0)
+        {
+            std::clog
+                << "[Render] Extracted submesh draws="
+                << renderFrame.objects.size()
+                << '\n';
+        }
+        if (renderer.render(renderFrame) ==
+            VulkanRenderer::RenderResult::NeedsResize)
+        {
+            throw std::runtime_error(
+                "hidden render test unexpectedly requires a resize");
+        }
+    }
+    cleanup();
+}
+
+void App::initWindow(bool visible)
 {
     Window::CreateInfo createInfo{};
     createInfo.width = kWindowWidth;
     createInfo.height = kWindowHeight;
     createInfo.title = "Vulkan";
+    createInfo.visible = visible;
     window.create(createInfo);
 }
 
@@ -42,6 +82,20 @@ void App::initVulkan()
     contextCreateInfo.preferIntegratedGpu = preferIntegratedGpu;
     vulkanContext.create(window, contextCreateInfo);
 
+    createDemoAssets();
+
+    const Device& device = vulkanContext.device();
+    CommandPool uploadCommandPool(
+        device,
+        device.graphicsQueueFamily(),
+        VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+    UploadContext uploadContext(device, uploadCommandPool);
+    renderAssets.create(
+        device,
+        uploadContext,
+        assetManager,
+        {demoModelAsset});
+
     VulkanRenderer::CreateInfo rendererCreateInfo{};
     rendererCreateInfo.context = &vulkanContext;
     rendererCreateInfo.framebufferExtent = window.framebufferExtent();
@@ -50,28 +104,28 @@ void App::initVulkan()
     renderer.create(rendererCreateInfo);
 
     setupCamera();
-    const MeshData meshData = loadModel();
-    const Device& device = vulkanContext.device();
-    CommandPool uploadCommandPool(
-        device,
-        device.graphicsQueueFamily(),
-        VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
-    UploadContext uploadContext(device, uploadCommandPool);
-    mesh.create(uploadContext, meshData);
 }
 
 void App::cleanup()
 {
     renderer.reset();
-    mesh.reset();
+    renderAssets.reset();
+    scene.reset();
+    assetManager.reset();
+    demoTextureAsset = {};
+    pbrVertexShaderAsset = {};
+    pbrFragmentShaderAsset = {};
+    demoMaterialTemplateAsset = {};
+    demoMaterialAsset = {};
+    demoModelAsset = {};
     vulkanContext.reset();
     window.reset();
 }
 
 void App::setupCamera()
 {
-    camera.setPosition(glm::vec3(0.0f, 0.0f, 5.0f));
-    camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
+    camera.setPosition(glm::vec3(0.0f, 1.0f, 0.5f));
+    camera.setRotation(glm::vec3(-60.0f, 0.0f, 0.0f));
     const VkExtent2D extent = renderer.extent();
     camera.setAspect(static_cast<float>(extent.width) / static_cast<float>(extent.height));
 }
@@ -119,20 +173,21 @@ RenderFrame App::makeRenderFrame()
 
     camera.Update();
 
-    RenderFrame frame{};
-    frame.view.cameraData = camera.getGpuData();
-    frame.view.cameraRevision = camera.revision();
-
-    RenderObject object{};
-    object.mesh = &mesh;
-    object.objectData.world = glm::rotate(
+    scene.setLocalTransform(
+        0,
+        glm::rotate(
         glm::mat4(1.0f),
         time * glm::radians(45.0f),
-        glm::vec3(0.0f, 1.0f, 0.0f));
-    object.objectData.normalMatrix =
-        glm::transpose(glm::inverse(object.objectData.world));
-    frame.objects.push_back(object);
-    return frame;
+        glm::vec3(0.0f, 1.0f, 0.0f)));
+
+    RenderView view{};
+    view.cameraData = camera.getGpuData();
+    view.cameraRevision = camera.revision();
+    return SceneRenderExtractor{}.extract(
+        scene,
+        assetManager,
+        renderAssets,
+        view);
 }
 
 } // namespace VkRenderer

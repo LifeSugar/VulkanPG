@@ -81,3 +81,7 @@ target_link_libraries(VulkanApp PRIVATE
     glm::glm
     assimp::assimp
 )
+
+if(WIN32)
+    target_link_libraries(VulkanApp PRIVATE windowscodecs ole32)
+endif()

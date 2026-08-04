@@ -27,38 +27,43 @@ VkDeviceSize checkedBufferSize(
 
 Mesh::Mesh(
     UploadContext& uploadContext,
-    const MeshData& data)
+    const MeshAsset& asset)
 {
-    create(uploadContext, data);
+    create(uploadContext, asset);
 }
 
 void Mesh::create(
     UploadContext& uploadContext,
-    const MeshData& data)
+    const MeshAsset& asset)
 {
-    if (data.empty() || data.indices().empty())
+    if (asset.empty())
     {
-        throw std::invalid_argument("cannot create a Mesh from empty or non-indexed mesh data");
+        throw std::invalid_argument("cannot create a Mesh from an empty mesh asset");
     }
 
     const VkDeviceSize vertexSize = checkedBufferSize(
-        data.vertices().size(),
+        asset.vertices().size(),
         sizeof(Vertex),
         "mesh vertex data");
-    const VkDeviceSize indexSize = checkedBufferSize(
-        data.indices().size(),
-        sizeof(uint32_t),
-        "mesh index data");
 
-    std::vector<SubmeshData> newSubmeshes = data.submeshes();
+    std::vector<SubmeshData> newSubmeshes = asset.submeshes();
     Buffer newVertexBuffer = uploadContext.uploadBuffer(
-        data.vertices().data(),
+        asset.vertices().data(),
         vertexSize,
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    Buffer newIndexBuffer = uploadContext.uploadBuffer(
-        data.indices().data(),
-        indexSize,
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+
+    Buffer newIndexBuffer;
+    if (!asset.indices().empty())
+    {
+        const VkDeviceSize indexSize = checkedBufferSize(
+            asset.indices().size(),
+            sizeof(uint32_t),
+            "mesh index data");
+        newIndexBuffer = uploadContext.uploadBuffer(
+            asset.indices().data(),
+            indexSize,
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+    }
 
     reset();
     vertexBuffer_ = std::move(newVertexBuffer);
@@ -83,7 +88,14 @@ void Mesh::bind(VkCommandBuffer commandBuffer) const
     const VkBuffer vertexBuffer = vertexBuffer_.get();
     constexpr VkDeviceSize kOffset = 0;
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, &kOffset);
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer_.get(), 0, VK_INDEX_TYPE_UINT32);
+    if (indexBuffer_)
+    {
+        vkCmdBindIndexBuffer(
+            commandBuffer,
+            indexBuffer_.get(),
+            0,
+            VK_INDEX_TYPE_UINT32);
+    }
 }
 
 } // namespace VkRenderer

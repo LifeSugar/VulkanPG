@@ -3,7 +3,6 @@
 #include "Device.h"
 
 #include <array>
-#include <fstream>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -14,44 +13,22 @@ namespace VkRenderer
 namespace
 {
 
-std::vector<char> readBinaryFile(const std::string& path)
-{
-    std::ifstream file(path, std::ios::ate | std::ios::binary);
-    if (!file.is_open())
-    {
-        throw std::runtime_error("failed to open shader file: " + path);
-    }
-
-    const std::streampos endPosition = file.tellg();
-    if (endPosition <= 0)
-    {
-        throw std::runtime_error("shader file is empty: " + path);
-    }
-
-    std::vector<char> buffer(static_cast<size_t>(endPosition));
-    file.seekg(0);
-    if (!file.read(buffer.data(), static_cast<std::streamsize>(buffer.size())))
-    {
-        throw std::runtime_error("failed to read shader file: " + path);
-    }
-    return buffer;
-}
-
 class ShaderModule final
 {
 public:
-    ShaderModule(VkDevice device, const std::vector<char>& code)
+    ShaderModule(VkDevice device, const std::vector<uint32_t>& code)
         : device_(device)
     {
-        if (code.empty() || code.size() % sizeof(uint32_t) != 0)
+        constexpr uint32_t kSpirvMagic = 0x07230203u;
+        if (code.empty() || code.front() != kSpirvMagic)
         {
-            throw std::invalid_argument("SPIR-V shader code has an invalid size");
+            throw std::invalid_argument("SPIR-V shader code is invalid");
         }
 
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.codeSize = code.size();
-        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+        createInfo.codeSize = code.size() * sizeof(uint32_t);
+        createInfo.pCode = code.data();
 
         if (vkCreateShaderModule(device_, &createInfo, nullptr, &module_) != VK_SUCCESS)
         {
@@ -116,18 +93,20 @@ void GraphicsPipeline::create(
 {
     if (!device ||
         createInfo.renderPass == VK_NULL_HANDLE ||
-        createInfo.vertexShaderPath.empty() ||
-        createInfo.fragmentShaderPath.empty())
+        createInfo.vertexShaderSpirv.empty() ||
+        createInfo.vertexEntryPoint.empty() ||
+        createInfo.fragmentShaderSpirv.empty() ||
+        createInfo.fragmentEntryPoint.empty())
     {
         throw std::invalid_argument("graphics pipeline create info is incomplete");
     }
 
-    const std::vector<char> vertexCode =
-        readBinaryFile(createInfo.vertexShaderPath);
-    const std::vector<char> fragmentCode =
-        readBinaryFile(createInfo.fragmentShaderPath);
-    const ShaderModule vertexModule(device.get(), vertexCode);
-    const ShaderModule fragmentModule(device.get(), fragmentCode);
+    const ShaderModule vertexModule(
+        device.get(),
+        createInfo.vertexShaderSpirv);
+    const ShaderModule fragmentModule(
+        device.get(),
+        createInfo.fragmentShaderSpirv);
 
     VkPipelineLayout newLayout = VK_NULL_HANDLE;
     VkPipeline newPipeline = VK_NULL_HANDLE;
@@ -158,12 +137,12 @@ void GraphicsPipeline::create(
             VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         shaderStages[0].module = vertexModule.get();
-        shaderStages[0].pName = "main";
+        shaderStages[0].pName = createInfo.vertexEntryPoint.c_str();
         shaderStages[1].sType =
             VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
         shaderStages[1].module = fragmentModule.get();
-        shaderStages[1].pName = "main";
+        shaderStages[1].pName = createInfo.fragmentEntryPoint.c_str();
 
         VkPipelineVertexInputStateCreateInfo vertexInput{};
         vertexInput.sType =

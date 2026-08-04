@@ -9,6 +9,7 @@ namespace VkRenderer
 {
 
 class Mesh;
+class GpuMaterial;
 
 // Renderer-facing snapshot extracted from the current scene state. It owns no
 // GPU resources and makes no assumptions about how a future Scene is stored.
@@ -25,6 +26,10 @@ struct RenderObject
 {
     /// Non-owning mesh reference used to issue draw commands.
     const Mesh* mesh = nullptr;
+    /// One independently material-bound draw range within the mesh.
+    uint32_t submeshIndex = 0;
+    /// Non-owning material descriptors bound for this draw.
+    const GpuMaterial* material = nullptr;
     /// Transform data uploaded for this object.
     ObjectGpuData objectData{};
 };

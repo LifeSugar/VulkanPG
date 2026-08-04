@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -19,10 +20,12 @@ public:
     {
         /// Render pass whose subpass layout the pipeline targets.
         VkRenderPass renderPass = VK_NULL_HANDLE;
-        /// Path to the compiled vertex shader module.
-        std::string vertexShaderPath;
-        /// Path to the compiled fragment shader module.
-        std::string fragmentShaderPath;
+        /// CPU-owned SPIR-V imported by the Asset layer.
+        std::vector<uint32_t> vertexShaderSpirv;
+        std::string vertexEntryPoint = "main";
+        /// CPU-owned SPIR-V imported by the Asset layer.
+        std::vector<uint32_t> fragmentShaderSpirv;
+        std::string fragmentEntryPoint = "main";
         /// Descriptor set layouts exposed through the pipeline layout.
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
         /// Push-constant ranges exposed through the pipeline layout.

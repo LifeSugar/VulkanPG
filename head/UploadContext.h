@@ -3,6 +3,7 @@
 #include "Buffer.h"
 #include "CommandPool.h"
 #include "Device.h"
+#include "Image.h"
 
 namespace VkRenderer
 {
@@ -19,6 +20,14 @@ public:
         const void* data,
         VkDeviceSize size,
         VkBufferUsageFlags destinationUsage);
+
+    /// Uploads one tightly packed 2D image and transitions it for shader reads.
+    [[nodiscard]] Image uploadImage2D(
+        const void* data,
+        VkDeviceSize size,
+        uint32_t width,
+        uint32_t height,
+        VkFormat format);
 
 private:
     /// Copies data between buffers using a one-time command submission.

@@ -59,6 +59,9 @@ void Window::create(const CreateInfo& createInfo)
     acquireGlfwRuntime();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(
+        GLFW_VISIBLE,
+        createInfo.visible ? GLFW_TRUE : GLFW_FALSE);
     GLFWwindow* newHandle = glfwCreateWindow(
         static_cast<int>(createInfo.width),
         static_cast<int>(createInfo.height),

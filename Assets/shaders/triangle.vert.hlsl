@@ -8,10 +8,14 @@ struct VSInput
     float3 position : POSITION;
 
     [[vk::location(1)]]
-    float3 color    : COLOR0;
+    float4 color    : COLOR0;
 
     [[vk::location(2)]]
     float3 normal   : NORMAL;
+
+    [[vk::location(3)]]
+    float2 texCoord : TEXCOORD0;
+
 };
 
 struct VSOutput
@@ -25,7 +29,10 @@ struct VSOutput
     float3 normal        : NORMAL;
 
     [[vk::location(2)]]
-    float3 color         : COLOR0;
+    float4 color         : COLOR0;
+
+    [[vk::location(3)]]
+    float2 texCoord      : TEXCOORD1;
 };
 
 VSOutput main(VSInput input)
@@ -39,5 +46,6 @@ VSOutput main(VSInput input)
     output.worldPosition = worldPosition.xyz;
     output.normal = normalize(mul((float3x3)object.normalMatrix, input.normal));
     output.color = input.color;
+    output.texCoord = input.texCoord;
     return output;
 }

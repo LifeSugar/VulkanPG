@@ -1,5 +1,6 @@
 #include "VulkanRenderer.h"
 
+#include "GpuMaterial.h"
 #include "Mesh.h"
 #include "VulkanContext.h"
 
@@ -147,10 +148,12 @@ VulkanRenderer::RenderResult VulkanRenderer::render(const RenderFrame& frameData
     }
     for (const RenderObject& object : frameData.objects)
     {
-        if (object.mesh == nullptr || !*object.mesh)
+        if (object.mesh == nullptr || !*object.mesh ||
+            object.material == nullptr || !*object.material ||
+            object.submeshIndex >= object.mesh->submeshes().size())
         {
             throw std::invalid_argument(
-                "RenderFrame contains an invalid Mesh");
+                "RenderFrame contains an invalid mesh, submesh, or material");
         }
     }
 
@@ -260,9 +263,9 @@ GraphicsPipeline::CreateInfo VulkanRenderer::makePipelineCreateInfo() const
 {
     GraphicsPipeline::CreateInfo createInfo = pipelineCreateInfo_;
     createInfo.renderPass = swapchainResources_.renderPass();
-    createInfo.descriptorSetLayouts = {
-        frameDataResources_.descriptorSetLayout()
-    };
+    createInfo.descriptorSetLayouts.insert(
+        createInfo.descriptorSetLayouts.begin(),
+        frameDataResources_.descriptorSetLayout());
     return createInfo;
 }
 
@@ -356,7 +359,20 @@ void VulkanRenderer::recordCommandBuffer(
          ++objectIndex)
     {
         const Mesh& mesh = *frame.objects[objectIndex].mesh;
+        const RenderObject& object = frame.objects[objectIndex];
         mesh.bind(commandBuffer);
+
+        const VkDescriptorSet materialDescriptorSet =
+            object.material->descriptorSet();
+        vkCmdBindDescriptorSets(
+            commandBuffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            graphicsPipeline_.layout(),
+            1,
+            1,
+            &materialDescriptorSet,
+            0,
+            nullptr);
 
         DrawPushConstants pushConstants{};
         pushConstants.objectIndex = objectIndex;
@@ -368,27 +384,26 @@ void VulkanRenderer::recordCommandBuffer(
             sizeof(pushConstants),
             &pushConstants);
 
-        for (const SubmeshData& submesh : mesh.submeshes())
+        const SubmeshData& submesh =
+            mesh.submeshes()[object.submeshIndex];
+        if (submesh.indexed())
         {
-            if (submesh.indexed())
-            {
-                vkCmdDrawIndexed(
-                    commandBuffer,
-                    submesh.indexCount,
-                    1,
-                    submesh.firstIndex,
-                    0,
-                    0);
-            }
-            else
-            {
-                vkCmdDraw(
-                    commandBuffer,
-                    submesh.vertexCount,
-                    1,
-                    submesh.firstVertex,
-                    0);
-            }
+            vkCmdDrawIndexed(
+                commandBuffer,
+                submesh.indexCount,
+                1,
+                submesh.firstIndex,
+                0,
+                0);
+        }
+        else
+        {
+            vkCmdDraw(
+                commandBuffer,
+                submesh.vertexCount,
+                1,
+                submesh.firstVertex,
+                0);
         }
     }
 

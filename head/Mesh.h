@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Asset/MeshAsset.h"
 #include "Buffer.h"
-#include "MeshData.h"
 #include "UploadContext.h"
 
 #include <vector>
@@ -18,7 +18,7 @@ public:
     /// Uploads mesh data into device-local vertex and index buffers.
     Mesh(
         UploadContext& uploadContext,
-        const MeshData& data);
+        const MeshAsset& asset);
 
     Mesh(const Mesh&) = delete;
     Mesh& operator=(const Mesh&) = delete;
@@ -31,7 +31,7 @@ public:
     /// Creates or replaces the GPU buffers from CPU-side mesh data.
     void create(
         UploadContext& uploadContext,
-        const MeshData& data);
+        const MeshAsset& asset);
     /// Releases the GPU buffers and submesh metadata.
     void reset() noexcept;
     /// Binds the vertex and index buffers to a command buffer.
@@ -46,7 +46,7 @@ public:
     /// Returns whether the mesh contains usable GPU buffers and draw ranges.
     [[nodiscard]] explicit operator bool() const noexcept
     {
-        return vertexBuffer_ && indexBuffer_ && !submeshes_.empty();
+        return vertexBuffer_ && !submeshes_.empty();
     }
 
 private:
