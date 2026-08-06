@@ -44,6 +44,8 @@ public:
 
     /// Stages the latest camera snapshot for all frame replicas.
     void setCameraData(const CameraGpuData& cameraData);
+    /// Stages an array of camera snapshots for all frame replicas.
+    void setCameraData(const CameraGpuData* cameraData, uint32_t cameraCount);
     /// Stages the active object-data range for all frame replicas.
     void setObjectData(const ObjectGpuData* objectData, uint32_t objectCount);
     /// Uploads stale camera and object data for one frame slot.
@@ -65,6 +67,11 @@ public:
     [[nodiscard]] uint32_t objectCapacity() const noexcept
     {
         return objectCapacity_;
+    }
+    /// Returns the maximum number of camera records per frame.
+    [[nodiscard]] static constexpr uint32_t cameraCapacity() noexcept
+    {
+        return MaxCameraCount;
     }
 
 private:

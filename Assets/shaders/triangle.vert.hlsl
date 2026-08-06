@@ -37,7 +37,8 @@ struct VSOutput
 
 VSOutput main(VSInput input)
 {
-    const CameraGpuData camera = cameraData[drawPushConstants.cameraIndex];
+    const CameraGpuData camera =
+        cameraBuffer.cameras[drawPushConstants.cameraIndex];
     const ObjectGpuData object = objectData[drawPushConstants.objectIndex];
 
     VSOutput output;

@@ -97,7 +97,7 @@ float4 main(PSInput input) : SV_Target
         0.04f,
         1.0f);
     const float3 cameraPosition =
-        cameraData[drawPushConstants.cameraIndex].worldPosition.xyz;
+        cameraBuffer.cameras[drawPushConstants.cameraIndex].worldPosition.xyz;
     const float3 lightPosition = float3(2.5f, 3.5f, 2.0f);
     const float3 lightColor = float3(5.0f, 4.6f, 4.2f);
     const float3 ambientColor = float3(0.12f, 0.11f, 0.10f);

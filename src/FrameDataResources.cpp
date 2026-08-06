@@ -39,7 +39,7 @@ void FrameDataResources::create(
     {
         std::vector<VkDescriptorSetLayoutBinding> bindings(2);
         bindings[0].binding = 1;
-        bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[0].descriptorCount = 1;
         bindings[0].stageFlags =
             VK_SHADER_STAGE_VERTEX_BIT |
@@ -55,8 +55,8 @@ void FrameDataResources::create(
         cameraBuffers_.create(
             device,
             frameCount,
-            sizeof(CameraGpuData),
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            sizeof(CameraGpuData) * static_cast<VkDeviceSize>(MaxCameraCount),
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         const VkDeviceSize objectBufferSize =
@@ -71,8 +71,12 @@ void FrameDataResources::create(
 
         const std::vector<VkDescriptorPoolSize> poolSizes = {
             {
+                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                frameCount
+            },
+            {
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                frameCount * 2
+                frameCount
             }
         };
         descriptorPool_.create(device.get(), poolSizes, frameCount);
@@ -85,7 +89,9 @@ void FrameDataResources::create(
             VkDescriptorBufferInfo cameraBufferInfo{};
             cameraBufferInfo.buffer = cameraBuffers_.get(i);
             cameraBufferInfo.offset = 0;
-            cameraBufferInfo.range = sizeof(CameraGpuData);
+            cameraBufferInfo.range =
+                sizeof(CameraGpuData) *
+                static_cast<VkDeviceSize>(MaxCameraCount);
 
             VkDescriptorBufferInfo objectBufferInfo{};
             objectBufferInfo.buffer = objectBuffers_.get(i);
@@ -96,7 +102,7 @@ void FrameDataResources::create(
             writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             writes[0].dstSet = descriptorSets_[i];
             writes[0].dstBinding = 1;
-            writes[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             writes[0].descriptorCount = 1;
             writes[0].pBufferInfo = &cameraBufferInfo;
 
@@ -135,7 +141,22 @@ void FrameDataResources::reset() noexcept
 
 void FrameDataResources::setCameraData(const CameraGpuData& cameraData)
 {
-    cameraBuffers_.setData(&cameraData, sizeof(cameraData));
+    setCameraData(&cameraData, 1);
+}
+
+void FrameDataResources::setCameraData(
+    const CameraGpuData* cameraData,
+    uint32_t cameraCount)
+{
+    if (cameraData == nullptr || cameraCount == 0 ||
+        cameraCount > MaxCameraCount)
+    {
+        throw std::invalid_argument(
+            "camera data exceeds the frame buffer capacity");
+    }
+    cameraBuffers_.setData(
+        cameraData,
+        sizeof(CameraGpuData) * static_cast<VkDeviceSize>(cameraCount));
 }
 
 void FrameDataResources::setObjectData(

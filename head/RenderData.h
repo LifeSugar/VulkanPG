@@ -7,6 +7,9 @@
 namespace VkRenderer
 {
 
+    /// Maximum number of camera records stored in one frame's uniform buffer.
+    inline constexpr uint32_t MaxCameraCount = 16;
+
     // One snapshot per CPU/GPU frame slot. Keep the structure 16-byte aligned so
     // it can be copied directly into a uniform-buffer allocation.
     struct alignas(16) FrameGpuData
@@ -56,6 +59,7 @@ namespace VkRenderer
     static_assert(sizeof(CameraGpuData) == 80);
     static_assert(alignof(CameraGpuData) == 16);
     static_assert(offsetof(CameraGpuData, worldPosition) == 64);
+    static_assert(sizeof(CameraGpuData) * MaxCameraCount <= 16 * 1024);
     static_assert(sizeof(ObjectGpuData) == 128);
     static_assert(alignof(ObjectGpuData) == 16);
     static_assert(offsetof(ObjectGpuData, normalMatrix) == 64);
