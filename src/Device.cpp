@@ -111,10 +111,10 @@ void Device::create(
         switch (properties.deviceType)
         {
         case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
-            score = 1000;
+            score = preferIntegratedGpu ? 1000 : 500;
             break;
         case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
-            score = 500;
+            score = preferIntegratedGpu ? 500 : 1000;
             break;
         case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
             score = 100;
@@ -123,14 +123,6 @@ void Device::create(
             score = 50;
             break;
         default:
-            break;
-        }
-
-        // Preserve the application's existing selection policy.
-        if (preferIntegratedGpu && score == 500)
-        {
-            selectedPhysicalDevice = candidate;
-            selectedQueueFamilies = findQueueFamilies(candidate, surface);
             break;
         }
 
