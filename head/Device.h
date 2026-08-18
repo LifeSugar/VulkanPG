@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace VkRenderer
 {
@@ -39,6 +40,14 @@ public:
     void reset() noexcept;
     /// Waits until all queues on the logical device are idle.
     void waitIdle() const;
+
+    /// Selects the first candidate supporting all required format features.
+    [[nodiscard]] VkFormat findSupportedFormat(
+        const std::vector<VkFormat>& candidates,
+        VkImageTiling tiling,
+        VkFormatFeatureFlags requiredFeatures) const;
+    /// Selects a depth-stencil format supported as an optimal attachment.
+    [[nodiscard]] VkFormat findDepthStencilFormat() const;
 
     /// Returns the selected physical-device handle.
     [[nodiscard]] VkPhysicalDevice physical() const noexcept { return physicalDevice_; }

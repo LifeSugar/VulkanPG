@@ -46,6 +46,18 @@ void App::createDemoAssets()
     shaderInfo.stage = ShaderStage::Fragment;
     pbrFragmentShaderAsset = shaderImporter.import(shaderInfo);
 
+    shaderInfo.path = resolveAssetPath(
+        "Assets/shaders/present.vert.spv");
+    shaderInfo.name = "Present Vertex";
+    shaderInfo.stage = ShaderStage::Vertex;
+    presentVertexShaderAsset = shaderImporter.import(shaderInfo);
+
+    shaderInfo.path = resolveAssetPath(
+        "Assets/shaders/present.frag.spv");
+    shaderInfo.name = "Present Fragment";
+    shaderInfo.stage = ShaderStage::Fragment;
+    presentFragmentShaderAsset = shaderImporter.import(shaderInfo);
+
     MaterialTemplateAsset::CreateInfo templateInfo{};
     templateInfo.name = "glTF Metallic-Roughness PBR";
     templateInfo.shaders = {

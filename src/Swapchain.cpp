@@ -38,6 +38,9 @@ Swapchain::Swapchain(Swapchain&& other) noexcept
       images_(std::move(other.images_)),
       imageViews_(std::move(other.imageViews_)),
       format_(std::exchange(other.format_, VK_FORMAT_UNDEFINED)),
+      colorSpace_(std::exchange(
+          other.colorSpace_,
+          VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)),
       extent_(std::exchange(other.extent_, VkExtent2D{}))
 {
 }
@@ -52,6 +55,9 @@ Swapchain& Swapchain::operator=(Swapchain&& other) noexcept
         images_ = std::move(other.images_);
         imageViews_ = std::move(other.imageViews_);
         format_ = std::exchange(other.format_, VK_FORMAT_UNDEFINED);
+        colorSpace_ = std::exchange(
+            other.colorSpace_,
+            VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
         extent_ = std::exchange(other.extent_, VkExtent2D{});
     }
     return *this;
@@ -166,6 +172,7 @@ void Swapchain::create(
     images_ = std::move(newImages);
     imageViews_ = std::move(newImageViews);
     format_ = surfaceFormat.format;
+    colorSpace_ = surfaceFormat.colorSpace;
     extent_ = extent;
 }
 
@@ -185,6 +192,7 @@ void Swapchain::reset() noexcept
     images_.clear();
     imageViews_.clear();
     format_ = VK_FORMAT_UNDEFINED;
+    colorSpace_ = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     extent_ = {};
 }
 

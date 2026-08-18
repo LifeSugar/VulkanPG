@@ -54,6 +54,15 @@ namespace VkRenderer
         uint32_t objectIndex = 0;
     };
 
+    /// Parameters consumed by the final scene-color presentation shader.
+    struct alignas(16) PresentPushConstants
+    {
+        float exposureEv = 0.0f;
+        uint32_t toneMappingMode = 1;
+        uint32_t outputTransferFunction = 0;
+        uint32_t padding = 0;
+    };
+
     static_assert(sizeof(FrameGpuData) == 16);
     static_assert(alignof(FrameGpuData) == 16);
     static_assert(sizeof(CameraGpuData) == 80);
@@ -64,5 +73,7 @@ namespace VkRenderer
     static_assert(alignof(ObjectGpuData) == 16);
     static_assert(offsetof(ObjectGpuData, normalMatrix) == 64);
     static_assert(sizeof(DrawPushConstants) == 8);
+    static_assert(sizeof(PresentPushConstants) == 16);
+    static_assert(alignof(PresentPushConstants) == 16);
 
 } // namespace VkRenderer

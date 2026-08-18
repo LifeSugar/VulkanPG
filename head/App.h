@@ -43,6 +43,8 @@ private:
     TextureAssetHandle demoTextureAsset;
     ShaderAssetHandle pbrVertexShaderAsset;
     ShaderAssetHandle pbrFragmentShaderAsset;
+    ShaderAssetHandle presentVertexShaderAsset;
+    ShaderAssetHandle presentFragmentShaderAsset;
     MaterialTemplateAssetHandle demoMaterialTemplateAsset;
     MaterialAssetHandle demoMaterialAsset;
     ModelAssetHandle demoModelAsset;
@@ -77,6 +79,7 @@ private:
 
     static std::string resolveAssetPath(const std::string& relativePath);
     [[nodiscard]] GraphicsPipeline::CreateInfo makeGraphicsPipelineCreateInfo() const;
+    [[nodiscard]] GraphicsPipeline::CreateInfo makePresentPipelineCreateInfo() const;
 
 };
 

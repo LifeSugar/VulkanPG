@@ -34,6 +34,21 @@ public:
         std::vector<VkVertexInputBindingDescription> vertexBindings;
         /// Vertex attributes consumed by the vertex shader.
         std::vector<VkVertexInputAttributeDescription> vertexAttributes;
+        /// Primitive topology consumed by the input-assembly stage.
+        VkPrimitiveTopology primitiveTopology =
+            VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        /// Rasterized faces discarded before fragment shading.
+        VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
+        /// Winding order treated as front-facing.
+        VkFrontFace frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        /// Enables depth comparisons when the subpass has a depth attachment.
+        VkBool32 depthTestEnable = VK_TRUE;
+        /// Enables writes to the depth attachment.
+        VkBool32 depthWriteEnable = VK_TRUE;
+        /// Comparison operation used by the depth test.
+        VkCompareOp depthCompareOp = VK_COMPARE_OP_LESS;
+        /// Rasterization sample count; must match the target subpass.
+        VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
     };
 
     /// Creates an empty graphics-pipeline wrapper.

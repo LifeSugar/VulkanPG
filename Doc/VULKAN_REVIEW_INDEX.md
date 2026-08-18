@@ -12,6 +12,7 @@
 4. [HELLO_WORLD_RENDERER_REVIEW.md](HELLO_WORLD_RENDERER_REVIEW.md)：旧版代码审阅。它记录了架构重构前的关键问题；阅读时结合下文“旧问题当前状态”。
 5. [Vulkan_Hello_Triangle_Quiz.md](Vulkan_Hello_Triangle_Quiz.md) / [参考答案](Vulkan_Hello_Triangle_Quiz_Answers.md)：Hello Triangle 基础测试。
 6. [VULKAN_TUTORIAL_CN.md](VULKAN_TUTORIAL_CN.md)：最初的逐 API 教程，适合查初始化字段，不应代替当前架构讲义。
+7. [OFFSCREEN_PRESENT_REFACTOR_PLAN.md](OFFSCREEN_PRESENT_REFACTOR_PLAN.md)：Offscreen RenderTarget + Present Pass 的进行中改造计划、色彩契约与验收清单。
 
 ## 先记住项目已经走到哪里
 
@@ -116,4 +117,3 @@ GLFW Window
 - `VulkanApp.exe --asset-test`：通过；导入 33 张纹理、16 个材质、15 个 Mesh、50 个节点。
 - `VulkanApp.exe --render-test`：通过；Validation 开启，连续绘制 3 帧，每帧提取 49 个 Submesh Draw。
 - 运行输出中只有本机重复 Layer 注册警告，没有 Vulkan Valid Usage 错误。
-

@@ -127,8 +127,6 @@ float4 main(PSInput input) : SV_Target
     float3 ambient = ambientColor * baseColor * occlusion;
     float3 color = ambient + (kD * baseColor / PI + specular) * radiance * nDotL;
     color += emissive;
-    color = color / (color + 1.0f);
-    color = pow(color, 1.0f / 2.2f);
 
     return float4(
         color,

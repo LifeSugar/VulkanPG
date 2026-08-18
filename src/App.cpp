@@ -101,6 +101,7 @@ void App::initVulkan()
     rendererCreateInfo.framebufferExtent = window.framebufferExtent();
     rendererCreateInfo.framesInFlight = kMaxFramesInFlight;
     rendererCreateInfo.graphicsPipeline = makeGraphicsPipelineCreateInfo();
+    rendererCreateInfo.presentPipeline = makePresentPipelineCreateInfo();
     renderer.create(rendererCreateInfo);
 
     setupCamera();
@@ -115,6 +116,8 @@ void App::cleanup()
     demoTextureAsset = {};
     pbrVertexShaderAsset = {};
     pbrFragmentShaderAsset = {};
+    presentVertexShaderAsset = {};
+    presentFragmentShaderAsset = {};
     demoMaterialTemplateAsset = {};
     demoMaterialAsset = {};
     demoModelAsset = {};

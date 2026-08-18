@@ -96,7 +96,8 @@ void GraphicsPipeline::create(
         createInfo.vertexShaderSpirv.empty() ||
         createInfo.vertexEntryPoint.empty() ||
         createInfo.fragmentShaderSpirv.empty() ||
-        createInfo.fragmentEntryPoint.empty())
+        createInfo.fragmentEntryPoint.empty() ||
+        createInfo.sampleCount == 0)
     {
         throw std::invalid_argument("graphics pipeline create info is incomplete");
     }
@@ -159,7 +160,7 @@ void GraphicsPipeline::create(
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
         inputAssembly.sType =
             VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        inputAssembly.topology = createInfo.primitiveTopology;
         inputAssembly.primitiveRestartEnable = VK_FALSE;
 
         VkPipelineViewportStateCreateInfo viewportState{};
@@ -184,13 +185,13 @@ void GraphicsPipeline::create(
             VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizer.lineWidth = 1.0f;
-        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizer.cullMode = createInfo.cullMode;
+        rasterizer.frontFace = createInfo.frontFace;
 
         VkPipelineMultisampleStateCreateInfo multisampling{};
         multisampling.sType =
             VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        multisampling.rasterizationSamples = createInfo.sampleCount;
 
         VkPipelineColorBlendAttachmentState colorBlendAttachment{};
         colorBlendAttachment.colorWriteMask =
@@ -208,9 +209,9 @@ void GraphicsPipeline::create(
         VkPipelineDepthStencilStateCreateInfo depthStencil{};
         depthStencil.sType =
             VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depthStencil.depthTestEnable = VK_TRUE;
-        depthStencil.depthWriteEnable = VK_TRUE;
-        depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+        depthStencil.depthTestEnable = createInfo.depthTestEnable;
+        depthStencil.depthWriteEnable = createInfo.depthWriteEnable;
+        depthStencil.depthCompareOp = createInfo.depthCompareOp;
         depthStencil.maxDepthBounds = 1.0f;
 
         VkGraphicsPipelineCreateInfo pipelineInfo{};

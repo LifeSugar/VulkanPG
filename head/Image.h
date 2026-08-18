@@ -20,7 +20,8 @@ public:
         VkFormat format,
         VkImageTiling tiling,
         VkImageUsageFlags usage,
-        VkMemoryPropertyFlags memoryProperties);
+        VkMemoryPropertyFlags memoryProperties,
+        VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT);
     /// Destroys the owned image and memory.
     ~Image();
 
@@ -40,7 +41,8 @@ public:
         VkFormat format,
         VkImageTiling tiling,
         VkImageUsageFlags usage,
-        VkMemoryPropertyFlags memoryProperties);
+        VkMemoryPropertyFlags memoryProperties,
+        VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT);
     /// Releases the owned image and memory.
     void reset() noexcept;
 

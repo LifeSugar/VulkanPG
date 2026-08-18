@@ -38,9 +38,19 @@ Image::Image(
     VkFormat format,
     VkImageTiling tiling,
     VkImageUsageFlags usage,
-    VkMemoryPropertyFlags memoryProperties)
+    VkMemoryPropertyFlags memoryProperties,
+    VkSampleCountFlagBits samples)
 {
-    create(physicalDevice, device, width, height, format, tiling, usage, memoryProperties);
+    create(
+        physicalDevice,
+        device,
+        width,
+        height,
+        format,
+        tiling,
+        usage,
+        memoryProperties,
+        samples);
 }
 
 Image::~Image()
@@ -75,10 +85,12 @@ void Image::create(
     VkFormat format,
     VkImageTiling tiling,
     VkImageUsageFlags usage,
-    VkMemoryPropertyFlags memoryProperties)
+    VkMemoryPropertyFlags memoryProperties,
+    VkSampleCountFlagBits samples)
 {
     if (physicalDevice == VK_NULL_HANDLE || device == VK_NULL_HANDLE ||
-        width == 0 || height == 0 || format == VK_FORMAT_UNDEFINED)
+        width == 0 || height == 0 || format == VK_FORMAT_UNDEFINED ||
+        usage == 0 || samples == 0)
     {
         throw std::invalid_argument("cannot create a Image with invalid arguments");
     }
@@ -96,7 +108,7 @@ void Image::create(
     imageInfo.tiling = tiling;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage = usage;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.samples = samples;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     if (vkCreateImage(device, &imageInfo, nullptr, &newImage) != VK_SUCCESS)

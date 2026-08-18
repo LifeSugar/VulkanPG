@@ -62,6 +62,11 @@ public:
     [[nodiscard]] VkSwapchainKHR get() const noexcept { return swapchain_; }
     /// Returns the selected swapchain color format.
     [[nodiscard]] VkFormat format() const noexcept { return format_; }
+    /// Returns the selected presentation color space.
+    [[nodiscard]] VkColorSpaceKHR colorSpace() const noexcept
+    {
+        return colorSpace_;
+    }
     /// Returns the selected swapchain image extent.
     [[nodiscard]] VkExtent2D extent() const noexcept { return extent_; }
     /// Returns the number of images owned by the swapchain.
@@ -100,6 +105,8 @@ private:
     std::vector<ImageView> imageViews_;
     /// Color format shared by all swapchain images.
     VkFormat format_ = VK_FORMAT_UNDEFINED;
+    /// Presentation color space paired with the image format.
+    VkColorSpaceKHR colorSpace_ = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     /// Drawable extent shared by all swapchain images.
     VkExtent2D extent_{};
 };

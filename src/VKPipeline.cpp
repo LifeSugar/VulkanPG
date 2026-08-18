@@ -75,4 +75,27 @@ GraphicsPipeline::CreateInfo App::makeGraphicsPipelineCreateInfo() const
     return createInfo;
 }
 
+GraphicsPipeline::CreateInfo App::makePresentPipelineCreateInfo() const
+{
+    const ShaderAsset& vertexShader =
+        assetManager.shader(presentVertexShaderAsset);
+    const ShaderAsset& fragmentShader =
+        assetManager.shader(presentFragmentShaderAsset);
+
+    GraphicsPipeline::CreateInfo createInfo{};
+    createInfo.vertexShaderSpirv = vertexShader.spirv();
+    createInfo.vertexEntryPoint = vertexShader.entryPoint();
+    createInfo.fragmentShaderSpirv = fragmentShader.spirv();
+    createInfo.fragmentEntryPoint = fragmentShader.entryPoint();
+    createInfo.cullMode = VK_CULL_MODE_NONE;
+    createInfo.depthTestEnable = VK_FALSE;
+    createInfo.depthWriteEnable = VK_FALSE;
+
+    VkPushConstantRange pushConstantRange{};
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConstantRange.size = sizeof(PresentPushConstants);
+    createInfo.pushConstantRanges = {pushConstantRange};
+    return createInfo;
+}
+
 } // namespace VkRenderer

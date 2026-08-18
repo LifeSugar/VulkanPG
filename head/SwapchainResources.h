@@ -70,6 +70,11 @@ public:
     [[nodiscard]] VkSwapchainKHR get() const noexcept { return swapchain_.get(); }
     /// Returns the swapchain color format.
     [[nodiscard]] VkFormat format() const noexcept { return swapchain_.format(); }
+    /// Returns the swapchain presentation color space.
+    [[nodiscard]] VkColorSpaceKHR colorSpace() const noexcept
+    {
+        return swapchain_.colorSpace();
+    }
     /// Returns the swapchain image extent.
     [[nodiscard]] VkExtent2D extent() const noexcept { return swapchain_.extent(); }
     /// Returns the number of swapchain image-resource bundles.

@@ -213,6 +213,57 @@ void Device::waitIdle() const
     }
 }
 
+VkFormat Device::findSupportedFormat(
+    const std::vector<VkFormat>& candidates,
+    VkImageTiling tiling,
+    VkFormatFeatureFlags requiredFeatures) const
+{
+    if (physicalDevice_ == VK_NULL_HANDLE ||
+        candidates.empty() ||
+        requiredFeatures == 0)
+    {
+        throw std::invalid_argument(
+            "format query requires a physical device, candidates, and features");
+    }
+
+    for (VkFormat format : candidates)
+    {
+        if (format == VK_FORMAT_UNDEFINED)
+        {
+            continue;
+        }
+
+        VkFormatProperties properties{};
+        vkGetPhysicalDeviceFormatProperties(
+            physicalDevice_,
+            format,
+            &properties);
+
+        const VkFormatFeatureFlags availableFeatures =
+            tiling == VK_IMAGE_TILING_LINEAR
+                ? properties.linearTilingFeatures
+                : properties.optimalTilingFeatures;
+        if ((availableFeatures & requiredFeatures) == requiredFeatures)
+        {
+            return format;
+        }
+    }
+
+    throw std::runtime_error("failed to find a supported image format");
+}
+
+VkFormat Device::findDepthStencilFormat() const
+{
+    return findSupportedFormat(
+        {
+            VK_FORMAT_D32_SFLOAT_S8_UINT,
+            VK_FORMAT_D24_UNORM_S8_UINT,
+            VK_FORMAT_D16_UNORM_S8_UINT
+        },
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
 Device::QueueFamilyIndices Device::findQueueFamilies(
     VkPhysicalDevice physicalDevice,
     VkSurfaceKHR surface)

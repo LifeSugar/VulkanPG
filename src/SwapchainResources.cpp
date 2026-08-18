@@ -205,28 +205,7 @@ VkSemaphore SwapchainResources::renderFinished(uint32_t imageIndex) const
 
 VkFormat SwapchainResources::findDepthFormat(const Device& device)
 {
-    const std::array<VkFormat, 3> candidates = {
-        VK_FORMAT_D32_SFLOAT_S8_UINT,
-        VK_FORMAT_D24_UNORM_S8_UINT,
-        VK_FORMAT_D16_UNORM_S8_UINT
-    };
-
-    for (VkFormat format : candidates)
-    {
-        VkFormatProperties properties{};
-        vkGetPhysicalDeviceFormatProperties(
-            device.physical(),
-            format,
-            &properties);
-        if ((properties.optimalTilingFeatures &
-             VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) ==
-            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-        {
-            return format;
-        }
-    }
-
-    throw std::runtime_error("failed to find supported depth format!");
+    return device.findDepthStencilFormat();
 }
 
 RenderPass SwapchainResources::makeRenderPass(
