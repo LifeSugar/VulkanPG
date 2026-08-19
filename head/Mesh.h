@@ -43,6 +43,8 @@ public:
     [[nodiscard]] VkBuffer indexBuffer() const noexcept { return indexBuffer_.get(); }
     /// Returns draw ranges for the uploaded mesh primitives.
     [[nodiscard]] const std::vector<SubmeshData>& submeshes() const noexcept { return submeshes_; }
+    /// Returns the CPU-computed bounds in mesh-local space.
+    [[nodiscard]] const Aabb& localBounds() const noexcept { return localBounds_; }
     /// Returns whether the mesh contains usable GPU buffers and draw ranges.
     [[nodiscard]] explicit operator bool() const noexcept
     {
@@ -56,6 +58,8 @@ private:
     Buffer indexBuffer_;
     /// Draw ranges corresponding to the source mesh primitives.
     std::vector<SubmeshData> submeshes_;
+    /// CPU metadata copied from the source MeshAsset for visibility tests.
+    Aabb localBounds_;
 };
 
 } // namespace VkRenderer

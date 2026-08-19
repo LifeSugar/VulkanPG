@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Asset/AssetFwd.h"
+#include "Asset/MaterialState.h"
 
 #include <glm/glm.hpp>
 
@@ -43,6 +44,7 @@ public:
     {
         std::string name;
         MaterialTemplateAssetHandle materialTemplate;
+        MaterialRenderState renderState;
         std::vector<MaterialParameterAssignment> parameters;
         std::vector<MaterialTextureAssignment> textures;
     };
@@ -57,6 +59,7 @@ public:
 
     [[nodiscard]] const std::string& name() const noexcept { return name_; }
     [[nodiscard]] MaterialTemplateAssetHandle materialTemplate() const noexcept { return materialTemplate_; }
+    [[nodiscard]] const MaterialRenderState& renderState() const noexcept { return renderState_; }
     [[nodiscard]] const std::vector<std::byte>& parameterData() const noexcept { return parameterData_; }
     [[nodiscard]] const std::vector<TextureAssetHandle>& textures() const noexcept { return textures_; }
     [[nodiscard]] explicit operator bool() const noexcept
@@ -71,6 +74,7 @@ private:
     {
         std::string name;
         MaterialTemplateAssetHandle materialTemplate;
+        MaterialRenderState renderState;
         std::vector<std::byte> parameterData;
         std::vector<TextureAssetHandle> textures;
     };
@@ -79,6 +83,7 @@ private:
 
     std::string name_;
     MaterialTemplateAssetHandle materialTemplate_;
+    MaterialRenderState renderState_;
     std::vector<std::byte> parameterData_;
     std::vector<TextureAssetHandle> textures_;
 };

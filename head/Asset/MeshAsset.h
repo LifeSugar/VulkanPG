@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Asset/AssetFwd.h"
+#include "Math/Aabb.h"
 
 #include <glm/glm.hpp>
 
@@ -59,6 +60,8 @@ public:
     [[nodiscard]] const std::vector<Vertex>& vertices() const noexcept { return vertices_; }
     [[nodiscard]] const std::vector<uint32_t>& indices() const noexcept { return indices_; }
     [[nodiscard]] const std::vector<SubmeshData>& submeshes() const noexcept { return submeshes_; }
+    /// Returns the bounds of all mesh vertices in mesh-local space.
+    [[nodiscard]] const Aabb& localBounds() const noexcept { return localBounds_; }
     [[nodiscard]] bool empty() const noexcept
     {
         return vertices_.empty() || submeshes_.empty();
@@ -70,6 +73,7 @@ private:
     std::vector<Vertex> vertices_;
     std::vector<uint32_t> indices_;
     std::vector<SubmeshData> submeshes_;
+    Aabb localBounds_;
 };
 
 } // namespace VkRenderer

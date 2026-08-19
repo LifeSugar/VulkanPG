@@ -1,7 +1,7 @@
 #include "Render/SceneRenderExtractor.h"
 
-#include "GpuMaterial.h"
-#include "Mesh.h"
+#include "Asset/AssetManager.h"
+#include "Scene/Scene.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -56,14 +56,11 @@ std::vector<glm::mat4> hierarchyWorldTransforms(
 
 } // namespace
 
-RenderFrame SceneRenderExtractor::extract(
+std::vector<RenderCandidate> SceneRenderExtractor::extract(
     const Scene& scene,
-    const AssetManager& assets,
-    const RenderAssetCache& renderAssets,
-    RenderView view) const
+    const AssetManager& assets) const
 {
-    RenderFrame frame{};
-    frame.view = std::move(view);
+    std::vector<RenderCandidate> candidates;
 
     const std::vector<SceneNode>& sceneNodes = scene.nodes();
     const std::vector<glm::mat4> sceneWorld =
@@ -94,27 +91,33 @@ RenderFrame SceneRenderExtractor::extract(
             const ModelNode& modelNode = model.nodes()[modelIndex];
             for (MeshAssetHandle meshHandle : modelNode.meshes)
             {
-                const Mesh& mesh = renderAssets.mesh(meshHandle);
+                const MeshAsset& mesh = assets.mesh(meshHandle);
                 for (uint32_t submeshIndex = 0;
                      submeshIndex < mesh.submeshes().size();
                      ++submeshIndex)
                 {
                     const SubmeshData& submesh =
                         mesh.submeshes()[submeshIndex];
-                    RenderObject object{};
-                    object.mesh = &mesh;
-                    object.submeshIndex = submeshIndex;
-                    object.material =
-                        &renderAssets.material(submesh.material);
-                    object.objectData.world = modelWorld[modelIndex];
-                    object.objectData.normalMatrix = glm::transpose(
-                        glm::inverse(object.objectData.world));
-                    frame.objects.push_back(object);
+                    RenderCandidate candidate{};
+                    candidate.mesh = meshHandle;
+                    candidate.submeshIndex = submeshIndex;
+                    candidate.material = submesh.material;
+                    candidate.layerMask = sceneNode.layerMask;
+                    candidate.boundsCullingMode =
+                        sceneNode.boundsCullingMode;
+                    candidate.objectData.world = modelWorld[modelIndex];
+                    candidate.objectData.normalMatrix = glm::transpose(
+                        glm::inverse(candidate.objectData.world));
+                    candidate.worldBounds = transformAabb(
+                        mesh.localBounds(),
+                        candidate.objectData.world);
+
+                    candidates.push_back(candidate);
                 }
             }
         }
     }
-    return frame;
+    return candidates;
 }
 
 } // namespace VkRenderer

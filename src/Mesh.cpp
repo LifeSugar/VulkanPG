@@ -47,6 +47,7 @@ void Mesh::create(
         "mesh vertex data");
 
     std::vector<SubmeshData> newSubmeshes = asset.submeshes();
+    const Aabb newLocalBounds = asset.localBounds();
     Buffer newVertexBuffer = uploadContext.uploadBuffer(
         asset.vertices().data(),
         vertexSize,
@@ -69,11 +70,13 @@ void Mesh::create(
     vertexBuffer_ = std::move(newVertexBuffer);
     indexBuffer_ = std::move(newIndexBuffer);
     submeshes_ = std::move(newSubmeshes);
+    localBounds_ = newLocalBounds;
 }
 
 void Mesh::reset() noexcept
 {
     submeshes_.clear();
+    localBounds_ = {};
     indexBuffer_.reset();
     vertexBuffer_.reset();
 }

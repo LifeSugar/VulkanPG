@@ -163,14 +163,12 @@ private:
     uint32_t presentOutputTransferFunction_ = 0;
     /// Reusable command and synchronization resources for in-flight frames.
     std::vector<FrameContext> frameContexts_;
-    /// Contiguous CPU-side object data prepared for upload.
-    std::vector<ObjectGpuData> stagedObjectData_;
     /// Frame slot selected for the next submission.
     uint32_t currentFrame_ = 0;
-    /// Revision of the camera data most recently staged.
-    uint64_t stagedCameraRevision_ = 0;
-    /// Whether camera data has been staged at least once.
-    bool hasStagedCameraData_ = false;
+    /// Identity of the view whose GPU payload is currently staged.
+    RenderViewId stagedViewId_{};
+    /// Revision of the currently staged view GPU payload.
+    uint64_t stagedViewGpuDataRevision_ = 0;
 };
 
 } // namespace VkRenderer

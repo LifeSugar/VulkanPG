@@ -12,6 +12,7 @@ Camera::Camera()
     , m_viewProjectionMatrix(1.0f)
     , m_isViewDirty(true)
     , m_isProjectionDirty(true)
+    , m_viewId(VkRenderer::RenderViewId::generate())
 {
 }
 
@@ -24,7 +25,7 @@ void Camera::setConfig(const Config &config)
     {
         m_config = config;
         m_isProjectionDirty = true;
-        markChanged();
+        markGpuDataChanged();
     }
 }
 
@@ -39,7 +40,7 @@ void Camera::setPosition(const glm::vec3 &position)
     {
         m_position = position;
         m_isViewDirty = true;
-        markChanged();
+        markGpuDataChanged();
     }
 }
 
@@ -54,13 +55,35 @@ void Camera::setRotation(const glm::vec3 &rotation)
     {
         m_rotation = rotation;
         m_isViewDirty = true;
-        markChanged();
+        markGpuDataChanged();
     }
 }
 
 const glm::vec3 &Camera::getRotation() const
 {
     return m_rotation;
+}
+
+void Camera::setCullingMask(
+    VkRenderer::LayerMask cullingMask) noexcept
+{
+    m_cullingMask = cullingMask;
+}
+
+VkRenderer::LayerMask Camera::getCullingMask() const noexcept
+{
+    return m_cullingMask;
+}
+
+void Camera::setCullingFlags(
+    VkRenderer::CullingFlags cullingFlags) noexcept
+{
+    m_cullingFlags = cullingFlags;
+}
+
+VkRenderer::CullingFlags Camera::getCullingFlags() const noexcept
+{
+    return m_cullingFlags;
 }
 
 const glm::mat4 &Camera::getViewMatrix() const
@@ -103,13 +126,29 @@ VkRenderer::CameraGpuData Camera::getGpuData() const
     return data;
 }
 
+VkRenderer::RenderView Camera::makeRenderView() const
+{
+    VkRenderer::RenderView view{};
+    view.id = m_viewId;
+    view.gpuDataRevision = m_gpuDataRevision;
+    view.viewMatrix = getViewMatrix();
+    view.projectionMatrix = getProjectionMatrix();
+    view.viewProjectionMatrix = getViewProjectionMatrix();
+    view.worldPosition = m_position;
+    view.gpuData.viewProjection = view.viewProjectionMatrix;
+    view.gpuData.worldPosition = glm::vec4(m_position, 1.0f);
+    view.cullingMask = m_cullingMask;
+    view.cullingFlags = m_cullingFlags;
+    return view;
+}
+
 void Camera::setAspect(float aspect)
 {
     if (m_config.aspectRatio != aspect)
     {
         m_config.aspectRatio = aspect;
         m_isProjectionDirty = true;
-        markChanged();
+        markGpuDataChanged();
     }
 }
 
@@ -149,15 +188,18 @@ void Camera::Update()
     }
 }
 
-void Camera::markChanged() noexcept
+void Camera::markGpuDataChanged()
 {
-    if (m_revision == std::numeric_limits<uint64_t>::max())
+    if (m_gpuDataRevision == std::numeric_limits<uint64_t>::max())
     {
-        m_revision = 1;
+        // Rotate the identity as well so a wrapped revision cannot match a
+        // snapshot cached for this Camera's previous revision cycle.
+        m_viewId = VkRenderer::RenderViewId::generate();
+        m_gpuDataRevision = 1;
     }
     else
     {
-        ++m_revision;
+        ++m_gpuDataRevision;
     }
 }
 

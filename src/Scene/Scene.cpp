@@ -72,4 +72,26 @@ void Scene::setLocalTransform(
     nodes_[nodeIndex].localTransform = transform;
 }
 
+void Scene::setLayerMask(
+    uint32_t nodeIndex,
+    LayerMask layerMask)
+{
+    if (nodeIndex >= nodes_.size())
+    {
+        throw std::out_of_range("scene node index is out of range");
+    }
+    nodes_[nodeIndex].layerMask = layerMask;
+}
+
+void Scene::setBoundsCullingMode(
+    uint32_t nodeIndex,
+    BoundsCullingMode mode)
+{
+    if (nodeIndex >= nodes_.size())
+    {
+        throw std::out_of_range("scene node index is out of range");
+    }
+    nodes_[nodeIndex].boundsCullingMode = mode;
+}
+
 } // namespace VkRenderer

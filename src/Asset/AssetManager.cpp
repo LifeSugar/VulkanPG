@@ -1,6 +1,7 @@
 #include "Asset/AssetManager.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <stdexcept>
 #include <type_traits>
@@ -11,6 +12,53 @@ namespace VkRenderer
 {
 namespace
 {
+
+void validateMaterialRenderState(const MaterialRenderState& state)
+{
+    switch (state.surfaceType)
+    {
+    case MaterialSurfaceType::Opaque:
+    case MaterialSurfaceType::Transparent:
+        break;
+    default:
+        throw std::invalid_argument(
+            "material surface type is invalid");
+    }
+
+    switch (state.depth.compare)
+    {
+    case DepthCompare::Never:
+    case DepthCompare::Less:
+    case DepthCompare::Equal:
+    case DepthCompare::LessEqual:
+    case DepthCompare::Greater:
+    case DepthCompare::NotEqual:
+    case DepthCompare::GreaterEqual:
+    case DepthCompare::Always:
+        break;
+    default:
+        throw std::invalid_argument(
+            "material depth comparison is invalid");
+    }
+
+    if (!std::isfinite(state.alphaClipThreshold) ||
+        state.alphaClipThreshold < 0.0f ||
+        state.alphaClipThreshold > 1.0f)
+    {
+        throw std::invalid_argument(
+            "material alpha clip threshold must be within [0, 1]");
+    }
+    if (state.alphaClipEnabled && state.transparent())
+    {
+        throw std::invalid_argument(
+            "alpha clipping currently requires an opaque material");
+    }
+    if (state.depth.writeEnabled && !state.depth.testEnabled)
+    {
+        throw std::invalid_argument(
+            "material cannot write depth while depth testing is disabled");
+    }
+}
 
 MaterialValueType valueType(const MaterialValue& value)
 {
@@ -82,6 +130,8 @@ MaterialTemplateAssetHandle AssetManager::createMaterialTemplate(
 MaterialAssetHandle AssetManager::createMaterial(
     MaterialAsset::CreateInfo createInfo)
 {
+    validateMaterialRenderState(createInfo.renderState);
+
     if (!materialTemplates_.contains(createInfo.materialTemplate))
     {
         throw std::invalid_argument(
@@ -197,6 +247,7 @@ MaterialAssetHandle AssetManager::createMaterial(
     MaterialAsset::CompiledCreateInfo compiled{};
     compiled.name = std::move(createInfo.name);
     compiled.materialTemplate = createInfo.materialTemplate;
+    compiled.renderState = createInfo.renderState;
     compiled.parameterData = std::move(parameterData);
     compiled.textures = std::move(textures);
     return materials_.insert(MaterialAsset(std::move(compiled)));

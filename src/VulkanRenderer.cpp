@@ -274,7 +274,6 @@ void VulkanRenderer::create(const CreateInfo& createInfo)
             device,
             createInfo.framesInFlight,
             createInfo.maxRenderObjects);
-        stagedObjectData_.reserve(createInfo.maxRenderObjects);
 
         SwapchainResources::CreateInfo swapchainCreateInfo{};
         swapchainCreateInfo.surface = context_->surface();
@@ -306,7 +305,6 @@ void VulkanRenderer::reset() noexcept
     }
 
     frameContexts_.clear();
-    stagedObjectData_.clear();
     presentPipeline_.reset();
     graphicsPipeline_.reset();
     presentDescriptorSets_.clear();
@@ -324,8 +322,8 @@ void VulkanRenderer::reset() noexcept
     sceneColorFormat_ = VK_FORMAT_UNDEFINED;
     sceneDepthFormat_ = VK_FORMAT_UNDEFINED;
     presentOutputTransferFunction_ = 0;
-    stagedCameraRevision_ = 0;
-    hasStagedCameraData_ = false;
+    stagedViewId_ = {};
+    stagedViewGpuDataRevision_ = 0;
 }
 
 void VulkanRenderer::waitIdle() const
@@ -393,20 +391,63 @@ VulkanRenderer::RenderResult VulkanRenderer::render(const RenderFrame& frameData
     {
         throw std::logic_error("cannot render with an uninitialized VulkanRenderer");
     }
-    if (frameData.objects.size() > frameDataResources_.objectCapacity())
+    if (frameData.renderList.size() >
+        frameDataResources_.objectCapacity())
     {
         throw std::invalid_argument(
             "RenderFrame exceeds VulkanRenderer object capacity");
     }
-    for (const RenderObject& object : frameData.objects)
+    if (!frameData.view.id || frameData.view.gpuDataRevision == 0)
     {
-        if (object.mesh == nullptr || !*object.mesh ||
-            object.material == nullptr || !*object.material ||
-            object.submeshIndex >= object.mesh->submeshes().size())
+        throw std::invalid_argument(
+            "RenderFrame contains an invalid RenderView identity or revision");
+    }
+
+    const auto validateCandidates = [](const auto& candidates)
+    {
+        for (const RenderItem& item : candidates)
+        {
+            if (item.mesh == nullptr || !*item.mesh ||
+                item.material == nullptr || !*item.material ||
+                item.submeshIndex >= item.mesh->submeshes().size() ||
+                !item.materialKey || !item.pipelineKey)
+            {
+                throw std::invalid_argument(
+                    "RenderFrame contains an invalid mesh, submesh, or material");
+            }
+        }
+    };
+    validateCandidates(frameData.renderList.opaque);
+    validateCandidates(frameData.renderList.transparent);
+    if (frameData.renderList.objectData.size() !=
+        frameData.renderList.size())
+    {
+        throw std::invalid_argument(
+            "RenderList object-data count does not match its draw count");
+    }
+    for (const RenderItem& item : frameData.renderList.opaque)
+    {
+        if (item.objectIndex >= frameData.renderList.objectData.size() ||
+            isTransparentQueue(item.queue))
         {
             throw std::invalid_argument(
-                "RenderFrame contains an invalid mesh, submesh, or material");
+                "opaque RenderList contains an invalid item");
         }
+    }
+    for (const RenderItem& item : frameData.renderList.transparent)
+    {
+        if (item.objectIndex >= frameData.renderList.objectData.size() ||
+            !isTransparentQueue(item.queue))
+        {
+            throw std::invalid_argument(
+                "transparent RenderList contains an invalid item");
+        }
+    }
+
+    if (!frameData.renderList.transparent.empty())
+    {
+        throw std::logic_error(
+            "transparent RenderList requires a transparent pipeline variant");
     }
 
     const Device& device = context_->device();
@@ -642,24 +683,19 @@ void VulkanRenderer::updateFrameData(
     uint32_t frameIndex,
     const RenderFrame& frame)
 {
-    if (!hasStagedCameraData_ ||
-        frame.view.cameraRevision != stagedCameraRevision_)
+    if (frame.view.id != stagedViewId_ ||
+        frame.view.gpuDataRevision != stagedViewGpuDataRevision_)
     {
-        frameDataResources_.setCameraData(frame.view.cameraData);
-        stagedCameraRevision_ = frame.view.cameraRevision;
-        hasStagedCameraData_ = true;
+        frameDataResources_.setCameraData(frame.view.gpuData);
+        stagedViewId_ = frame.view.id;
+        stagedViewGpuDataRevision_ = frame.view.gpuDataRevision;
     }
 
-    stagedObjectData_.clear();
-    for (const RenderObject& object : frame.objects)
-    {
-        stagedObjectData_.push_back(object.objectData);
-    }
-    if (!stagedObjectData_.empty())
+    if (!frame.renderList.objectData.empty())
     {
         frameDataResources_.setObjectData(
-            stagedObjectData_.data(),
-            static_cast<uint32_t>(stagedObjectData_.size()));
+            frame.renderList.objectData.data(),
+            static_cast<uint32_t>(frame.renderList.objectData.size()));
     }
     frameDataResources_.sync(frameIndex);
 }
@@ -745,28 +781,39 @@ void VulkanRenderer::recordScenePass(
         0,
         nullptr);
 
-    for (uint32_t objectIndex = 0;
-         objectIndex < static_cast<uint32_t>(frame.objects.size());
-         ++objectIndex)
+    const std::vector<RenderItem>& opaque = frame.renderList.opaque;
+    const Mesh* boundMesh = nullptr;
+    VkDescriptorSet boundMaterialDescriptorSet = VK_NULL_HANDLE;
+    for (uint32_t itemIndex = 0;
+         itemIndex < static_cast<uint32_t>(opaque.size());
+         ++itemIndex)
     {
-        const Mesh& mesh = *frame.objects[objectIndex].mesh;
-        const RenderObject& object = frame.objects[objectIndex];
-        mesh.bind(commandBuffer);
+        const RenderItem& item = opaque[itemIndex];
+        const Mesh& mesh = *item.mesh;
+        if (item.mesh != boundMesh)
+        {
+            mesh.bind(commandBuffer);
+            boundMesh = item.mesh;
+        }
 
         const VkDescriptorSet materialDescriptorSet =
-            object.material->descriptorSet();
-        vkCmdBindDescriptorSets(
-            commandBuffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            graphicsPipeline_.layout(),
-            1,
-            1,
-            &materialDescriptorSet,
-            0,
-            nullptr);
+            item.material->descriptorSet();
+        if (materialDescriptorSet != boundMaterialDescriptorSet)
+        {
+            vkCmdBindDescriptorSets(
+                commandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                graphicsPipeline_.layout(),
+                1,
+                1,
+                &materialDescriptorSet,
+                0,
+                nullptr);
+            boundMaterialDescriptorSet = materialDescriptorSet;
+        }
 
         DrawPushConstants pushConstants{};
-        pushConstants.objectIndex = objectIndex;
+        pushConstants.objectIndex = item.objectIndex;
         vkCmdPushConstants(
             commandBuffer,
             graphicsPipeline_.layout(),
@@ -776,7 +823,7 @@ void VulkanRenderer::recordScenePass(
             &pushConstants);
 
         const SubmeshData& submesh =
-            mesh.submeshes()[object.submeshIndex];
+            mesh.submeshes()[item.submeshIndex];
         if (submesh.indexed())
         {
             vkCmdDrawIndexed(
