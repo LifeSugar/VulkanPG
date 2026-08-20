@@ -67,6 +67,9 @@ public:
     /// Returns GLFW's monotonic time in seconds.
     [[nodiscard]] static double time() noexcept;
 
+    /// Returns the non-owning native handle used by platform integrations.
+    [[nodiscard]] GLFWwindow* nativeHandle() const noexcept { return handle_; }
+
     /// Returns whether a window is currently owned.
     [[nodiscard]] explicit operator bool() const noexcept;
 

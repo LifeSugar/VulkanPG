@@ -7,6 +7,8 @@
 #include "Render/RenderListBuilder.h"
 #include "Render/SceneRenderExtractor.h"
 
+#include <imgui.h>
+
 #include <chrono>
 #include <algorithm>
 #include <cmath>
@@ -297,6 +299,7 @@ void App::run()
 {
     initWindow(true);
     initVulkan();
+    initImGui();
     mainLoop();
     cleanup();
 }
@@ -344,9 +347,14 @@ void App::runRenderTest()
 {
     initWindow(false);
     initVulkan();
+    initImGui();
     for (uint32_t frame = 0; frame < 3; ++frame)
     {
         window.pollEvents();
+        imguiLayer.beginFrame();
+        drawImGui();
+        ImDrawData* uiDrawData = imguiLayer.endFrame();
+
         const RenderFrame renderFrame = makeRenderFrame();
         if (renderFrame.renderList.empty())
         {
@@ -379,11 +387,17 @@ void App::runRenderTest()
                 << renderFrame.renderList.size()
                 << '\n';
         }
-        if (renderer.render(renderFrame) ==
+        if (renderer.render(renderFrame, uiDrawData) ==
             VulkanRenderer::RenderResult::NeedsResize)
         {
             throw std::runtime_error(
                 "hidden render test unexpectedly requires a resize");
+        }
+
+        if (frame == 0)
+        {
+            // Exercise render-pass replacement and ImGui backend recreation.
+            recreateSwapChain();
         }
     }
     cleanup();
@@ -433,6 +447,8 @@ void App::initVulkan()
 
 void App::cleanup()
 {
+    renderer.waitIdle();
+    imguiLayer.reset();
     renderer.reset();
     renderAssets.reset();
     scene.reset();
@@ -447,6 +463,17 @@ void App::cleanup()
     demoModelAsset = {};
     vulkanContext.reset();
     window.reset();
+}
+
+void App::initImGui()
+{
+    ImGuiLayer::CreateInfo createInfo{};
+    createInfo.window = &window;
+    createInfo.context = &vulkanContext;
+    createInfo.renderPass = renderer.presentRenderPass();
+    createInfo.minImageCount = 2;
+    createInfo.imageCount = renderer.swapchainImageCount();
+    imguiLayer.create(createInfo);
 }
 
 void App::setupCamera()
@@ -480,13 +507,36 @@ void App::mainLoop()
             recreateSwapChain();
         }
 
+        imguiLayer.beginFrame();
+        drawImGui();
+        ImDrawData* uiDrawData = imguiLayer.endFrame();
+
         const VulkanRenderer::RenderResult renderResult =
-            renderer.render(makeRenderFrame());
+            renderer.render(makeRenderFrame(), uiDrawData);
         if (renderResult == VulkanRenderer::RenderResult::NeedsResize)
         {
             requestSwapChainRecreation();
         }
     }
+}
+
+void App::drawImGui()
+{
+    const VkExtent2D renderExtent = renderer.extent();
+    const ImGuiIO& io = ImGui::GetIO();
+
+    ImGui::SetNextWindowBgAlpha(0.85f);
+    ImGui::Begin("Renderer");
+    ImGui::Text(
+        "Resolution: %u x %u",
+        renderExtent.width,
+        renderExtent.height);
+    ImGui::Text(
+        "Frame: %.3f ms (%.1f FPS)",
+        io.Framerate > 0.0f ? 1000.0f / io.Framerate : 0.0f,
+        io.Framerate);
+    ImGui::Text("Draws: scene + present + UI overlay");
+    ImGui::End();
 }
 
 RenderFrame App::makeRenderFrame()

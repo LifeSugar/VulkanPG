@@ -237,12 +237,15 @@ VkSurfaceFormatKHR Swapchain::chooseSurfaceFormat(
 {
     if (availableFormats.size() == 1 && availableFormats[0].format == VK_FORMAT_UNDEFINED)
     {
-        return {VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
+        return {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
     }
 
     for (const VkSurfaceFormatKHR& availableFormat : availableFormats)
     {
-        if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
+        // Dear ImGui vertex colors are display-encoded. Prefer a UNORM target
+        // so the stock backend does not apply the attachment's sRGB transfer a
+        // second time. The scene present shader explicitly encodes for UNORM.
+        if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM &&
             availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
             return availableFormat;

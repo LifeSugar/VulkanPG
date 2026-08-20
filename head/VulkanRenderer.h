@@ -14,6 +14,8 @@
 #include <cstdint>
 #include <vector>
 
+struct ImDrawData;
+
 namespace VkRenderer
 {
 
@@ -77,12 +79,24 @@ public:
     /// Rebuilds resources that depend on the framebuffer size.
     void resize(VkExtent2D framebufferExtent);
     /// Records, submits, and presents one scene snapshot.
-    [[nodiscard]] RenderResult render(const RenderFrame& frame);
+    [[nodiscard]] RenderResult render(
+        const RenderFrame& frame,
+        ImDrawData* uiDrawData = nullptr);
 
     /// Returns the current swapchain extent.
     [[nodiscard]] VkExtent2D extent() const noexcept
     {
         return swapchainResources_.extent();
+    }
+    /// Returns the render pass used to write the presentation image.
+    [[nodiscard]] VkRenderPass presentRenderPass() const noexcept
+    {
+        return swapchainResources_.renderPass();
+    }
+    /// Returns the number of images in the current presentation swapchain.
+    [[nodiscard]] uint32_t swapchainImageCount() const noexcept
+    {
+        return static_cast<uint32_t>(swapchainResources_.imageCount());
     }
     /// Returns whether the renderer is fully initialized.
     [[nodiscard]] explicit operator bool() const noexcept;
@@ -109,7 +123,8 @@ private:
         uint32_t frameIndex,
         uint32_t imageIndex,
         VkDescriptorSet descriptorSet,
-        const RenderFrame& frame);
+        const RenderFrame& frame,
+        ImDrawData* uiDrawData);
     /// Records all scene draws into the offscreen target for one frame slot.
     void recordScenePass(
         VkCommandBuffer commandBuffer,
@@ -124,7 +139,8 @@ private:
     void recordPresentPass(
         VkCommandBuffer commandBuffer,
         uint32_t frameIndex,
-        uint32_t imageIndex);
+        uint32_t imageIndex,
+        ImDrawData* uiDrawData);
 
     // Declaration order encodes destruction dependencies:
     // frames -> pipelines -> present descriptors -> scene targets

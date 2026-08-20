@@ -4,6 +4,8 @@
 #include "Mesh.h"
 #include "VulkanContext.h"
 
+#include <imgui_impl_vulkan.h>
+
 #include <array>
 #include <stdexcept>
 #include <utility>
@@ -385,7 +387,9 @@ void VulkanRenderer::resize(VkExtent2D framebufferExtent)
 
 
 //the First render() 28/7/2026
-VulkanRenderer::RenderResult VulkanRenderer::render(const RenderFrame& frameData)
+VulkanRenderer::RenderResult VulkanRenderer::render(
+    const RenderFrame& frameData,
+    ImDrawData* uiDrawData)
 {
     if (!*this)
     {
@@ -482,7 +486,8 @@ VulkanRenderer::RenderResult VulkanRenderer::render(const RenderFrame& frameData
         currentFrame_,
         imageIndex,
         frameDataResources_.descriptorSet(currentFrame_),
-        frameData);
+        frameData,
+        uiDrawData);
 
     frame.resetFence();
 
@@ -705,7 +710,8 @@ void VulkanRenderer::recordCommandBuffer(
     uint32_t frameIndex,
     uint32_t imageIndex,
     VkDescriptorSet descriptorSet,
-    const RenderFrame& frame)
+    const RenderFrame& frame,
+    ImDrawData* uiDrawData)
 {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -721,7 +727,11 @@ void VulkanRenderer::recordCommandBuffer(
         descriptorSet,
         frame);
     transitionSceneColorForSampling(commandBuffer, frameIndex);
-    recordPresentPass(commandBuffer, frameIndex, imageIndex);
+    recordPresentPass(
+        commandBuffer,
+        frameIndex,
+        imageIndex,
+        uiDrawData);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
     {
@@ -884,7 +894,8 @@ void VulkanRenderer::transitionSceneColorForSampling(
 void VulkanRenderer::recordPresentPass(
     VkCommandBuffer commandBuffer,
     uint32_t frameIndex,
-    uint32_t imageIndex)
+    uint32_t imageIndex,
+    ImDrawData* uiDrawData)
 {
     const VkExtent2D presentExtent = swapchainResources_.extent();
 
@@ -949,6 +960,10 @@ void VulkanRenderer::recordPresentPass(
         &pushConstants);
 
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    if (uiDrawData != nullptr)
+    {
+        ImGui_ImplVulkan_RenderDrawData(uiDrawData, commandBuffer);
+    }
     vkCmdEndRenderPass(commandBuffer);
 }
 

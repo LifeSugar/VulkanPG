@@ -2,6 +2,7 @@
 
 #include "Asset/AssetManager.h"
 #include "Camera.h"
+#include "ImGuiLayer.h"
 #include "RenderAssetCache.h"
 #include "Scene/Scene.h"
 #include "VulkanContext.h"
@@ -51,6 +52,8 @@ private:
     Scene scene;
     RenderAssetCache renderAssets;
     VulkanRenderer renderer;
+    // Must be destroyed before the renderer, device, and GLFW window.
+    ImGuiLayer imguiLayer;
 
     Camera camera;
     std::string modelPath = "Assets/Models/ABeautifulGame.glb";
@@ -64,8 +67,10 @@ private:
 private:
     void initWindow(bool visible = true);
     void initVulkan();
+    void initImGui();
     void mainLoop();
     void cleanup();
+    void drawImGui();
 
 private:
     void setupCamera();
