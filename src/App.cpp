@@ -1,5 +1,6 @@
 #include "App.h"
 
+#include "Asset/AssetId.h"
 #include "Render/CullingSystem.h"
 #include "Render/MaterialKey.h"
 #include "Render/PipelineVariantKey.h"
@@ -15,6 +16,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <stdexcept>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -22,6 +24,55 @@ namespace VkRenderer
 {
 namespace
 {
+
+void validateAssetId()
+{
+    constexpr std::string_view canonical =
+        "00112233-4455-6677-8899-aabbccddeeff";
+    const std::optional<AssetId> parsed = AssetId::parse(canonical);
+    if (!parsed ||
+        parsed->high != UINT64_C(0x0011223344556677) ||
+        parsed->low != UINT64_C(0x8899aabbccddeeff) ||
+        parsed->toString() != canonical)
+    {
+        throw std::runtime_error(
+            "AssetId canonical serialization round trip failed");
+    }
+
+    const std::optional<AssetId> uppercase = AssetId::parse(
+        "00112233-4455-6677-8899-AABBCCDDEEFF");
+    if (!uppercase || *uppercase != *parsed ||
+        AssetId::parse("00112233445566778899aabbccddeeff") ||
+        AssetId::parse("00112233-4455-6677-8899-aabbccddeefg"))
+    {
+        throw std::runtime_error("AssetId parsing validation failed");
+    }
+
+    const std::optional<AssetId> nil = AssetId::parse(
+        "00000000-0000-0000-0000-000000000000");
+    if (!nil || nil->valid())
+    {
+        throw std::runtime_error("AssetId nil representation is invalid");
+    }
+
+    std::unordered_set<AssetId> generatedIds;
+    for (uint32_t index = 0; index < 64; ++index)
+    {
+        const AssetId generated = AssetId::generate();
+        const std::optional<AssetId> roundTrip =
+            AssetId::parse(generated.toString());
+        if (!generated || !roundTrip || *roundTrip != generated ||
+            (generated.high & UINT64_C(0x000000000000f000)) !=
+                UINT64_C(0x0000000000004000) ||
+            (generated.low & UINT64_C(0xc000000000000000)) !=
+                UINT64_C(0x8000000000000000) ||
+            !generatedIds.insert(generated).second)
+        {
+            throw std::runtime_error(
+                "generated AssetId is invalid or duplicated");
+        }
+    }
+}
 
 void validateRenderKeys()
 {
@@ -306,6 +357,7 @@ void App::run()
 
 void App::runAssetImportTest()
 {
+    validateAssetId();
     validateRenderKeys();
     validateRenderItemComparators();
     validateCullingSystem();

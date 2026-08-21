@@ -4,6 +4,8 @@
 > 最近更新：2026-08-20  
 > 目标：在保留 Runtime 渲染路径的前提下，以单 EXE 的 Editor 模式建立 Docking、场景层级、属性检查器和场景视口基础设施。
 
+> 前置工作：先完成 [Asset 基建](ASSET_FOUNDATION_PLAN.md) 的持久 ID、数据库、事务导入和 Scene 资产引用边界。
+
 ## 1. 当前阶段决策
 
 - 第一阶段保持单个 `VulkanApp.exe`。
@@ -236,14 +238,15 @@ const EditorViewportOutput& editorViewportOutput() const;
 
 ## 15. 推荐实施顺序
 
-1. `--editor`、`EditorLayer`、DockSpace 和面板占位。
-2. `EditorContext`、稳定 `SceneNodeId` 和 Scene 编辑 API。
-3. `EditorSelection`、Scene Hierarchy 和基础 Inspector。
-4. Editor LDR 输出和 Scene Viewport。
-5. Editor Camera 与 Viewport 输入路由。
-6. Undo/Redo 和完整 Scene 编辑操作。
-7. Scene 保存、加载和 dirty 状态。
-8. 最后评估 Multi-Viewport 与独立 `VulkanEditor.exe`。
+1. 完成 Asset 持久 ID、AssetDatabase、事务导入和 Scene AssetId 引用。
+2. `--editor`、`EditorLayer`、DockSpace 和面板占位。
+3. `EditorContext`、稳定 `SceneNodeId` 和 Scene 编辑 API。
+4. `EditorSelection`、Scene Hierarchy 和基础 Inspector。
+5. Editor LDR 输出和 Scene Viewport。
+6. Editor Camera 与 Viewport 输入路由。
+7. Undo/Redo 和完整 Scene 编辑操作。
+8. Scene 保存、加载和 dirty 状态。
+9. 最后评估 Multi-Viewport 与独立 `VulkanEditor.exe`。
 
 ## 16. 第一阶段完成标准
 
