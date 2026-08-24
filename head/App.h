@@ -15,23 +15,36 @@
 namespace VkRenderer
 {
 
+class ApplicationGui;
+
 class App
 {
 public:
+    struct RunConfig
+    {
+        uint32_t windowWidth = 1280;
+        uint32_t windowHeight = 720;
+        std::string windowTitle = "Vulkan";
+        bool enableDocking = true;
+        std::string imguiIniFilename;
+        VulkanRenderer::OutputMode outputMode =
+            VulkanRenderer::OutputMode::Runtime;
+    };
+
     ~App();
 
     void setPreferIntegratedGPU(bool enabled);
 
     void run();
+    void run(const RunConfig& config, ApplicationGui& gui);
     /// Runs the CPU asset-import path without creating a window or Vulkan objects.
     void runAssetImportTest();
     /// Runs a small hidden-window Vulkan render smoke test.
     void runRenderTest();
+    /// Runs the hidden-window smoke test with a supplied GUI business layer.
+    void runRenderTest(const RunConfig& config, ApplicationGui& gui);
 
 private:
-    static const uint32_t kWindowWidth = 1280;
-    static const uint32_t kWindowHeight = 720;
-
 #ifdef NDEBUG
     static constexpr bool kEnableValidationLayers = false;
 #else
@@ -65,17 +78,17 @@ private:
     static constexpr double kSwapChainResizeDebounceSeconds = 0.15;
 
 private:
-    void initWindow(bool visible = true);
-    void initVulkan();
-    void initImGui();
-    void mainLoop();
+    void initWindow(const RunConfig& config, bool visible = true);
+    void initVulkan(const RunConfig& config);
+    void initImGui(const RunConfig& config);
+    void mainLoop(ApplicationGui& gui);
     void cleanup();
-    void drawImGui();
+    void drawGui(ApplicationGui& gui);
 
 private:
     void setupCamera();
 
-    void recreateSwapChain();
+    void recreateSwapChain(ApplicationGui& gui);
     void requestSwapChainRecreation();
     bool isSwapChainRecreationDue() const;
 

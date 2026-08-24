@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
+#include <string>
 
 struct ImDrawData;
 struct ImGuiContext;
@@ -24,6 +25,8 @@ public:
         VkRenderPass renderPass = VK_NULL_HANDLE;
         uint32_t minImageCount = 2;
         uint32_t imageCount = 0;
+        bool enableDocking = true;
+        std::string iniFilename;
     };
 
     ImGuiLayer() = default;
@@ -59,6 +62,7 @@ private:
 
     VulkanContext* context_ = nullptr;
     ImGuiContext* imguiContext_ = nullptr;
+    std::string iniFilename_;
     uint32_t minImageCount_ = 2;
     bool platformBackendInitialized_ = false;
     bool rendererBackendInitialized_ = false;

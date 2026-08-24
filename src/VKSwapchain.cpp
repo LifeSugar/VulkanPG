@@ -1,5 +1,7 @@
 #include "App.h"
 
+#include "ApplicationGui.h"
+
 namespace VkRenderer
 {
 
@@ -18,7 +20,7 @@ bool App::isSwapChainRecreationDue() const
             kSwapChainResizeDebounceSeconds;
 }
 
-void App::recreateSwapChain()
+void App::recreateSwapChain(ApplicationGui& gui)
 {
     VkExtent2D extent = window.framebufferExtent();
     while (extent.width == 0 || extent.height == 0)
@@ -28,6 +30,8 @@ void App::recreateSwapChain()
     }
 
     const bool recreateImGui = static_cast<bool>(imguiLayer);
+    renderer.waitIdle();
+    gui.detach();
     renderer.resize(extent);
 
     if (recreateImGui)
@@ -35,6 +39,9 @@ void App::recreateSwapChain()
         imguiLayer.recreateRendererPipeline(
             renderer.presentRenderPass());
     }
+
+    ApplicationGuiContext guiContext{assetManager, scene, renderer};
+    gui.attach(guiContext);
 
     const VkExtent2D renderExtent = renderer.extent();
     camera.setAspect(

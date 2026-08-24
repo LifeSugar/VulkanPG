@@ -135,6 +135,89 @@ std::vector<RenderTarget> makeSceneRenderTargets(
     return targets;
 }
 
+RenderPass makeEditorViewportRenderPass(
+    const Device& device,
+    VkFormat colorFormat)
+{
+    VkAttachmentDescription colorAttachment{};
+    colorAttachment.format = colorFormat;
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout =
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkAttachmentReference colorReference{};
+    colorReference.attachment = 0;
+    colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorReference;
+
+    std::array<VkSubpassDependency, 2> dependencies{};
+    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[0].dstSubpass = 0;
+    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    dependencies[0].dstStageMask =
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+    dependencies[1].srcSubpass = 0;
+    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[1].srcStageMask =
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+    VkRenderPassCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    createInfo.attachmentCount = 1;
+    createInfo.pAttachments = &colorAttachment;
+    createInfo.subpassCount = 1;
+    createInfo.pSubpasses = &subpass;
+    createInfo.dependencyCount =
+        static_cast<uint32_t>(dependencies.size());
+    createInfo.pDependencies = dependencies.data();
+    return RenderPass(device.get(), createInfo);
+}
+
+std::vector<RenderTarget> makeEditorViewportTargets(
+    const Device& device,
+    VkRenderPass renderPass,
+    VkExtent2D extent,
+    uint32_t frameCount,
+    VkFormat colorFormat)
+{
+    RenderTarget::AttachmentInfo colorAttachment{};
+    colorAttachment.format = colorFormat;
+    colorAttachment.usage =
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+        VK_IMAGE_USAGE_SAMPLED_BIT;
+    colorAttachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+    RenderTarget::CreateInfo createInfo{};
+    createInfo.renderPass = renderPass;
+    createInfo.extent = extent;
+    createInfo.attachments = {colorAttachment};
+
+    std::vector<RenderTarget> targets;
+    targets.reserve(frameCount);
+    for (uint32_t index = 0; index < frameCount; ++index)
+    {
+        targets.emplace_back(device, createInfo);
+    }
+    return targets;
+}
+
 bool isSrgbFormat(VkFormat format) noexcept
 {
     switch (format)
@@ -268,6 +351,7 @@ void VulkanRenderer::create(const CreateInfo& createInfo)
     context_ = createInfo.context;
     pipelineCreateInfo_ = createInfo.graphicsPipeline;
     presentPipelineCreateInfo_ = createInfo.presentPipeline;
+    outputMode_ = createInfo.outputMode;
 
     try
     {
@@ -286,6 +370,12 @@ void VulkanRenderer::create(const CreateInfo& createInfo)
         createSceneRenderTargets(
             swapchainResources_.extent(),
             createInfo.framesInFlight);
+        if (outputMode_ == OutputMode::Editor)
+        {
+            createEditorViewportResources(
+                swapchainResources_.extent(),
+                createInfo.framesInFlight);
+        }
         createPresentResources(createInfo.framesInFlight);
 
         graphicsPipeline_.create(device, makePipelineCreateInfo());
@@ -313,16 +403,21 @@ void VulkanRenderer::reset() noexcept
     presentDescriptorPool_.reset();
     presentDescriptorSetLayout_.reset();
     presentSampler_.reset();
+    editorViewportTargets_.clear();
+    editorViewportRenderPass_.reset();
     sceneRenderTargets_.clear();
     sceneRenderPass_.reset();
     swapchainResources_.reset();
     frameDataResources_.reset();
     pipelineCreateInfo_ = {};
     presentPipelineCreateInfo_ = {};
+    outputMode_ = OutputMode::Runtime;
     context_ = nullptr;
     currentFrame_ = 0;
     sceneColorFormat_ = VK_FORMAT_UNDEFINED;
     sceneDepthFormat_ = VK_FORMAT_UNDEFINED;
+    editorViewportFormat_ = VK_FORMAT_UNDEFINED;
+    editorViewportRevision_ = 0;
     presentOutputTransferFunction_ = 0;
     stagedViewId_ = {};
     stagedViewGpuDataRevision_ = 0;
@@ -371,7 +466,22 @@ void VulkanRenderer::resize(VkExtent2D framebufferExtent)
             static_cast<uint32_t>(frameContexts_.size()),
             sceneColorFormat_,
             sceneDepthFormat_);
+    std::vector<RenderTarget> newEditorViewportTargets;
+    if (outputMode_ == OutputMode::Editor)
+    {
+        newEditorViewportTargets = makeEditorViewportTargets(
+            device,
+            editorViewportRenderPass_.get(),
+            swapchainResources_.extent(),
+            static_cast<uint32_t>(frameContexts_.size()),
+            editorViewportFormat_);
+    }
     sceneRenderTargets_ = std::move(newSceneRenderTargets);
+    if (outputMode_ == OutputMode::Editor)
+    {
+        editorViewportTargets_ = std::move(newEditorViewportTargets);
+        ++editorViewportRevision_;
+    }
     recreatePresentDescriptorSets(
         static_cast<uint32_t>(frameContexts_.size()));
     presentOutputTransferFunction_ =
@@ -379,7 +489,8 @@ void VulkanRenderer::resize(VkExtent2D framebufferExtent)
             swapchainResources_.format(),
             swapchainResources_.colorSpace());
 
-    if (pipelineCompatibilityChanged)
+    if (outputMode_ == OutputMode::Runtime &&
+        pipelineCompatibilityChanged)
     {
         presentPipeline_.create(device, makePresentPipelineCreateInfo());
     }
@@ -538,6 +649,11 @@ VulkanRenderer::RenderResult VulkanRenderer::render(
 
 VulkanRenderer::operator bool() const noexcept
 {
+    const bool editorResourcesValid = outputMode_ != OutputMode::Editor ||
+        (static_cast<bool>(editorViewportRenderPass_) &&
+         editorViewportTargets_.size() == frameContexts_.size() &&
+         editorViewportFormat_ != VK_FORMAT_UNDEFINED &&
+         editorViewportRevision_ != 0);
     return context_ != nullptr &&
         frameDataResources_.frameCount() != 0 &&
         static_cast<bool>(swapchainResources_) &&
@@ -549,7 +665,26 @@ VulkanRenderer::operator bool() const noexcept
         presentDescriptorSets_.size() == frameContexts_.size() &&
         static_cast<bool>(graphicsPipeline_) &&
         static_cast<bool>(presentPipeline_) &&
-        !frameContexts_.empty();
+        !frameContexts_.empty() &&
+        editorResourcesValid;
+}
+
+VulkanRenderer::EditorViewportOutput
+VulkanRenderer::editorViewportOutput(uint32_t frameIndex) const
+{
+    if (outputMode_ != OutputMode::Editor ||
+        frameIndex >= editorViewportTargets_.size())
+    {
+        throw std::out_of_range(
+            "Editor viewport output is unavailable for this frame slot");
+    }
+
+    const RenderTarget& target = editorViewportTargets_[frameIndex];
+    return {
+        target.imageView(0),
+        target.extent(),
+        editorViewportRevision_
+    };
 }
 
 void VulkanRenderer::createFrameContexts(uint32_t frameCount)
@@ -595,6 +730,37 @@ void VulkanRenderer::createSceneRenderTargets(
     sceneRenderTargets_ = std::move(targets);
     sceneColorFormat_ = colorFormat;
     sceneDepthFormat_ = depthFormat;
+}
+
+void VulkanRenderer::createEditorViewportResources(
+    VkExtent2D extent,
+    uint32_t frameCount)
+{
+    const Device& device = context_->device();
+    const VkFormat colorFormat = device.findSupportedFormat(
+        {
+            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_FORMAT_B8G8R8A8_UNORM
+        },
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+            VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
+    RenderPass renderPass = makeEditorViewportRenderPass(
+        device,
+        colorFormat);
+    std::vector<RenderTarget> targets = makeEditorViewportTargets(
+        device,
+        renderPass.get(),
+        extent,
+        frameCount,
+        colorFormat);
+
+    editorViewportTargets_.clear();
+    editorViewportRenderPass_.reset();
+    editorViewportRenderPass_ = std::move(renderPass);
+    editorViewportTargets_ = std::move(targets);
+    editorViewportFormat_ = colorFormat;
+    ++editorViewportRevision_;
 }
 
 void VulkanRenderer::createPresentResources(uint32_t frameCount)
@@ -677,7 +843,9 @@ GraphicsPipeline::CreateInfo
 VulkanRenderer::makePresentPipelineCreateInfo() const
 {
     GraphicsPipeline::CreateInfo createInfo = presentPipelineCreateInfo_;
-    createInfo.renderPass = swapchainResources_.renderPass();
+    createInfo.renderPass = outputMode_ == OutputMode::Editor
+        ? editorViewportRenderPass_.get()
+        : swapchainResources_.renderPass();
     createInfo.descriptorSetLayouts.insert(
         createInfo.descriptorSetLayouts.begin(),
         presentDescriptorSetLayout_.get());
@@ -727,11 +895,19 @@ void VulkanRenderer::recordCommandBuffer(
         descriptorSet,
         frame);
     transitionSceneColorForSampling(commandBuffer, frameIndex);
-    recordPresentPass(
-        commandBuffer,
-        frameIndex,
-        imageIndex,
-        uiDrawData);
+    if (outputMode_ == OutputMode::Editor)
+    {
+        recordEditorViewportPass(commandBuffer, frameIndex);
+        recordEditorUiPass(commandBuffer, imageIndex, uiDrawData);
+    }
+    else
+    {
+        recordPresentPass(
+            commandBuffer,
+            frameIndex,
+            imageIndex,
+            uiDrawData);
+    }
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
     {
@@ -960,6 +1136,104 @@ void VulkanRenderer::recordPresentPass(
         &pushConstants);
 
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    if (uiDrawData != nullptr)
+    {
+        ImGui_ImplVulkan_RenderDrawData(uiDrawData, commandBuffer);
+    }
+    vkCmdEndRenderPass(commandBuffer);
+}
+
+void VulkanRenderer::recordEditorViewportPass(
+    VkCommandBuffer commandBuffer,
+    uint32_t frameIndex)
+{
+    const RenderTarget& target = editorViewportTargets_.at(frameIndex);
+    const VkExtent2D renderExtent = target.extent();
+
+    VkClearValue clearValue{};
+    clearValue.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = editorViewportRenderPass_.get();
+    renderPassInfo.framebuffer = target.framebuffer();
+    renderPassInfo.renderArea.extent = renderExtent;
+    renderPassInfo.clearValueCount = 1;
+    renderPassInfo.pClearValues = &clearValue;
+
+    vkCmdBeginRenderPass(
+        commandBuffer,
+        &renderPassInfo,
+        VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(
+        commandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        presentPipeline_.get());
+
+    VkViewport viewport{};
+    viewport.width = static_cast<float>(renderExtent.width);
+    viewport.height = static_cast<float>(renderExtent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.extent = renderExtent;
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    const VkDescriptorSet descriptorSet =
+        presentDescriptorSets_.at(frameIndex);
+    vkCmdBindDescriptorSets(
+        commandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        presentPipeline_.layout(),
+        0,
+        1,
+        &descriptorSet,
+        0,
+        nullptr);
+
+    PresentPushConstants pushConstants{};
+    // The Editor target is UNORM. Store display-encoded SDR so stock ImGui
+    // can sample and copy it without a custom tone-mapping shader.
+    pushConstants.outputTransferFunction = 1;
+    vkCmdPushConstants(
+        commandBuffer,
+        presentPipeline_.layout(),
+        VK_SHADER_STAGE_FRAGMENT_BIT,
+        0,
+        sizeof(pushConstants),
+        &pushConstants);
+
+    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    vkCmdEndRenderPass(commandBuffer);
+}
+
+void VulkanRenderer::recordEditorUiPass(
+    VkCommandBuffer commandBuffer,
+    uint32_t imageIndex,
+    ImDrawData* uiDrawData)
+{
+    const VkExtent2D presentExtent = swapchainResources_.extent();
+
+    std::array<VkClearValue, 2> clearValues{};
+    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+    clearValues[1].depthStencil = {1.0f, 0};
+
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = swapchainResources_.renderPass();
+    renderPassInfo.framebuffer =
+        swapchainResources_.framebuffer(imageIndex);
+    renderPassInfo.renderArea.extent = presentExtent;
+    renderPassInfo.clearValueCount =
+        static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
+
+    vkCmdBeginRenderPass(
+        commandBuffer,
+        &renderPassInfo,
+        VK_SUBPASS_CONTENTS_INLINE);
     if (uiDrawData != nullptr)
     {
         ImGui_ImplVulkan_RenderDrawData(uiDrawData, commandBuffer);

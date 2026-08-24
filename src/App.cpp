@@ -1,5 +1,6 @@
 #include "App.h"
 
+#include "ApplicationGui.h"
 #include "Asset/AssetId.h"
 #include "Render/CullingSystem.h"
 #include "Render/MaterialKey.h"
@@ -24,6 +25,31 @@ namespace VkRenderer
 {
 namespace
 {
+
+class RuntimeGui final : public ApplicationGui
+{
+public:
+    ApplicationGuiFrameOutput draw(
+        const ApplicationGuiContext& context) override
+    {
+        const VkExtent2D renderExtent = context.renderer.extent();
+        const ImGuiIO& io = ImGui::GetIO();
+
+        ImGui::SetNextWindowBgAlpha(0.85f);
+        ImGui::Begin("Renderer");
+        ImGui::Text(
+            "Resolution: %u x %u",
+            renderExtent.width,
+            renderExtent.height);
+        ImGui::Text(
+            "Frame: %.3f ms (%.1f FPS)",
+            io.Framerate > 0.0f ? 1000.0f / io.Framerate : 0.0f,
+            io.Framerate);
+        ImGui::Text("Draws: scene + present + UI overlay");
+        ImGui::End();
+        return {};
+    }
+};
 
 void validateAssetId()
 {
@@ -348,10 +374,30 @@ void App::setPreferIntegratedGPU(bool enabled)
 
 void App::run()
 {
-    initWindow(true);
-    initVulkan();
-    initImGui();
-    mainLoop();
+    RuntimeGui gui;
+    run(RunConfig{}, gui);
+}
+
+void App::run(const RunConfig& config, ApplicationGui& gui)
+{
+    initWindow(config, true);
+    initVulkan(config);
+    initImGui(config);
+    ApplicationGuiContext guiContext{assetManager, scene, renderer};
+    gui.attach(guiContext);
+    try
+    {
+        mainLoop(gui);
+    }
+    catch (...)
+    {
+        renderer.waitIdle();
+        gui.detach();
+        cleanup();
+        throw;
+    }
+    renderer.waitIdle();
+    gui.detach();
     cleanup();
 }
 
@@ -397,75 +443,103 @@ void App::runAssetImportTest()
 
 void App::runRenderTest()
 {
-    initWindow(false);
-    initVulkan();
-    initImGui();
-    for (uint32_t frame = 0; frame < 3; ++frame)
+    RuntimeGui gui;
+    runRenderTest(RunConfig{}, gui);
+}
+
+void App::runRenderTest(
+    const RunConfig& config,
+    ApplicationGui& gui)
+{
+    initWindow(config, false);
+    initVulkan(config);
+    initImGui(config);
+    ApplicationGuiContext guiContext{assetManager, scene, renderer};
+    gui.attach(guiContext);
+    try
     {
-        window.pollEvents();
-        imguiLayer.beginFrame();
-        drawImGui();
-        ImDrawData* uiDrawData = imguiLayer.endFrame();
-
-        const RenderFrame renderFrame = makeRenderFrame();
-        if (renderFrame.renderList.empty())
+        for (uint32_t frame = 0; frame < 3; ++frame)
         {
-            throw std::runtime_error(
-                "scene extraction produced no render objects");
-        }
+            window.pollEvents();
+            imguiLayer.beginFrame();
+            drawGui(gui);
+            ImDrawData* uiDrawData = imguiLayer.endFrame();
 
-        const auto validateItems = [&](const auto& items)
-        {
-            for (const RenderItem& item : items)
+            const RenderFrame renderFrame = makeRenderFrame();
+            if (renderFrame.renderList.empty())
             {
-                if (item.objectIndex >=
-                        renderFrame.renderList.objectData.size() ||
-                    !std::isfinite(item.viewDepth) ||
-                    !item.materialKey ||
-                    !item.pipelineKey)
-                {
-                    throw std::runtime_error(
-                        "render-list construction produced an invalid item");
-                }
+                throw std::runtime_error(
+                    "scene extraction produced no render objects");
             }
-        };
-        validateItems(renderFrame.renderList.opaque);
-        validateItems(renderFrame.renderList.transparent);
 
-        if (frame == 0)
-        {
-            std::clog
-                << "[Render] Visible submesh draws="
-                << renderFrame.renderList.size()
-                << '\n';
-        }
-        if (renderer.render(renderFrame, uiDrawData) ==
-            VulkanRenderer::RenderResult::NeedsResize)
-        {
-            throw std::runtime_error(
-                "hidden render test unexpectedly requires a resize");
-        }
+            const auto validateItems = [&](const auto& items)
+            {
+                for (const RenderItem& item : items)
+                {
+                    if (item.objectIndex >=
+                            renderFrame.renderList.objectData.size() ||
+                        !std::isfinite(item.viewDepth) ||
+                        !item.materialKey ||
+                        !item.pipelineKey)
+                    {
+                        throw std::runtime_error(
+                            "render-list construction produced an invalid item");
+                    }
+                }
+            };
+            validateItems(renderFrame.renderList.opaque);
+            validateItems(renderFrame.renderList.transparent);
 
-        if (frame == 0)
-        {
-            // Exercise render-pass replacement and ImGui backend recreation.
-            recreateSwapChain();
+            if (frame == 0)
+            {
+                std::clog
+                    << "[Render] Visible submesh draws="
+                    << renderFrame.renderList.size()
+                    << '\n';
+            }
+            if (renderer.render(renderFrame, uiDrawData) ==
+                VulkanRenderer::RenderResult::NeedsResize)
+            {
+                throw std::runtime_error(
+                    "hidden render test unexpectedly requires a resize");
+            }
+
+            if (frame == 0)
+            {
+                // Exercise render-pass replacement and GUI texture refresh.
+                recreateSwapChain(gui);
+            }
         }
     }
+    catch (...)
+    {
+        renderer.waitIdle();
+        gui.detach();
+        cleanup();
+        throw;
+    }
+    renderer.waitIdle();
+    gui.detach();
     cleanup();
 }
 
-void App::initWindow(bool visible)
+void App::initWindow(const RunConfig& config, bool visible)
 {
+    if (config.windowWidth == 0 || config.windowHeight == 0 ||
+        config.windowTitle.empty())
+    {
+        throw std::invalid_argument("App run config contains an invalid window");
+    }
+
     Window::CreateInfo createInfo{};
-    createInfo.width = kWindowWidth;
-    createInfo.height = kWindowHeight;
-    createInfo.title = "Vulkan";
+    createInfo.width = config.windowWidth;
+    createInfo.height = config.windowHeight;
+    createInfo.title = config.windowTitle;
     createInfo.visible = visible;
     window.create(createInfo);
 }
 
-void App::initVulkan()
+void App::initVulkan(const RunConfig& config)
 {
     VulkanContext::CreateInfo contextCreateInfo{};
     contextCreateInfo.enableValidationLayers = kEnableValidationLayers;
@@ -490,6 +564,7 @@ void App::initVulkan()
     rendererCreateInfo.context = &vulkanContext;
     rendererCreateInfo.framebufferExtent = window.framebufferExtent();
     rendererCreateInfo.framesInFlight = kMaxFramesInFlight;
+    rendererCreateInfo.outputMode = config.outputMode;
     rendererCreateInfo.graphicsPipeline = makeGraphicsPipelineCreateInfo();
     rendererCreateInfo.presentPipeline = makePresentPipelineCreateInfo();
     renderer.create(rendererCreateInfo);
@@ -517,7 +592,7 @@ void App::cleanup()
     window.reset();
 }
 
-void App::initImGui()
+void App::initImGui(const RunConfig& config)
 {
     ImGuiLayer::CreateInfo createInfo{};
     createInfo.window = &window;
@@ -525,6 +600,8 @@ void App::initImGui()
     createInfo.renderPass = renderer.presentRenderPass();
     createInfo.minImageCount = 2;
     createInfo.imageCount = renderer.swapchainImageCount();
+    createInfo.enableDocking = config.enableDocking;
+    createInfo.iniFilename = config.imguiIniFilename;
     imguiLayer.create(createInfo);
 }
 
@@ -536,7 +613,7 @@ void App::setupCamera()
     camera.setAspect(static_cast<float>(extent.width) / static_cast<float>(extent.height));
 }
 
-void App::mainLoop()
+void App::mainLoop(ApplicationGui& gui)
 {
     while (!window.shouldClose())
     {
@@ -556,11 +633,11 @@ void App::mainLoop()
                 continue;
             }
 
-            recreateSwapChain();
+            recreateSwapChain(gui);
         }
 
         imguiLayer.beginFrame();
-        drawImGui();
+        drawGui(gui);
         ImDrawData* uiDrawData = imguiLayer.endFrame();
 
         const VulkanRenderer::RenderResult renderResult =
@@ -572,23 +649,24 @@ void App::mainLoop()
     }
 }
 
-void App::drawImGui()
+void App::drawGui(ApplicationGui& gui)
 {
-    const VkExtent2D renderExtent = renderer.extent();
-    const ImGuiIO& io = ImGui::GetIO();
-
-    ImGui::SetNextWindowBgAlpha(0.85f);
-    ImGui::Begin("Renderer");
-    ImGui::Text(
-        "Resolution: %u x %u",
-        renderExtent.width,
-        renderExtent.height);
-    ImGui::Text(
-        "Frame: %.3f ms (%.1f FPS)",
-        io.Framerate > 0.0f ? 1000.0f / io.Framerate : 0.0f,
-        io.Framerate);
-    ImGui::Text("Draws: scene + present + UI overlay");
-    ImGui::End();
+    ApplicationGuiContext context{
+        assetManager,
+        scene,
+        renderer
+    };
+    const ApplicationGuiFrameOutput output = gui.draw(context);
+    if (output.sceneAspectRatio)
+    {
+        const float aspect = *output.sceneAspectRatio;
+        if (!std::isfinite(aspect) || aspect <= 0.0f)
+        {
+            throw std::invalid_argument(
+                "Application GUI returned an invalid scene aspect ratio");
+        }
+        camera.setAspect(aspect);
+    }
 }
 
 RenderFrame App::makeRenderFrame()

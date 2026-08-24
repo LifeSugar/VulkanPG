@@ -27,6 +27,19 @@ class VulkanContext;
 class VulkanRenderer final
 {
 public:
+    enum class OutputMode
+    {
+        Runtime,
+        Editor
+    };
+
+    struct EditorViewportOutput
+    {
+        VkImageView imageView = VK_NULL_HANDLE;
+        VkExtent2D extent{};
+        uint64_t revision = 0;
+    };
+
     /// Parameters used to create the renderer and its frame resources.
     struct CreateInfo
     {
@@ -38,6 +51,8 @@ public:
         uint32_t framesInFlight = 2;
         /// Maximum number of render objects accepted per frame.
         uint32_t maxRenderObjects = 1024;
+        /// Selects direct runtime presentation or an ImGui-sampled LDR output.
+        OutputMode outputMode = OutputMode::Runtime;
 
         // renderPass and descriptorSetLayouts are supplied by VulkanRenderer.
         /// Caller-supplied graphics pipeline settings.
@@ -98,6 +113,22 @@ public:
     {
         return static_cast<uint32_t>(swapchainResources_.imageCount());
     }
+    /// Returns the frame slot that will be used by the next render call.
+    [[nodiscard]] uint32_t currentFrameIndex() const noexcept
+    {
+        return currentFrame_;
+    }
+    [[nodiscard]] uint32_t frameCount() const noexcept
+    {
+        return static_cast<uint32_t>(frameContexts_.size());
+    }
+    [[nodiscard]] OutputMode outputMode() const noexcept
+    {
+        return outputMode_;
+    }
+    /// Returns one Editor LDR image suitable for ImGui texture registration.
+    [[nodiscard]] EditorViewportOutput editorViewportOutput(
+        uint32_t frameIndex) const;
     /// Returns whether the renderer is fully initialized.
     [[nodiscard]] explicit operator bool() const noexcept;
 
@@ -111,6 +142,10 @@ private:
     makePresentPipelineCreateInfo() const;
     /// Creates one offscreen color/depth framebuffer per frame slot.
     void createSceneRenderTargets(VkExtent2D extent, uint32_t frameCount);
+    /// Creates one tone-mapped LDR output per frame slot in Editor mode.
+    void createEditorViewportResources(
+        VkExtent2D extent,
+        uint32_t frameCount);
     /// Creates the sampler, descriptor layout, pool, and sets for presentation.
     void createPresentResources(uint32_t frameCount);
     /// Replaces descriptor sets after scene color views are recreated.
@@ -141,6 +176,15 @@ private:
         uint32_t frameIndex,
         uint32_t imageIndex,
         ImDrawData* uiDrawData);
+    /// Tone maps the current HDR scene into the Editor LDR target.
+    void recordEditorViewportPass(
+        VkCommandBuffer commandBuffer,
+        uint32_t frameIndex);
+    /// Clears the Editor swapchain and renders only ImGui draw data.
+    void recordEditorUiPass(
+        VkCommandBuffer commandBuffer,
+        uint32_t imageIndex,
+        ImDrawData* uiDrawData);
 
     // Declaration order encodes destruction dependencies:
     // frames -> pipelines -> present descriptors -> scene targets
@@ -151,6 +195,7 @@ private:
     GraphicsPipeline::CreateInfo pipelineCreateInfo_;
     /// Presentation pipeline settings retained for format-driven rebuilds.
     GraphicsPipeline::CreateInfo presentPipelineCreateInfo_;
+    OutputMode outputMode_ = OutputMode::Runtime;
     /// Per-frame descriptors and camera/object buffers.
     FrameDataResources frameDataResources_;
     /// Swapchain and all resources tied to its images.
@@ -163,6 +208,12 @@ private:
     VkFormat sceneColorFormat_ = VK_FORMAT_UNDEFINED;
     /// Depth-stencil format shared by the scene targets.
     VkFormat sceneDepthFormat_ = VK_FORMAT_UNDEFINED;
+    /// Render pass that tone maps HDR scene color into an Editor LDR image.
+    RenderPass editorViewportRenderPass_;
+    /// One ImGui-sampled LDR image per frame slot.
+    std::vector<RenderTarget> editorViewportTargets_;
+    VkFormat editorViewportFormat_ = VK_FORMAT_UNDEFINED;
+    uint64_t editorViewportRevision_ = 0;
     /// Linear clamp sampler used by the presentation shader.
     Sampler presentSampler_;
     /// Descriptor interface used to sample one offscreen color image.

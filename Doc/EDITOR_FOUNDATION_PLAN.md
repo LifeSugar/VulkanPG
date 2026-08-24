@@ -1,10 +1,10 @@
 # Editor 基建清单
 
-> 状态：规划中  
-> 最近更新：2026-08-20  
+> 状态：进行中
+> 最近更新：2026-08-24
 > 目标：在保留 Runtime 渲染路径的前提下，以单 EXE 的 Editor 模式建立 Docking、场景层级、属性检查器和场景视口基础设施。
 
-> 前置工作：先完成 [Asset 基建](ASSET_FOUNDATION_PLAN.md) 的持久 ID、数据库、事务导入和 Scene 资产引用边界。
+> 当前范围：AssetDatabase、Asset Browser 和 Scene 资产持久化暂缓；Editor 每次启动继续加载固定 GLB。
 
 ## 1. 当前阶段决策
 
@@ -21,6 +21,7 @@
 
 ```text
 head/Editor/
+├── EditorApp.h
 ├── EditorLayer.h
 ├── EditorContext.h
 ├── EditorSelection.h
@@ -31,6 +32,7 @@ head/Editor/
     └── RendererStatsPanel.h
 
 src/Editor/
+├── EditorApp.cpp
 ├── EditorLayer.cpp
 └── Panels/
     ├── SceneHierarchyPanel.cpp
@@ -41,12 +43,15 @@ src/Editor/
 
 ## 3. Editor 启动入口
 
-- [ ] 解析 `--editor` 启动参数。
-- [ ] 新增 `EditorLayer`，负责 Editor 生命周期和面板调度。
-- [ ] Runtime 模式不创建 Editor 面板和 Editor 专用渲染资源。
-- [ ] Editor 模式复用现有 Window、Renderer、Scene 和 AssetManager。
-- [ ] 退出时等待 Renderer idle，再销毁 ImGui 和 Editor Vulkan 资源。
-- [ ] 保留现有 `--asset-test`、`--render-test` 行为。
+- [x] 解析 `--editor` 启动参数。
+- [x] 新增 `EditorApp`，作为 Editor 组合根和运行配置入口。
+- [x] 新增 `EditorLayer`，负责 Editor 面板调度。
+- [x] Runtime `App` 只依赖通用 `ApplicationGui` 接口，不引用 Editor 类型。
+- [x] Runtime 模式不创建 Editor 面板和 Editor 专用渲染资源。
+- [x] Editor 模式复用现有 Window、Renderer、Scene 和 AssetManager。
+- [x] 退出时等待 Renderer idle，再销毁 ImGui 和 Editor Vulkan 资源。
+- [x] 保留现有 `--asset-test`、`--render-test` 行为。
+- [x] 新增隐藏窗口 `--editor-test`，验证 Editor GUI 和 Swapchain 重建。
 
 ## 4. ImGui 与 Docking 主界面
 
@@ -54,13 +59,15 @@ src/Editor/
 - [x] 接入 GLFW 与 Vulkan 后端。
 - [x] 在现有 Swapchain Present Pass 中绘制 ImGui。
 - [x] 支持 Swapchain 重建后重建 ImGui Renderer Pipeline。
-- [ ] 将 `ImGuiLayer` 配置改为显式的 `enableDocking`、`enableViewports` 等选项。
-- [ ] Editor 模式允许保存和恢复 `imgui.ini`。
-- [ ] Runtime 模式继续禁用布局文件或使用独立配置。
-- [ ] 创建覆盖主窗口的 DockSpace。
-- [ ] 添加 `File`、`Edit`、`View` 菜单。
-- [ ] 建立默认布局：左侧 Hierarchy、中间 Scene Viewport、右侧 Inspector、底部 Renderer Stats。
-- [ ] View 菜单可以重新显示被关闭的面板。
+- [x] `ImGuiLayer` 显式配置 `enableDocking` 和 ini 文件路径。
+- [ ] Multi-Viewport 阶段再增加 `enableViewports` 和对应 Vulkan 后端配置。
+- [x] Editor 模式保存和恢复独立的 `editor_imgui.ini`。
+- [x] Runtime 模式继续禁用布局文件。
+- [x] 创建覆盖主窗口的 DockSpace。
+- [x] 添加 `File`、`View` 菜单骨架。
+- [ ] 补齐 `File`、`Edit`、`View` 的实际 Editor 命令。
+- [x] 建立默认布局：左侧 Hierarchy、中间 Scene Viewport、右侧 Inspector、底部 Renderer Stats。
+- [x] View 菜单可以重新显示被关闭的面板。
 
 ## 5. EditorContext
 
@@ -164,17 +171,18 @@ Scene HDR Pass
     -> Present
 ```
 
-- [ ] 创建 Editor 专用、可采样的 LDR Color Image。
-- [ ] 为其创建 ImageView 和 Sampler。
-- [ ] 建立 Tone Mapping 到 Editor LDR Image 的 Render Pass/Framebuffer 路径。
-- [ ] 将输出注册为 ImGui Vulkan Texture。
-- [ ] 在 `SceneViewportPanel` 中通过 `ImGui::Image()` 显示。
+- [x] 创建每 Frame Slot 一个 Editor 专用、可采样的 LDR Color Image。
+- [x] 为其创建 ImageView，并复用 ImGui Vulkan Backend 的线性 Sampler。
+- [x] 建立 Tone Mapping 到 Editor LDR Image 的 Render Pass/Framebuffer 路径。
+- [x] 将输出注册为 ImGui Vulkan Texture。
+- [x] 在 `SceneViewportPanel` 中通过 `ImGui::Image()` 显示。
 - [ ] 根据面板可用区域更新目标渲染尺寸。
 - [ ] 尺寸变化时延迟、安全地重建目标资源。
-- [ ] 正确处理 Color Attachment 与 Shader Read 之间的 image layout transition。
-- [ ] 避免销毁仍被在途帧引用的纹理和 descriptor set。
+- [x] 正确处理 Color Attachment 与 Shader Read 之间的 image layout transition。
+- [x] Swapchain 重建前等待 GPU，并先释放 ImGui texture descriptor。
+- [x] 避免销毁仍被在途帧引用的纹理和 descriptor set。
 - [ ] Swapchain 重建不应无条件重建 Editor Viewport 资源。
-- [ ] Runtime 模式不承担 Editor Viewport 的额外显存和渲染开销。
+- [x] Runtime 模式不承担 Editor Viewport 的额外显存和渲染开销。
 
 建议向 Editor 暴露小而明确的 Renderer 接口：
 
@@ -196,13 +204,13 @@ const EditorViewportOutput& editorViewportOutput() const;
 ## 11. Editor Camera 与输入
 
 - [ ] Editor Camera 与 Runtime Camera 分离。
-- [ ] Scene Viewport 记录 hover、focus 和可用尺寸。
+- [ ] Scene Viewport 记录 hover、focus 和可用尺寸；当前已回传内容区宽高比。
 - [ ] 只有 Scene Viewport 处于合适交互状态时才接收相机输入。
 - [ ] 支持右键 + WASD 漫游。
 - [ ] 支持鼠标旋转视角。
 - [ ] 支持滚轮调节速度或观察距离。
 - [ ] Viewport 未聚焦时不抢占其他面板键鼠输入。
-- [ ] 使用 Viewport 尺寸计算相机 aspect ratio。
+- [x] 使用 Scene Viewport 内容区宽高比更新当前 Camera projection。
 
 ## 12. 编辑命令与 Undo/Redo
 
@@ -238,15 +246,15 @@ const EditorViewportOutput& editorViewportOutput() const;
 
 ## 15. 推荐实施顺序
 
-1. 完成 Asset 持久 ID、AssetDatabase、事务导入和 Scene AssetId 引用。
-2. `--editor`、`EditorLayer`、DockSpace 和面板占位。
-3. `EditorContext`、稳定 `SceneNodeId` 和 Scene 编辑 API。
-4. `EditorSelection`、Scene Hierarchy 和基础 Inspector。
-5. Editor LDR 输出和 Scene Viewport。
-6. Editor Camera 与 Viewport 输入路由。
-7. Undo/Redo 和完整 Scene 编辑操作。
-8. Scene 保存、加载和 dirty 状态。
-9. 最后评估 Multi-Viewport 与独立 `VulkanEditor.exe`。
+1. [x] `--editor`、`EditorApp`、`EditorLayer`、DockSpace 和面板占位。
+2. [ ] `EditorContext`、稳定 `SceneNodeId` 和 Scene 编辑 API。
+3. [ ] `EditorSelection`、Scene Hierarchy 和基础 Inspector。
+4. [x] 固定 Swapchain 尺寸的 Editor LDR 输出和 Scene Viewport。
+5. [ ] Scene Viewport 尺寸驱动的 RenderTarget 和 Editor Camera。
+6. [ ] Viewport 输入路由。
+7. [ ] Undo/Redo 和完整 Scene 编辑操作。
+8. [ ] 恢复 AssetDatabase、Scene 保存加载和 dirty 状态工作。
+9. [ ] 最后评估 Multi-Viewport 与独立 `VulkanEditor.exe`。
 
 ## 16. 第一阶段完成标准
 

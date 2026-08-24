@@ -1,4 +1,5 @@
 #include "App.h"
+#include "Editor/EditorApp.h"
 
 #include <cstdlib>
 #include <exception>
@@ -7,22 +8,34 @@
 
 int main(int argc, char** argv)
 {
-    VkRenderer::App app;
-
     try
     {
         if (argc == 2 && std::string_view(argv[1]) == "--asset-test")
         {
+            VkRenderer::App app;
             app.runAssetImportTest();
             std::cout << "[OK] Asset import test passed\n";
         }
         else if (argc == 2 && std::string_view(argv[1]) == "--render-test")
         {
+            VkRenderer::App app;
             app.runRenderTest();
             std::cout << "[OK] Render test passed\n";
         }
+        else if (argc == 2 && std::string_view(argv[1]) == "--editor-test")
+        {
+            VkRenderer::EditorApp editor;
+            editor.runRenderTest();
+            std::cout << "[OK] Editor render test passed\n";
+        }
+        else if (argc == 2 && std::string_view(argv[1]) == "--editor")
+        {
+            VkRenderer::EditorApp editor;
+            editor.run();
+        }
         else
         {
+            VkRenderer::App app;
             app.run();
         }
     }

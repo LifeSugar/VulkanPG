@@ -54,6 +54,7 @@ void ImGuiLayer::create(const CreateInfo& createInfo)
     reset();
     context_ = createInfo.context;
     minImageCount_ = createInfo.minImageCount;
+    iniFilename_ = createInfo.iniFilename;
 
     try
     {
@@ -62,9 +63,14 @@ void ImGuiLayer::create(const CreateInfo& createInfo)
         makeContextCurrent();
 
         ImGuiIO& io = ImGui::GetIO();
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard |
-            ImGuiConfigFlags_DockingEnable;
-        io.IniFilename = nullptr;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        if (createInfo.enableDocking)
+        {
+            io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        }
+        io.IniFilename = iniFilename_.empty()
+            ? nullptr
+            : iniFilename_.c_str();
         ImGui::StyleColorsDark();
 
         if (!ImGui_ImplGlfw_InitForVulkan(
@@ -113,6 +119,7 @@ void ImGuiLayer::reset() noexcept
     }
 
     context_ = nullptr;
+    iniFilename_.clear();
     minImageCount_ = 2;
 }
 
