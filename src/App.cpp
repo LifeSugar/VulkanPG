@@ -2,7 +2,7 @@
 
 #include "ApplicationGui.h"
 #include "Content/DemoContent.h"
-#include "Render/DefaultPipelineFactory.h"
+#include "Vulkan/DefaultPipelineFactory.h"
 #include "Render/RenderFrameBuilder.h"
 #include "RuntimeGui.h"
 

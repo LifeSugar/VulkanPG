@@ -1,7 +1,7 @@
 #include "Editor/EditorLayer.h"
 
 #include "Scene/Scene.h"
-#include "VulkanRenderer.h"
+#include "Vulkan/VulkanRenderer.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>

@@ -4,10 +4,10 @@
 #include "Camera.h"
 #include "Content/DemoContent.h"
 #include "ImGuiLayer.h"
-#include "RenderAssetCache.h"
+#include "Vulkan/RenderAssetCache.h"
 #include "Scene/Scene.h"
-#include "VulkanContext.h"
-#include "VulkanRenderer.h"
+#include "Vulkan/VulkanContext.h"
+#include "Vulkan/VulkanRenderer.h"
 #include "Window.h"
 
 #include <cstdint>
