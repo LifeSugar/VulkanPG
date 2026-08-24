@@ -1,5 +1,7 @@
 #include "Editor/EditorApp.h"
 
+#include "Test/AppSmokeTests.h"
+
 namespace VkRenderer
 {
 
@@ -10,7 +12,10 @@ void EditorApp::run()
 
 void EditorApp::runRenderTest()
 {
-    app_.runRenderTest(makeRunConfig(), editorLayer_);
+    Test::AppSmokeTests::runRenderTest(
+        app_,
+        makeRunConfig(),
+        editorLayer_);
 }
 
 App::RunConfig EditorApp::makeRunConfig()

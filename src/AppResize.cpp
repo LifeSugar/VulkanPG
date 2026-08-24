@@ -52,3 +52,5 @@ void App::recreateSwapChain(ApplicationGui& gui)
 }
 
 } // namespace VkRenderer
+
+

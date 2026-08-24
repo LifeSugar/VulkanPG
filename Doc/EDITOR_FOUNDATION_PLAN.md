@@ -115,14 +115,18 @@ struct EditorContext
 
 ## 8. Scene Hierarchy Panel
 
-- [ ] 按父子关系绘制场景树。
-- [ ] 点击节点后更新 `EditorSelection`。
-- [ ] 正确显示当前选择和展开状态。
-- [ ] 点击空白区域取消选择。
+- [x] 独立 `SceneHierarchyPanel` 依赖 Scene/Asset 数据，不依赖 Renderer。
+- [x] 按 `SceneNode::parent` 一次构建 roots/children 并递归绘制场景树。
+- [x] 在引用模型的 SceneNode 下只读投影 `ModelAsset::ModelNode` 层级。
+- [x] 点击节点后保存临时 node index 选择；稳定 `EditorSelection` 后再替换。
+- [x] 正确显示当前选择和展开状态。
+- [x] 点击空白区域取消选择。
 - [ ] 右键菜单支持创建和删除节点。
 - [ ] 支持节点重命名。
 - [ ] 支持拖放调整父子关系。
 - [ ] 拒绝无效或会形成循环的拖放操作。
+
+当前固定 Demo Scene 只有一个真正的 `SceneNode`；GLB 的 50 个内部节点属于 `ModelAsset::ModelNode`。Hierarchy 会将其作为只读子树显示，但不会把它们复制成 SceneNode，避免与现有 Render Extractor 重复展开。
 
 ## 9. Inspector Panel
 

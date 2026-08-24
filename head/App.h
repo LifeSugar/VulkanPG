@@ -2,6 +2,7 @@
 
 #include "Asset/AssetManager.h"
 #include "Camera.h"
+#include "Content/DemoContent.h"
 #include "ImGuiLayer.h"
 #include "RenderAssetCache.h"
 #include "Scene/Scene.h"
@@ -16,6 +17,10 @@ namespace VkRenderer
 {
 
 class ApplicationGui;
+namespace Test
+{
+class AppSmokeTests;
+}
 
 class App
 {
@@ -37,13 +42,6 @@ public:
 
     void run();
     void run(const RunConfig& config, ApplicationGui& gui);
-    /// Runs the CPU asset-import path without creating a window or Vulkan objects.
-    void runAssetImportTest();
-    /// Runs a small hidden-window Vulkan render smoke test.
-    void runRenderTest();
-    /// Runs the hidden-window smoke test with a supplied GUI business layer.
-    void runRenderTest(const RunConfig& config, ApplicationGui& gui);
-
 private:
 #ifdef NDEBUG
     static constexpr bool kEnableValidationLayers = false;
@@ -54,14 +52,7 @@ private:
     Window window;
     VulkanContext vulkanContext;
     AssetManager assetManager;
-    TextureAssetHandle demoTextureAsset;
-    ShaderAssetHandle pbrVertexShaderAsset;
-    ShaderAssetHandle pbrFragmentShaderAsset;
-    ShaderAssetHandle presentVertexShaderAsset;
-    ShaderAssetHandle presentFragmentShaderAsset;
-    MaterialTemplateAssetHandle demoMaterialTemplateAsset;
-    MaterialAssetHandle demoMaterialAsset;
-    ModelAssetHandle demoModelAsset;
+    DemoContent demoContent;
     Scene scene;
     RenderAssetCache renderAssets;
     VulkanRenderer renderer;
@@ -69,8 +60,6 @@ private:
     ImGuiLayer imguiLayer;
 
     Camera camera;
-    std::string modelPath = "Assets/Models/ABeautifulGame.glb";
-
     static constexpr uint32_t kMaxFramesInFlight = 2;
     bool preferIntegratedGpu = false;
     bool swapChainRecreationRequested = false;
@@ -93,12 +82,8 @@ private:
     bool isSwapChainRecreationDue() const;
 
     [[nodiscard]] RenderFrame makeRenderFrame();
-    void createDemoAssets();
 
-    static std::string resolveAssetPath(const std::string& relativePath);
-    [[nodiscard]] GraphicsPipeline::CreateInfo makeGraphicsPipelineCreateInfo() const;
-    [[nodiscard]] GraphicsPipeline::CreateInfo makePresentPipelineCreateInfo() const;
-
+    friend class Test::AppSmokeTests;
 };
 
 } // namespace VkRenderer

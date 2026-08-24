@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ApplicationGui.h"
+#include "Editor/Panels/SceneHierarchyPanel.h"
 
 #include <vulkan/vulkan.h>
 
@@ -21,7 +22,6 @@ public:
 
 private:
     void drawDockSpace();
-    void drawSceneHierarchy(const ApplicationGuiContext& context);
     void drawInspector(const ApplicationGuiContext& context);
     [[nodiscard]] std::optional<float> drawSceneViewport(
         const ApplicationGuiContext& context);
@@ -30,9 +30,10 @@ private:
     void releaseViewportTextures() noexcept;
     void refreshViewportTexturesIfNeeded(const VulkanRenderer& renderer);
 
-    uint32_t selectedSceneNode_ = UINT32_MAX;
+    SceneHierarchyPanel sceneHierarchyPanel_;
     std::vector<VkDescriptorSet> viewportTextures_;
     uint64_t viewportTextureRevision_ = 0;
+    VkExtent2D sceneViewportExtent_{};
     bool showSceneHierarchy_ = true;
     bool showInspector_ = true;
     bool showSceneViewport_ = true;

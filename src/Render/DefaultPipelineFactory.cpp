@@ -1,45 +1,27 @@
-#include "App.h"
+#include "Render/DefaultPipelineFactory.h"
+
 #include "Asset/MeshAsset.h"
+#include "Asset/ShaderAsset.h"
+#include "RenderData.h"
 
 #include <array>
 #include <cstddef>
-#include <filesystem>
 
 namespace VkRenderer
 {
 
-std::string App::resolveAssetPath(const std::string& relativePath)
+GraphicsPipeline::CreateInfo makeDefaultScenePipeline(
+    const ShaderAsset& vertexShader,
+    const ShaderAsset& fragmentShader,
+    VkDescriptorSetLayout materialDescriptorSetLayout)
 {
-    if (std::filesystem::exists(relativePath))
-    {
-        return relativePath;
-    }
-
-    const std::string sourcePath =
-        std::string(PROJECT_SOURCE_DIR) + "/" + relativePath;
-    if (std::filesystem::exists(sourcePath))
-    {
-        return sourcePath;
-    }
-
-    return relativePath;
-}
-
-GraphicsPipeline::CreateInfo App::makeGraphicsPipelineCreateInfo() const
-{
-    const ShaderAsset& vertexShader =
-        assetManager.shader(pbrVertexShaderAsset);
-    const ShaderAsset& fragmentShader =
-        assetManager.shader(pbrFragmentShaderAsset);
-
     GraphicsPipeline::CreateInfo createInfo{};
     createInfo.vertexShaderSpirv = vertexShader.spirv();
     createInfo.vertexEntryPoint = vertexShader.entryPoint();
     createInfo.fragmentShaderSpirv = fragmentShader.spirv();
     createInfo.fragmentEntryPoint = fragmentShader.entryPoint();
-    createInfo.descriptorSetLayouts = {
-        renderAssets.materialDescriptorSetLayout()
-    };
+    createInfo.descriptorSetLayouts = {materialDescriptorSetLayout};
+
     VkPushConstantRange pushConstantRange{};
     pushConstantRange.stageFlags =
         VK_SHADER_STAGE_VERTEX_BIT |
@@ -75,13 +57,10 @@ GraphicsPipeline::CreateInfo App::makeGraphicsPipelineCreateInfo() const
     return createInfo;
 }
 
-GraphicsPipeline::CreateInfo App::makePresentPipelineCreateInfo() const
+GraphicsPipeline::CreateInfo makeDefaultPresentPipeline(
+    const ShaderAsset& vertexShader,
+    const ShaderAsset& fragmentShader)
 {
-    const ShaderAsset& vertexShader =
-        assetManager.shader(presentVertexShaderAsset);
-    const ShaderAsset& fragmentShader =
-        assetManager.shader(presentFragmentShaderAsset);
-
     GraphicsPipeline::CreateInfo createInfo{};
     createInfo.vertexShaderSpirv = vertexShader.spirv();
     createInfo.vertexEntryPoint = vertexShader.entryPoint();

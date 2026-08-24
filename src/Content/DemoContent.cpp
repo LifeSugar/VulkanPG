@@ -1,22 +1,53 @@
-#include "App.h"
+#include "Content/DemoContent.h"
 
+#include "Asset/AssetManager.h"
 #include "GLBLoader.h"
 #include "Import/GLBModelImporter.h"
 #include "Import/SpirvShaderImporter.h"
 #include "Import/WicImageDecoder.h"
+#include "Scene/Scene.h"
 
 #include <cstddef>
 #include <filesystem>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 namespace VkRenderer
 {
-
-void App::createDemoAssets()
+namespace
 {
+
+constexpr const char* kDemoModelPath =
+    "Assets/Models/ABeautifulGame.glb";
+
+std::string resolveAssetPath(const std::string& relativePath)
+{
+    if (std::filesystem::exists(relativePath))
+    {
+        return relativePath;
+    }
+
+    const std::string sourcePath =
+        std::string(PROJECT_SOURCE_DIR) + "/" + relativePath;
+    if (std::filesystem::exists(sourcePath))
+    {
+        return sourcePath;
+    }
+
+    return relativePath;
+}
+
+} // namespace
+
+DemoContent DemoContentLoader::load(
+    AssetManager& assets,
+    Scene& scene)
+{
+    DemoContent content{};
+
     TextureAsset::CreateInfo textureInfo{};
     textureInfo.name = "Default White";
     textureInfo.width = 1;
@@ -29,40 +60,40 @@ void App::createDemoAssets()
         std::byte{0xff},
         std::byte{0xff}
     };
-    demoTextureAsset = assetManager.createTexture(std::move(textureInfo));
+    content.defaultTexture = assets.createTexture(std::move(textureInfo));
 
     SpirvShaderImporter shaderImporter;
     SpirvShaderImporter::CreateInfo shaderInfo{};
-    shaderInfo.assets = &assetManager;
+    shaderInfo.assets = &assets;
     shaderInfo.path = resolveAssetPath(
         "Assets/shaders/triangle.vert.spv");
     shaderInfo.name = "PBR Vertex";
     shaderInfo.stage = ShaderStage::Vertex;
-    pbrVertexShaderAsset = shaderImporter.import(shaderInfo);
+    content.pbrVertexShader = shaderImporter.import(shaderInfo);
 
     shaderInfo.path = resolveAssetPath(
         "Assets/shaders/triangle.frag.spv");
     shaderInfo.name = "PBR Fragment";
     shaderInfo.stage = ShaderStage::Fragment;
-    pbrFragmentShaderAsset = shaderImporter.import(shaderInfo);
+    content.pbrFragmentShader = shaderImporter.import(shaderInfo);
 
     shaderInfo.path = resolveAssetPath(
         "Assets/shaders/present.vert.spv");
     shaderInfo.name = "Present Vertex";
     shaderInfo.stage = ShaderStage::Vertex;
-    presentVertexShaderAsset = shaderImporter.import(shaderInfo);
+    content.presentVertexShader = shaderImporter.import(shaderInfo);
 
     shaderInfo.path = resolveAssetPath(
         "Assets/shaders/present.frag.spv");
     shaderInfo.name = "Present Fragment";
     shaderInfo.stage = ShaderStage::Fragment;
-    presentFragmentShaderAsset = shaderImporter.import(shaderInfo);
+    content.presentFragmentShader = shaderImporter.import(shaderInfo);
 
     MaterialTemplateAsset::CreateInfo templateInfo{};
     templateInfo.name = "glTF Metallic-Roughness PBR";
     templateInfo.shaders = {
-        pbrVertexShaderAsset,
-        pbrFragmentShaderAsset
+        content.pbrVertexShader,
+        content.pbrFragmentShader
     };
     templateInfo.parameters = {
         {"baseColorFactor", MaterialValueType::Float4, 0, true},
@@ -77,12 +108,12 @@ void App::createDemoAssets()
         {"occlusionTexture", 3, true},
         {"emissiveTexture", 4, true}
     };
-    demoMaterialTemplateAsset =
-        assetManager.createMaterialTemplate(std::move(templateInfo));
+    content.materialTemplate =
+        assets.createMaterialTemplate(std::move(templateInfo));
 
     MaterialAsset::CreateInfo materialInfo{};
     materialInfo.name = "Default PBR Material";
-    materialInfo.materialTemplate = demoMaterialTemplateAsset;
+    materialInfo.materialTemplate = content.materialTemplate;
     materialInfo.parameters = {
         {"baseColorFactor", glm::vec4(1.0f)},
         {"emissiveFactor", glm::vec3(0.0f)},
@@ -90,31 +121,31 @@ void App::createDemoAssets()
         {"roughnessFactor", 1.0f}
     };
     materialInfo.textures = {
-        {"baseColorTexture", demoTextureAsset},
-        {"metallicRoughnessTexture", demoTextureAsset},
-        {"normalTexture", demoTextureAsset},
-        {"occlusionTexture", demoTextureAsset},
-        {"emissiveTexture", demoTextureAsset}
+        {"baseColorTexture", content.defaultTexture},
+        {"metallicRoughnessTexture", content.defaultTexture},
+        {"normalTexture", content.defaultTexture},
+        {"occlusionTexture", content.defaultTexture},
+        {"emissiveTexture", content.defaultTexture}
     };
-    demoMaterialAsset =
-        assetManager.createMaterial(std::move(materialInfo));
+    content.defaultMaterial =
+        assets.createMaterial(std::move(materialInfo));
 
-    const std::string resolvedModelPath = resolveAssetPath(modelPath);
+    const std::string resolvedModelPath = resolveAssetPath(kDemoModelPath);
     GLBLoader loader;
     std::unique_ptr<GLBModel> sourceModel =
         loader.load(resolvedModelPath);
     if (!sourceModel)
     {
         throw std::runtime_error(
-            "Failed to load model: " + modelPath + "\n" +
+            std::string("Failed to load model: ") + kDemoModelPath + "\n" +
             loader.getLastError());
     }
 
     GLBModelImporter::CreateInfo importerInfo{};
-    importerInfo.assets = &assetManager;
+    importerInfo.assets = &assets;
     importerInfo.baseDirectory =
         std::filesystem::path(resolvedModelPath).parent_path();
-    importerInfo.defaultTexture = demoTextureAsset;
+    importerInfo.defaultTexture = content.defaultTexture;
     WicImageDecoder imageDecoder;
     importerInfo.textureDecoder =
         [&imageDecoder](
@@ -136,22 +167,18 @@ void App::createDemoAssets()
             throw std::invalid_argument(
                 "unsupported GLB texture payload passed to the image decoder");
         };
-    importerInfo.materialMapping.materialTemplate =
-        demoMaterialTemplateAsset;
+    importerInfo.materialMapping.materialTemplate = content.materialTemplate;
     importerInfo.materialMapping.baseColorParameter = "baseColorFactor";
     importerInfo.materialMapping.emissiveParameter = "emissiveFactor";
     importerInfo.materialMapping.metallicParameter = "metallicFactor";
     importerInfo.materialMapping.roughnessParameter = "roughnessFactor";
-    importerInfo.materialMapping.baseColorTextureSlot =
-        "baseColorTexture";
+    importerInfo.materialMapping.baseColorTextureSlot = "baseColorTexture";
     importerInfo.materialMapping.metallicRoughnessTextureSlot =
         "metallicRoughnessTexture";
     importerInfo.materialMapping.normalTextureSlot = "normalTexture";
-    importerInfo.materialMapping.occlusionTextureSlot =
-        "occlusionTexture";
-    importerInfo.materialMapping.emissiveTextureSlot =
-        "emissiveTexture";
-    importerInfo.fallbackMaterial = demoMaterialAsset;
+    importerInfo.materialMapping.occlusionTextureSlot = "occlusionTexture";
+    importerInfo.materialMapping.emissiveTextureSlot = "emissiveTexture";
+    importerInfo.fallbackMaterial = content.defaultMaterial;
 
     GLBModelImporter importer;
     GLBModelImporter::Result importedModel =
@@ -159,26 +186,29 @@ void App::createDemoAssets()
     if (importedModel.meshes.empty())
     {
         throw std::runtime_error(
-            "Imported model contains no renderer meshes: " + modelPath);
+            std::string("Imported model contains no renderer meshes: ") +
+            kDemoModelPath);
     }
-    demoModelAsset = importedModel.model;
+    content.model = importedModel.model;
+    const ModelAsset& demoModel = assets.model(content.model);
 
     std::clog
-        << "[Assets] Imported " << modelPath
+        << "[Assets] Imported " << kDemoModelPath
         << ": textures=" << importedModel.textures.size()
         << ", materials=" << importedModel.materials.size()
         << ", meshes=" << importedModel.meshes.size()
-        << ", nodes="
-        << assetManager.model(demoModelAsset).nodes().size()
+        << ", nodes=" << demoModel.nodes().size()
         << '\n';
 
     Scene::CreateInfo sceneInfo{};
     sceneInfo.name = "Demo Scene";
     SceneNode sceneRoot{};
-    sceneRoot.name = "Cube Instance";
-    sceneRoot.model = demoModelAsset;
+    sceneRoot.name = demoModel.name();
+    sceneRoot.model = content.model;
     sceneInfo.nodes.push_back(std::move(sceneRoot));
     scene.create(std::move(sceneInfo));
+
+    return content;
 }
 
 } // namespace VkRenderer

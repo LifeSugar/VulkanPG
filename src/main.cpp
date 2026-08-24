@@ -1,5 +1,6 @@
 #include "App.h"
 #include "Editor/EditorApp.h"
+#include "Test/AppSmokeTests.h"
 
 #include <cstdlib>
 #include <exception>
@@ -12,14 +13,12 @@ int main(int argc, char** argv)
     {
         if (argc == 2 && std::string_view(argv[1]) == "--asset-test")
         {
-            VkRenderer::App app;
-            app.runAssetImportTest();
+            VkRenderer::Test::AppSmokeTests::runAssetImportTest();
             std::cout << "[OK] Asset import test passed\n";
         }
         else if (argc == 2 && std::string_view(argv[1]) == "--render-test")
         {
-            VkRenderer::App app;
-            app.runRenderTest();
+            VkRenderer::Test::AppSmokeTests::runRenderTest();
             std::cout << "[OK] Render test passed\n";
         }
         else if (argc == 2 && std::string_view(argv[1]) == "--editor-test")

@@ -29,10 +29,14 @@ ApplicationGuiFrameOutput EditorLayer::draw(
     refreshViewportTexturesIfNeeded(context.renderer);
     drawDockSpace();
     ApplicationGuiFrameOutput output{};
+    sceneViewportExtent_ = {};
 
     if (showSceneHierarchy_)
     {
-        drawSceneHierarchy(context);
+        sceneHierarchyPanel_.draw(
+            context.scene,
+            context.assets,
+            &showSceneHierarchy_);
     }
     if (showInspector_)
     {
@@ -134,59 +138,11 @@ void EditorLayer::drawDockSpace()
     ImGui::End();
 }
 
-void EditorLayer::drawSceneHierarchy(
-    const ApplicationGuiContext& context)
-{
-    ImGui::Begin("Scene Hierarchy", &showSceneHierarchy_);
-    ImGui::TextUnformatted(context.scene.name().c_str());
-    ImGui::Separator();
-
-    const std::vector<SceneNode>& nodes = context.scene.nodes();
-    if (selectedSceneNode_ >= nodes.size())
-    {
-        selectedSceneNode_ = UINT32_MAX;
-    }
-
-    for (uint32_t index = 0; index < nodes.size(); ++index)
-    {
-        ImGui::PushID(static_cast<int>(index));
-        const bool selected = selectedSceneNode_ == index;
-        if (ImGui::Selectable(nodes[index].name.c_str(), selected))
-        {
-            selectedSceneNode_ = index;
-        }
-        ImGui::PopID();
-    }
-    ImGui::End();
-}
-
 void EditorLayer::drawInspector(const ApplicationGuiContext& context)
 {
     ImGui::Begin("Inspector", &showInspector_);
-    const std::vector<SceneNode>& nodes = context.scene.nodes();
-    if (selectedSceneNode_ >= nodes.size())
-    {
-        ImGui::TextDisabled("Select a scene node to inspect it");
-        ImGui::End();
-        return;
-    }
-
-    const SceneNode& node = nodes[selectedSceneNode_];
-    ImGui::Text("Name: %s", node.name.c_str());
-    ImGui::Text(
-        "Model handle: %u:%u",
-        node.model.index,
-        node.model.generation);
-    ImGui::SeparatorText("Local Transform");
-    for (uint32_t row = 0; row < 4; ++row)
-    {
-        ImGui::Text(
-            "% .3f  % .3f  % .3f  % .3f",
-            node.localTransform[0][row],
-            node.localTransform[1][row],
-            node.localTransform[2][row],
-            node.localTransform[3][row]);
-    }
+    static_cast<void>(context);
+    ImGui::TextDisabled("Inspector is not connected yet");
     ImGui::End();
 }
 
@@ -203,6 +159,13 @@ std::optional<float> EditorLayer::drawSceneViewport(
     }
 
     const ImVec2 available = ImGui::GetContentRegionAvail();
+    if (available.x > 0.0f && available.y > 0.0f)
+    {
+        sceneViewportExtent_ = {
+            static_cast<uint32_t>(available.x),
+            static_cast<uint32_t>(available.y)
+        };
+    }
     const uint32_t frameIndex = context.renderer.currentFrameIndex();
     if (available.x > 0.0f && available.y > 0.0f &&
         frameIndex < viewportTextures_.size())
@@ -223,9 +186,19 @@ void EditorLayer::drawRendererStats(
     const ApplicationGuiContext& context)
 {
     ImGui::Begin("Renderer Stats", &showRendererStats_);
-    const VkExtent2D extent = context.renderer.extent();
+    static_cast<void>(context);
     const ImGuiIO& io = ImGui::GetIO();
-    ImGui::Text("Swapchain: %u x %u", extent.width, extent.height);
+    if (sceneViewportExtent_.width > 0 && sceneViewportExtent_.height > 0)
+    {
+        ImGui::Text(
+            "Scene View: %u x %u",
+            sceneViewportExtent_.width,
+            sceneViewportExtent_.height);
+    }
+    else
+    {
+        ImGui::TextDisabled("Scene View: unavailable");
+    }
     ImGui::Text(
         "Frame: %.3f ms (%.1f FPS)",
         io.Framerate > 0.0f ? 1000.0f / io.Framerate : 0.0f,
