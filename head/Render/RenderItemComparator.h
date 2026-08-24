@@ -74,11 +74,11 @@ struct OpaqueRenderItemComparator
                 left.materialKey,
                 right.materialKey);
         }
-        if (left.meshHandle != right.meshHandle)
+        if (left.mesh != right.mesh)
         {
             return Detail::assetHandleLess(
-                left.meshHandle,
-                right.meshHandle);
+                left.mesh,
+                right.mesh);
         }
         return left.candidateIndex < right.candidateIndex;
     }
@@ -112,11 +112,11 @@ struct TransparentRenderItemComparator
                 left.materialKey,
                 right.materialKey);
         }
-        if (left.meshHandle != right.meshHandle)
+        if (left.mesh != right.mesh)
         {
             return Detail::assetHandleLess(
-                left.meshHandle,
-                right.meshHandle);
+                left.mesh,
+                right.mesh);
         }
         return left.candidateIndex < right.candidateIndex;
     }

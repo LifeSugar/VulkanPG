@@ -107,6 +107,7 @@ void GpuMaterial::create(
 
     reset();
     parameterBuffer_ = std::move(parameterBuffer);
+    materialTemplate_ = asset.materialTemplate();
     renderState_ = asset.renderState();
     descriptorSet_ = descriptorSet;
 }
@@ -114,6 +115,7 @@ void GpuMaterial::create(
 void GpuMaterial::reset() noexcept
 {
     descriptorSet_ = VK_NULL_HANDLE;
+    materialTemplate_ = {};
     renderState_ = {};
     parameterBuffer_.reset();
 }

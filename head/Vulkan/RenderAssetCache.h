@@ -35,8 +35,17 @@ public:
     void reset() noexcept;
 
     [[nodiscard]] const Mesh& mesh(MeshAssetHandle handle) const;
+    [[nodiscard]] const Mesh* tryMesh(
+        MeshAssetHandle handle) const noexcept;
     [[nodiscard]] const GpuMaterial& material(
         MaterialAssetHandle handle) const;
+    [[nodiscard]] const GpuMaterial* tryMaterial(
+        MaterialAssetHandle handle) const noexcept;
+    /// Returns an uploaded texture for Editor previews and material binding.
+    [[nodiscard]] const GpuTexture& texture(
+        TextureAssetHandle handle) const;
+    [[nodiscard]] const GpuTexture* tryTexture(
+        TextureAssetHandle handle) const noexcept;
     [[nodiscard]] VkDescriptorSetLayout materialDescriptorSetLayout() const
         noexcept
     {
@@ -45,24 +54,21 @@ public:
 private:
     struct TextureEntry
     {
-        TextureAssetHandle handle;
+        uint32_t generation = 0;
         GpuTexture texture;
     };
 
     struct MaterialEntry
     {
-        MaterialAssetHandle handle;
+        uint32_t generation = 0;
         GpuMaterial material;
     };
 
     struct MeshEntry
     {
-        MeshAssetHandle handle;
+        uint32_t generation = 0;
         Mesh mesh;
     };
-
-    [[nodiscard]] const GpuTexture& texture(
-        TextureAssetHandle handle) const;
 
     // Pool is declared last so it destroys descriptor sets before their
     // referenced buffers, image views, and samplers.

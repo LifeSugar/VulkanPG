@@ -20,7 +20,9 @@ namespace VkRenderer
 {
 
 class Mesh;
+class RenderAssetCache;
 class VulkanContext;
+struct VulkanDrawList;
 
 // Owns the Vulkan objects and synchronization needed to execute one render
 // target. Scene objects and asset ownership stay outside this class.
@@ -96,6 +98,7 @@ public:
     /// Records, submits, and presents one scene snapshot.
     [[nodiscard]] RenderResult render(
         const RenderFrame& frame,
+        const RenderAssetCache& renderAssets,
         ImDrawData* uiDrawData = nullptr);
 
     /// Returns the current swapchain extent.
@@ -158,14 +161,14 @@ private:
         uint32_t frameIndex,
         uint32_t imageIndex,
         VkDescriptorSet descriptorSet,
-        const RenderFrame& frame,
+        const VulkanDrawList& drawList,
         ImDrawData* uiDrawData);
     /// Records all scene draws into the offscreen target for one frame slot.
     void recordScenePass(
         VkCommandBuffer commandBuffer,
         uint32_t frameIndex,
         VkDescriptorSet descriptorSet,
-        const RenderFrame& frame);
+        const VulkanDrawList& drawList);
     /// Makes offscreen color writes visible to the presentation shader.
     void transitionSceneColorForSampling(
         VkCommandBuffer commandBuffer,

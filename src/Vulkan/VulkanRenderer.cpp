@@ -2,6 +2,8 @@
 
 #include "Vulkan/GpuMaterial.h"
 #include "Vulkan/Mesh.h"
+#include "Vulkan/RenderAssetCache.h"
+#include "Vulkan/VulkanDrawListCompiler.h"
 #include "Vulkan/VulkanContext.h"
 
 #include <imgui_impl_vulkan.h>
@@ -500,6 +502,7 @@ void VulkanRenderer::resize(VkExtent2D framebufferExtent)
 //the First render() 28/7/2026
 VulkanRenderer::RenderResult VulkanRenderer::render(
     const RenderFrame& frameData,
+    const RenderAssetCache& renderAssets,
     ImDrawData* uiDrawData)
 {
     if (!*this)
@@ -518,48 +521,17 @@ VulkanRenderer::RenderResult VulkanRenderer::render(
             "RenderFrame contains an invalid RenderView identity or revision");
     }
 
-    const auto validateCandidates = [](const auto& candidates)
-    {
-        for (const RenderItem& item : candidates)
-        {
-            if (item.mesh == nullptr || !*item.mesh ||
-                item.material == nullptr || !*item.material ||
-                item.submeshIndex >= item.mesh->submeshes().size() ||
-                !item.materialKey || !item.pipelineKey)
-            {
-                throw std::invalid_argument(
-                    "RenderFrame contains an invalid mesh, submesh, or material");
-            }
-        }
-    };
-    validateCandidates(frameData.renderList.opaque);
-    validateCandidates(frameData.renderList.transparent);
     if (frameData.renderList.objectData.size() !=
         frameData.renderList.size())
     {
         throw std::invalid_argument(
             "RenderList object-data count does not match its draw count");
     }
-    for (const RenderItem& item : frameData.renderList.opaque)
-    {
-        if (item.objectIndex >= frameData.renderList.objectData.size() ||
-            isTransparentQueue(item.queue))
-        {
-            throw std::invalid_argument(
-                "opaque RenderList contains an invalid item");
-        }
-    }
-    for (const RenderItem& item : frameData.renderList.transparent)
-    {
-        if (item.objectIndex >= frameData.renderList.objectData.size() ||
-            !isTransparentQueue(item.queue))
-        {
-            throw std::invalid_argument(
-                "transparent RenderList contains an invalid item");
-        }
-    }
+    const VulkanDrawList drawList = VulkanDrawListCompiler{}.compile(
+        frameData.renderList,
+        renderAssets);
 
-    if (!frameData.renderList.transparent.empty())
+    if (!drawList.transparent.empty())
     {
         throw std::logic_error(
             "transparent RenderList requires a transparent pipeline variant");
@@ -597,7 +569,7 @@ VulkanRenderer::RenderResult VulkanRenderer::render(
         currentFrame_,
         imageIndex,
         frameDataResources_.descriptorSet(currentFrame_),
-        frameData,
+        drawList,
         uiDrawData);
 
     frame.resetFence();
@@ -878,7 +850,7 @@ void VulkanRenderer::recordCommandBuffer(
     uint32_t frameIndex,
     uint32_t imageIndex,
     VkDescriptorSet descriptorSet,
-    const RenderFrame& frame,
+    const VulkanDrawList& drawList,
     ImDrawData* uiDrawData)
 {
     VkCommandBufferBeginInfo beginInfo{};
@@ -893,7 +865,7 @@ void VulkanRenderer::recordCommandBuffer(
         commandBuffer,
         frameIndex,
         descriptorSet,
-        frame);
+        drawList);
     transitionSceneColorForSampling(commandBuffer, frameIndex);
     if (outputMode_ == OutputMode::Editor)
     {
@@ -919,7 +891,7 @@ void VulkanRenderer::recordScenePass(
     VkCommandBuffer commandBuffer,
     uint32_t frameIndex,
     VkDescriptorSet descriptorSet,
-    const RenderFrame& frame)
+    const VulkanDrawList& drawList)
 {
     const RenderTarget& target = sceneRenderTargets_.at(frameIndex);
     const VkExtent2D renderExtent = target.extent();
@@ -967,14 +939,14 @@ void VulkanRenderer::recordScenePass(
         0,
         nullptr);
 
-    const std::vector<RenderItem>& opaque = frame.renderList.opaque;
+    const std::vector<VulkanDrawItem>& opaque = drawList.opaque;
     const Mesh* boundMesh = nullptr;
     VkDescriptorSet boundMaterialDescriptorSet = VK_NULL_HANDLE;
     for (uint32_t itemIndex = 0;
          itemIndex < static_cast<uint32_t>(opaque.size());
          ++itemIndex)
     {
-        const RenderItem& item = opaque[itemIndex];
+        const VulkanDrawItem& item = opaque[itemIndex];
         const Mesh& mesh = *item.mesh;
         if (item.mesh != boundMesh)
         {

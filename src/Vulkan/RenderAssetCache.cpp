@@ -41,6 +41,19 @@ uint32_t checkedDescriptorCount(
     return static_cast<uint32_t>(materialCount) * texturesPerMaterial;
 }
 
+template <typename Handle>
+std::size_t requiredSlotCount(const std::vector<Handle>& handles)
+{
+    std::size_t result = 0;
+    for (Handle handle : handles)
+    {
+        result = std::max(
+            result,
+            static_cast<std::size_t>(handle.index) + 1);
+    }
+    return result;
+}
+
 } // namespace
 
 RenderAssetCache::~RenderAssetCache()
@@ -164,19 +177,18 @@ void RenderAssetCache::create(
                 materialDescriptorSetLayout_.get(),
                 materialCount);
 
-        textures_.reserve(textureHandles.size());
+        textures_.resize(requiredSlotCount(textureHandles));
         for (TextureAssetHandle handle : textureHandles)
         {
-            TextureEntry entry{};
-            entry.handle = handle;
+            TextureEntry& entry = textures_[handle.index];
+            entry.generation = handle.generation;
             entry.texture.create(
                 device,
                 uploadContext,
                 assets.texture(handle));
-            textures_.push_back(std::move(entry));
         }
 
-        materials_.reserve(materialHandles.size());
+        materials_.resize(requiredSlotCount(materialHandles));
         for (uint32_t index = 0; index < materialCount; ++index)
         {
             const MaterialAssetHandle handle = materialHandles[index];
@@ -188,24 +200,22 @@ void RenderAssetCache::create(
                 materialTextures.push_back(&texture(textureHandle));
             }
 
-            MaterialEntry entry{};
-            entry.handle = handle;
+            MaterialEntry& entry = materials_[handle.index];
+            entry.generation = handle.generation;
             entry.material.create(
                 device,
                 materialAsset,
                 materialTemplate,
                 materialTextures,
                 materialDescriptorSets[index]);
-            materials_.push_back(std::move(entry));
         }
 
-        meshes_.reserve(meshHandles.size());
+        meshes_.resize(requiredSlotCount(meshHandles));
         for (MeshAssetHandle handle : meshHandles)
         {
-            MeshEntry entry{};
-            entry.handle = handle;
+            MeshEntry& entry = meshes_[handle.index];
+            entry.generation = handle.generation;
             entry.mesh.create(uploadContext, assets.mesh(handle));
-            meshes_.push_back(std::move(entry));
         }
     }
     catch (...)
@@ -226,54 +236,75 @@ void RenderAssetCache::reset() noexcept
 
 const Mesh& RenderAssetCache::mesh(MeshAssetHandle handle) const
 {
-    const auto entry = std::find_if(
-        meshes_.begin(),
-        meshes_.end(),
-        [handle](const MeshEntry& candidate)
-        {
-            return candidate.handle == handle;
-        });
-    if (entry == meshes_.end())
+    const Mesh* result = tryMesh(handle);
+    if (result == nullptr)
     {
         throw std::out_of_range("MeshAsset is absent from RenderAssetCache");
     }
-    return entry->mesh;
+    return *result;
+}
+
+const Mesh* RenderAssetCache::tryMesh(
+    MeshAssetHandle handle) const noexcept
+{
+    if (!handle || handle.index >= meshes_.size())
+    {
+        return nullptr;
+    }
+    const MeshEntry& entry = meshes_[handle.index];
+    return entry.generation == handle.generation && entry.mesh
+        ? &entry.mesh
+        : nullptr;
 }
 
 const GpuMaterial& RenderAssetCache::material(
     MaterialAssetHandle handle) const
 {
-    const auto entry = std::find_if(
-        materials_.begin(),
-        materials_.end(),
-        [handle](const MaterialEntry& candidate)
-        {
-            return candidate.handle == handle;
-        });
-    if (entry == materials_.end())
+    const GpuMaterial* result = tryMaterial(handle);
+    if (result == nullptr)
     {
         throw std::out_of_range(
             "MaterialAsset is absent from RenderAssetCache");
     }
-    return entry->material;
+    return *result;
+}
+
+const GpuMaterial* RenderAssetCache::tryMaterial(
+    MaterialAssetHandle handle) const noexcept
+{
+    if (!handle || handle.index >= materials_.size())
+    {
+        return nullptr;
+    }
+    const MaterialEntry& entry = materials_[handle.index];
+    return entry.generation == handle.generation && entry.material
+        ? &entry.material
+        : nullptr;
 }
 
 const GpuTexture& RenderAssetCache::texture(
     TextureAssetHandle handle) const
 {
-    const auto entry = std::find_if(
-        textures_.begin(),
-        textures_.end(),
-        [handle](const TextureEntry& candidate)
-        {
-            return candidate.handle == handle;
-        });
-    if (entry == textures_.end())
+    const GpuTexture* result = tryTexture(handle);
+    if (result == nullptr)
     {
         throw std::out_of_range(
             "TextureAsset is absent from RenderAssetCache");
     }
-    return entry->texture;
+    return *result;
+}
+
+const GpuTexture* RenderAssetCache::tryTexture(
+    TextureAssetHandle handle) const noexcept
+{
+    if (!handle || handle.index >= textures_.size())
+    {
+        return nullptr;
+    }
+    const TextureEntry& entry = textures_[handle.index];
+    return entry.generation == handle.generation && entry.texture
+        ? &entry.texture
+        : nullptr;
 }
 
 } // namespace VkRenderer

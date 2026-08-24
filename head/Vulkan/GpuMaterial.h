@@ -41,13 +41,20 @@ public:
     {
         return renderState_;
     }
+    [[nodiscard]] MaterialTemplateAssetHandle materialTemplate() const
+        noexcept
+    {
+        return materialTemplate_;
+    }
     [[nodiscard]] explicit operator bool() const noexcept
     {
-        return parameterBuffer_ && descriptorSet_ != VK_NULL_HANDLE;
+        return parameterBuffer_ && materialTemplate_ &&
+            descriptorSet_ != VK_NULL_HANDLE;
     }
 
 private:
     Buffer parameterBuffer_;
+    MaterialTemplateAssetHandle materialTemplate_;
     MaterialRenderState renderState_;
     VkDescriptorSet descriptorSet_ = VK_NULL_HANDLE;
 };

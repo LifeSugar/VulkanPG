@@ -40,7 +40,11 @@ void App::recreateSwapChain(ApplicationGui& gui)
             renderer.presentRenderPass());
     }
 
-    ApplicationGuiContext guiContext{assetManager, scene, renderer};
+    ApplicationGuiContext guiContext{
+        assetManager,
+        scene,
+        renderAssets,
+        renderer};
     gui.attach(guiContext);
 
     const VkExtent2D renderExtent = renderer.extent();
@@ -52,5 +56,4 @@ void App::recreateSwapChain(ApplicationGui& gui)
 }
 
 } // namespace VkRenderer
-
 

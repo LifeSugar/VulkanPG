@@ -3,6 +3,7 @@
 #include "ApplicationGui.h"
 #include "Asset/AssetId.h"
 #include "Content/DemoContent.h"
+#include "Editor/Vulkan/VulkanEditorTexturePreview.h"
 #include "Render/CullingSystem.h"
 #include "Render/MaterialKey.h"
 #include "Render/PipelineVariantKey.h"
@@ -10,6 +11,7 @@
 #include "Render/RenderItemComparator.h"
 #include "Render/SceneRenderExtractor.h"
 #include "RuntimeGui.h"
+#include "Vulkan/VulkanDrawListCompiler.h"
 
 #include <imgui.h>
 
@@ -182,9 +184,9 @@ void validateRenderItemComparators()
     }
 
     RenderItem regularNear{};
-    regularNear.materialHandle = MaterialAssetHandle{1, 1};
-    regularNear.materialKey = makeMaterialKey(regularNear.materialHandle);
-    regularNear.meshHandle = MeshAssetHandle{1, 1};
+    regularNear.material = MaterialAssetHandle{1, 1};
+    regularNear.materialKey = makeMaterialKey(regularNear.material);
+    regularNear.mesh = MeshAssetHandle{1, 1};
     regularNear.pipelineKey = makePipelineVariantKey(
         MaterialTemplateAssetHandle{1, 1},
         makeOpaqueMaterialState());
@@ -197,9 +199,9 @@ void validateRenderItemComparators()
     regularFar.candidateIndex = 3;
 
     RenderItem lowerMaterial = regularNear;
-    lowerMaterial.materialHandle = MaterialAssetHandle{0, 1};
+    lowerMaterial.material = MaterialAssetHandle{0, 1};
     lowerMaterial.materialKey = makeMaterialKey(
-        lowerMaterial.materialHandle);
+        lowerMaterial.material);
     lowerMaterial.viewDepth = 20.0f;
     lowerMaterial.candidateIndex = 1;
 
@@ -209,9 +211,9 @@ void validateRenderItemComparators()
     alternatePipeline.pipelineKey = makePipelineVariantKey(
         MaterialTemplateAssetHandle{1, 1},
         doubleSidedState);
-    alternatePipeline.materialHandle = MaterialAssetHandle{9, 1};
+    alternatePipeline.material = MaterialAssetHandle{9, 1};
     alternatePipeline.materialKey = makeMaterialKey(
-        alternatePipeline.materialHandle);
+        alternatePipeline.material);
     alternatePipeline.viewDepth = 15.0f;
     alternatePipeline.candidateIndex = 5;
 
@@ -259,9 +261,9 @@ void validateRenderItemComparators()
 
     RenderItem transparentFarLowMaterial =
         transparentFarHighMaterial;
-    transparentFarLowMaterial.materialHandle = MaterialAssetHandle{0, 1};
+    transparentFarLowMaterial.material = MaterialAssetHandle{0, 1};
     transparentFarLowMaterial.materialKey = makeMaterialKey(
-        transparentFarLowMaterial.materialHandle);
+        transparentFarLowMaterial.material);
     transparentFarLowMaterial.candidateIndex = 5;
 
     std::vector<RenderItem> transparent = {
@@ -473,6 +475,8 @@ void validateRenderFrame(const RenderFrame& renderFrame)
             if (item.objectIndex >=
                     renderFrame.renderList.objectData.size() ||
                 !std::isfinite(item.viewDepth) ||
+                !item.mesh ||
+                !item.material ||
                 !item.materialKey ||
                 !item.pipelineKey)
             {
@@ -483,6 +487,43 @@ void validateRenderFrame(const RenderFrame& renderFrame)
     };
     validateItems(renderFrame.renderList.opaque);
     validateItems(renderFrame.renderList.transparent);
+}
+
+void validateVulkanDrawListCompilation(
+    const RenderFrame& renderFrame,
+    const RenderAssetCache& renderAssets)
+{
+    const VulkanDrawList resolved = VulkanDrawListCompiler{}.compile(
+        renderFrame.renderList,
+        renderAssets);
+    if (resolved.size() != renderFrame.renderList.size())
+    {
+        throw std::runtime_error(
+            "Vulkan draw-list compilation changed the draw count");
+    }
+
+    RenderList staleList = renderFrame.renderList;
+    RenderItem* staleItem = !staleList.opaque.empty()
+        ? &staleList.opaque.front()
+        : &staleList.transparent.front();
+    ++staleItem->mesh.generation;
+
+    bool staleHandleRejected = false;
+    try
+    {
+        static_cast<void>(VulkanDrawListCompiler{}.compile(
+            staleList,
+            renderAssets));
+    }
+    catch (const std::invalid_argument&)
+    {
+        staleHandleRejected = true;
+    }
+    if (!staleHandleRejected)
+    {
+        throw std::runtime_error(
+            "Vulkan draw-list compilation accepted a stale GPU handle");
+    }
 }
 
 } // namespace
@@ -515,6 +556,17 @@ void AppSmokeTests::runAssetImportTest()
                 "CPU-only scene extraction produced an invalid candidate");
         }
     }
+
+    Camera frontendCamera;
+    frontendCamera.setPosition(glm::vec3(0.0f, 1.0f, 0.5f));
+    frontendCamera.setRotation(glm::vec3(-60.0f, 0.0f, 0.0f));
+    frontendCamera.setAspect(16.0f / 9.0f);
+    frontendCamera.Update();
+    const RenderFrame frontendFrame = buildRenderFrame(
+        app.scene,
+        app.assetManager,
+        frontendCamera.makeRenderView());
+    validateRenderFrame(frontendFrame);
 
     const ModelAsset& model =
         app.assetManager.model(app.demoContent.model);
@@ -549,16 +601,40 @@ void AppSmokeTests::runRenderTest(
     ApplicationGuiContext guiContext{
         app.assetManager,
         app.scene,
+        app.renderAssets,
         app.renderer
     };
     gui.attach(guiContext);
+    VulkanEditorTexturePreview smokeTexturePreviews;
+    EditorTexturePreview smokeTexturePreview;
     try
     {
+        if (config.outputMode == VulkanRenderer::OutputMode::Editor)
+        {
+            smokeTexturePreviews.attach(app.renderAssets);
+            smokeTexturePreview = smokeTexturePreviews.preview(
+                app.demoContent.defaultTexture);
+            if (!smokeTexturePreview)
+            {
+                throw std::runtime_error(
+                    "Editor texture preview registration failed");
+            }
+        }
+
         for (uint32_t frame = 0; frame < 3; ++frame)
         {
             app.window.pollEvents();
             app.imguiLayer.beginFrame();
             app.drawGui(gui);
+            if (smokeTexturePreview)
+            {
+                ImGui::Begin("Texture Preview Smoke Test");
+                ImGui::Image(
+                    ImTextureRef(static_cast<ImTextureID>(
+                        smokeTexturePreview.textureId)),
+                    ImVec2(16.0f, 16.0f));
+                ImGui::End();
+            }
             ImDrawData* uiDrawData = app.imguiLayer.endFrame();
 
             const RenderFrame renderFrame = app.makeRenderFrame();
@@ -566,12 +642,18 @@ void AppSmokeTests::runRenderTest(
 
             if (frame == 0)
             {
+                validateVulkanDrawListCompilation(
+                    renderFrame,
+                    app.renderAssets);
                 std::clog
                     << "[Render] Visible submesh draws="
                     << renderFrame.renderList.size()
                     << '\n';
             }
-            if (app.renderer.render(renderFrame, uiDrawData) ==
+            if (app.renderer.render(
+                    renderFrame,
+                    app.renderAssets,
+                    uiDrawData) ==
                 VulkanRenderer::RenderResult::NeedsResize)
             {
                 throw std::runtime_error(
@@ -588,11 +670,13 @@ void AppSmokeTests::runRenderTest(
     catch (...)
     {
         app.renderer.waitIdle();
+        smokeTexturePreviews.detach();
         gui.detach();
         app.cleanup();
         throw;
     }
     app.renderer.waitIdle();
+    smokeTexturePreviews.detach();
     gui.detach();
     app.cleanup();
 }

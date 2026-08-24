@@ -5,8 +5,10 @@
 
 #include <imgui.h>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <utility>
 #include <variant>
@@ -76,11 +78,201 @@ void drawProperty(const char* label, uint32_t value)
     return "Unknown";
 }
 
+[[nodiscard]] const char* materialValueTypeName(
+    MaterialValueType type) noexcept
+{
+    switch (type)
+    {
+    case MaterialValueType::Float: return "Float";
+    case MaterialValueType::Float2: return "Float2";
+    case MaterialValueType::Float3: return "Float3";
+    case MaterialValueType::Float4: return "Float4";
+    case MaterialValueType::Matrix4: return "Matrix4";
+    case MaterialValueType::Int: return "Int";
+    case MaterialValueType::UInt: return "UInt";
+    case MaterialValueType::Bool: return "Bool";
+    }
+    return "Unknown";
+}
+
+void drawMaterialParameterValue(
+    const MaterialParameterDesc& parameter,
+    const std::vector<std::byte>& parameterData)
+{
+    const uint32_t valueSize =
+        MaterialTemplateAsset::valueSize(parameter.type);
+    if (parameter.byteOffset > parameterData.size() ||
+        valueSize > parameterData.size() - parameter.byteOffset)
+    {
+        ImGui::TextDisabled("Invalid parameter data");
+        return;
+    }
+
+    const std::byte* source =
+        parameterData.data() + parameter.byteOffset;
+    switch (parameter.type)
+    {
+    case MaterialValueType::Float:
+    {
+        float value = 0.0f;
+        std::memcpy(&value, source, sizeof(value));
+        ImGui::Text("%.3f", value);
+        break;
+    }
+    case MaterialValueType::Float2:
+    case MaterialValueType::Float3:
+    case MaterialValueType::Float4:
+    {
+        const uint32_t componentCount =
+            static_cast<uint32_t>(parameter.type) -
+            static_cast<uint32_t>(MaterialValueType::Float2) + 2;
+        std::array<float, 4> values{};
+        std::memcpy(
+            values.data(),
+            source,
+            componentCount * sizeof(float));
+        if (componentCount == 2)
+        {
+            ImGui::Text("(%.3f, %.3f)", values[0], values[1]);
+        }
+        else if (componentCount == 3)
+        {
+            ImGui::Text(
+                "(%.3f, %.3f, %.3f)",
+                values[0],
+                values[1],
+                values[2]);
+        }
+        else
+        {
+            ImGui::Text(
+                "(%.3f, %.3f, %.3f, %.3f)",
+                values[0],
+                values[1],
+                values[2],
+                values[3]);
+        }
+        break;
+    }
+    case MaterialValueType::Matrix4:
+    {
+        std::array<float, 16> values{};
+        std::memcpy(values.data(), source, sizeof(values));
+        for (uint32_t row = 0; row < 4; ++row)
+        {
+            ImGui::Text(
+                "[%.3f, %.3f, %.3f, %.3f]",
+                values[row],
+                values[4 + row],
+                values[8 + row],
+                values[12 + row]);
+        }
+        break;
+    }
+    case MaterialValueType::Int:
+    {
+        int32_t value = 0;
+        std::memcpy(&value, source, sizeof(value));
+        ImGui::Text("%d", value);
+        break;
+    }
+    case MaterialValueType::UInt:
+    {
+        uint32_t value = 0;
+        std::memcpy(&value, source, sizeof(value));
+        ImGui::Text("%u", value);
+        break;
+    }
+    case MaterialValueType::Bool:
+    {
+        uint32_t value = 0;
+        std::memcpy(&value, source, sizeof(value));
+        ImGui::TextUnformatted(value != 0 ? "true" : "false");
+        break;
+    }
+    }
+}
+
+[[nodiscard]] ImTextureRef textureReference(
+    EditorTexturePreview preview) noexcept
+{
+    return ImTextureRef(static_cast<ImTextureID>(preview.textureId));
+}
+
+[[nodiscard]] ImVec2 fitTexturePreview(
+    uint32_t width,
+    uint32_t height,
+    float maxWidth,
+    float maxHeight) noexcept
+{
+    if (width == 0 || height == 0 ||
+        maxWidth <= 0.0f || maxHeight <= 0.0f)
+    {
+        return {};
+    }
+
+    const float aspect =
+        static_cast<float>(width) / static_cast<float>(height);
+    ImVec2 size{maxWidth, maxWidth / aspect};
+    if (size.y > maxHeight)
+    {
+        size.y = maxHeight;
+        size.x = maxHeight * aspect;
+    }
+    return size;
+}
+
+void drawTextureImage(
+    EditorTexturePreviewProvider& texturePreviews,
+    TextureAssetHandle handle,
+    const TextureAsset& texture,
+    ImVec2 size)
+{
+    const EditorTexturePreview preview =
+        texturePreviews.preview(handle);
+    if (!preview || size.x <= 0.0f || size.y <= 0.0f)
+    {
+        ImGui::TextDisabled("Preview unavailable");
+        return;
+    }
+
+    ImGui::ImageWithBg(
+        textureReference(preview),
+        size,
+        ImVec2(0.0f, 0.0f),
+        ImVec2(1.0f, 1.0f),
+        ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+}
+
+[[nodiscard]] glm::mat4 sceneNodeWorldTransform(
+    const Scene& scene,
+    uint32_t nodeIndex)
+{
+    const std::vector<SceneNode>& nodes = scene.nodes();
+    std::vector<uint32_t> ancestors;
+    uint32_t current = nodeIndex;
+    while (current != kInvalidSceneNodeIndex)
+    {
+        ancestors.push_back(current);
+        current = nodes[current].parent;
+    }
+
+    glm::mat4 world(1.0f);
+    for (auto iterator = ancestors.rbegin();
+         iterator != ancestors.rend();
+         ++iterator)
+    {
+        world *= nodes[*iterator].localTransform;
+    }
+    return world;
+}
+
 } // namespace
 
 void InspectorPanel::draw(
     const Scene& scene,
     const AssetManager& assets,
+    EditorTexturePreviewProvider& texturePreviews,
     EditorSelection& selection,
     bool* open)
 {
@@ -113,7 +305,7 @@ void InspectorPanel::draw(
             },
             [&](ModelNodeTarget target)
             {
-                drawModelNode(assets, target);
+                drawModelNode(scene, assets, target);
             },
             [&](MeshAssetHandle target)
             {
@@ -125,7 +317,7 @@ void InspectorPanel::draw(
             },
             [&](MaterialAssetHandle target)
             {
-                drawMaterialAsset(assets, target);
+                drawMaterialAsset(assets, texturePreviews, target);
             },
             [&](MaterialTemplateAssetHandle target)
             {
@@ -133,7 +325,7 @@ void InspectorPanel::draw(
             },
             [&](TextureAssetHandle target)
             {
-                drawTextureAsset(assets, target);
+                drawTextureAsset(assets, texturePreviews, target);
             }
         },
         selection.target());
@@ -214,6 +406,7 @@ void InspectorPanel::drawModelAsset(
 }
 
 void InspectorPanel::drawModelNode(
+    const Scene& scene,
     const AssetManager& assets,
     ModelNodeTarget target)
 {
@@ -224,8 +417,16 @@ void InspectorPanel::drawModelNode(
         return;
     }
 
-    const ModelNode& node =
-        assets.model(target.model).nodes()[target.nodeIndex];
+    const ModelAsset& model = assets.model(target.model);
+    const ModelNode& node = model.nodes()[target.nodeIndex];
+    if (target.sceneNodeIndex &&
+        (*target.sceneNodeIndex >= scene.nodes().size() ||
+         scene.nodes()[*target.sceneNodeIndex].model != target.model))
+    {
+        ImGui::TextDisabled("ModelNode scene instance is no longer valid");
+        return;
+    }
+
     ImGui::SeparatorText("Model Node");
     drawProperty("Name", displayName(node.name, "Unnamed ModelNode"));
     drawProperty("Node Index", target.nodeIndex);
@@ -236,6 +437,21 @@ void InspectorPanel::drawModelNode(
     drawProperty(
         "Mesh References",
         static_cast<uint32_t>(node.meshes.size()));
+
+    glm::mat4 inspectedTransform = node.localTransform;
+    TransformPanel::Space transformSpace =
+        TransformPanel::Space::LocalToParent;
+    if (node.parent == kInvalidModelNodeIndex)
+    {
+        transformSpace = TransformPanel::Space::World;
+        if (target.sceneNodeIndex)
+        {
+            inspectedTransform = sceneNodeWorldTransform(
+                scene,
+                *target.sceneNodeIndex) * node.localTransform;
+        }
+    }
+    transformPanel_.draw(inspectedTransform, transformSpace);
 }
 
 void InspectorPanel::drawMeshAsset(
@@ -293,6 +509,7 @@ void InspectorPanel::drawSubmesh(
 
 void InspectorPanel::drawMaterialAsset(
     const AssetManager& assets,
+    EditorTexturePreviewProvider& texturePreviews,
     MaterialAssetHandle target)
 {
     if (!assets.contains(target))
@@ -319,42 +536,127 @@ void InspectorPanel::drawMaterialAsset(
             requestNavigation(templateHandle);
         }
     }
-
-    ImGui::SeparatorText("Textures");
-    const std::vector<TextureAssetHandle>& textures = material.textures();
-    for (uint32_t index = 0;
-         index < static_cast<uint32_t>(textures.size());
-         ++index)
+    else
     {
-        const TextureAssetHandle textureHandle = textures[index];
-        if (!assets.contains(textureHandle))
+        drawProperty("Template", "Missing");
+    }
+
+    if (materialTemplate == nullptr)
+    {
+        ImGui::SeparatorText("Properties");
+        ImGui::TextDisabled(
+            "Properties unavailable because the template is missing");
+        return;
+    }
+
+    if (!ImGui::CollapsingHeader(
+            "Properties",
+            ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        return;
+    }
+
+    constexpr ImGuiTableFlags tableFlags =
+        ImGuiTableFlags_BordersInnerV |
+        ImGuiTableFlags_RowBg |
+        ImGuiTableFlags_SizingStretchProp;
+    if (!ImGui::BeginTable("##MaterialProperties", 3, tableFlags))
+    {
+        return;
+    }
+
+    ImGui::TableSetupColumn(
+        "Property",
+        ImGuiTableColumnFlags_WidthStretch,
+        0.42f);
+    ImGui::TableSetupColumn(
+        "Value",
+        ImGuiTableColumnFlags_WidthStretch,
+        0.48f);
+    ImGui::TableSetupColumn(
+        "##Action",
+        ImGuiTableColumnFlags_WidthFixed,
+        54.0f);
+    ImGui::TableHeadersRow();
+
+    for (const MaterialParameterDesc& parameter :
+         materialTemplate->parameters())
+    {
+        ImGui::PushID(parameter.name.c_str());
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted(parameter.name.c_str());
+        if (ImGui::IsItemHovered())
         {
-            continue;
+            ImGui::SetTooltip(
+                "%s%s\nByte offset: %u",
+                materialValueTypeName(parameter.type),
+                parameter.required ? " (required)" : "",
+                parameter.byteOffset);
+        }
+        ImGui::TableSetColumnIndex(1);
+        drawMaterialParameterValue(parameter, material.parameterData());
+        ImGui::PopID();
+    }
+
+    const std::vector<TextureAssetHandle>& textures = material.textures();
+    for (const MaterialTextureSlotDesc& slot :
+         materialTemplate->textureSlots())
+    {
+        ImGui::PushID(slot.name.c_str());
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted(slot.name.c_str());
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Texture%s\nSlot: %u\n"
+                "Image: set %u, binding %u\n"
+                "Sampler: set %u, binding %u",
+                slot.required ? " (required)" : "",
+                slot.slot,
+                slot.imageBinding.set,
+                slot.imageBinding.binding,
+                slot.samplerBinding.set,
+                slot.samplerBinding.binding);
         }
 
-        std::string slotName = "Texture " + std::to_string(index);
-        if (materialTemplate != nullptr)
+        const TextureAssetHandle textureHandle =
+            slot.slot < textures.size()
+            ? textures[slot.slot]
+            : TextureAssetHandle{};
+        ImGui::TableSetColumnIndex(1);
+        if (textureHandle && assets.contains(textureHandle))
         {
-            for (const MaterialTextureSlotDesc& slot :
-                 materialTemplate->textureSlots())
+            const TextureAsset& texture = assets.texture(textureHandle);
+            constexpr float thumbnailExtent = 36.0f;
+            const ImVec2 thumbnailSize = fitTexturePreview(
+                texture.width(),
+                texture.height(),
+                thumbnailExtent,
+                thumbnailExtent);
+            drawTextureImage(
+                texturePreviews,
+                textureHandle,
+                texture,
+                thumbnailSize);
+            ImGui::SameLine();
+            ImGui::TextUnformatted(
+                displayName(texture.name(), "Unnamed Texture"));
+            ImGui::TableSetColumnIndex(2);
+            if (ImGui::SmallButton("Inspect"))
             {
-                if (slot.slot == index)
-                {
-                    slotName = slot.name;
-                    break;
-                }
+                requestNavigation(textureHandle);
             }
         }
-
-        const TextureAsset& texture = assets.texture(textureHandle);
-        if (drawReference(
-                slotName.c_str(),
-                displayName(texture.name(), "Unnamed Texture"),
-                static_cast<int>(index + 1)))
+        else
         {
-            requestNavigation(textureHandle);
+            ImGui::TextDisabled("None");
         }
+        ImGui::PopID();
     }
+
+    ImGui::EndTable();
 }
 
 void InspectorPanel::drawMaterialTemplate(
@@ -386,6 +688,7 @@ void InspectorPanel::drawMaterialTemplate(
 
 void InspectorPanel::drawTextureAsset(
     const AssetManager& assets,
+    EditorTexturePreviewProvider& texturePreviews,
     TextureAssetHandle target)
 {
     if (!assets.contains(target))
@@ -397,6 +700,21 @@ void InspectorPanel::drawTextureAsset(
     const TextureAsset& texture = assets.texture(target);
     ImGui::SeparatorText("Texture Asset");
     drawProperty("Name", displayName(texture.name(), "Unnamed Texture"));
+
+    ImGui::SeparatorText("Preview");
+    const float previewWidth = ImGui::GetContentRegionAvail().x;
+    const ImVec2 previewSize = fitTexturePreview(
+        texture.width(),
+        texture.height(),
+        previewWidth,
+        320.0f);
+    drawTextureImage(
+        texturePreviews,
+        target,
+        texture,
+        previewSize);
+
+    ImGui::SeparatorText("Properties");
     ImGui::TextDisabled("Size");
     ImGui::SameLine(120.0f);
     ImGui::Text("%u x %u", texture.width(), texture.height());

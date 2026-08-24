@@ -1,9 +1,6 @@
 #include "Render/RenderListBuilder.h"
 
 #include "Asset/AssetManager.h"
-#include "Vulkan/GpuMaterial.h"
-#include "Vulkan/Mesh.h"
-#include "Vulkan/RenderAssetCache.h"
 #include "Render/RenderItemComparator.h"
 #include "Render/RenderView.h"
 
@@ -18,8 +15,7 @@ RenderList RenderListBuilder::build(
     const std::vector<RenderCandidate>& candidates,
     const CullingResults& cullingResults,
     const RenderView& view,
-    const AssetManager& assets,
-    const RenderAssetCache& renderAssets) const
+    const AssetManager& assets) const
 {
     RenderList result{};
     result.objectData.reserve(cullingResults.visibleCandidateIndices.size());
@@ -70,10 +66,8 @@ RenderList RenderListBuilder::build(
         }
 
         RenderItem item{};
-        item.mesh = &renderAssets.mesh(candidate.mesh);
-        item.material = &renderAssets.material(candidate.material);
-        item.meshHandle = candidate.mesh;
-        item.materialHandle = candidate.material;
+        item.mesh = candidate.mesh;
+        item.material = candidate.material;
         item.materialKey = makeMaterialKey(candidate.material);
         item.pipelineKey = makePipelineVariantKey(
             materialAsset.materialTemplate(),

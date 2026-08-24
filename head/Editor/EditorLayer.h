@@ -4,6 +4,7 @@
 #include "Editor/EditorSelection.h"
 #include "Editor/Panels/InspectorPanel.h"
 #include "Editor/Panels/SceneHierarchyPanel.h"
+#include "Editor/Vulkan/VulkanEditorTexturePreview.h"
 
 #include <vulkan/vulkan.h>
 
@@ -34,6 +35,7 @@ private:
     EditorSelection selection_;
     SceneHierarchyPanel sceneHierarchyPanel_;
     InspectorPanel inspectorPanel_;
+    VulkanEditorTexturePreview texturePreviews_;
     std::vector<VkDescriptorSet> viewportTextures_;
     uint64_t viewportTextureRevision_ = 0;
     VkExtent2D sceneViewportExtent_{};

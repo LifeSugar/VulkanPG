@@ -6,6 +6,7 @@ namespace VkRenderer
 {
 
 class AssetManager;
+class RenderAssetCache;
 class Scene;
 class VulkanRenderer;
 
@@ -14,6 +15,7 @@ struct ApplicationGuiContext
 {
     AssetManager& assets;
     Scene& scene;
+    RenderAssetCache& renderAssets;
     VulkanRenderer& renderer;
 };
 

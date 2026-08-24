@@ -35,7 +35,11 @@ void App::run(const RunConfig& config, ApplicationGui& gui)
     initWindow(config, true);
     initVulkan(config);
     initImGui(config);
-    ApplicationGuiContext guiContext{assetManager, scene, renderer};
+    ApplicationGuiContext guiContext{
+        assetManager,
+        scene,
+        renderAssets,
+        renderer};
     gui.attach(guiContext);
     try
     {
@@ -172,7 +176,7 @@ void App::mainLoop(ApplicationGui& gui)
         ImDrawData* uiDrawData = imguiLayer.endFrame();
 
         const VulkanRenderer::RenderResult renderResult =
-            renderer.render(makeRenderFrame(), uiDrawData);
+            renderer.render(makeRenderFrame(), renderAssets, uiDrawData);
         if (renderResult == VulkanRenderer::RenderResult::NeedsResize)
         {
             requestSwapChainRecreation();
@@ -182,7 +186,11 @@ void App::mainLoop(ApplicationGui& gui)
 
 void App::drawGui(ApplicationGui& gui)
 {
-    ApplicationGuiContext context{assetManager, scene, renderer};
+    ApplicationGuiContext context{
+        assetManager,
+        scene,
+        renderAssets,
+        renderer};
     const ApplicationGuiFrameOutput output = gui.draw(context);
     if (output.sceneAspectRatio)
     {
@@ -202,7 +210,6 @@ RenderFrame App::makeRenderFrame()
     return buildRenderFrame(
         scene,
         assetManager,
-        renderAssets,
         camera.makeRenderView());
 }
 

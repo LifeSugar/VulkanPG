@@ -15,11 +15,13 @@ namespace VkRenderer
 
 void EditorLayer::attach(const ApplicationGuiContext& context)
 {
+    texturePreviews_.attach(context.renderAssets);
     registerViewportTextures(context.renderer);
 }
 
 void EditorLayer::detach() noexcept
 {
+    texturePreviews_.detach();
     releaseViewportTextures();
 }
 
@@ -44,6 +46,7 @@ ApplicationGuiFrameOutput EditorLayer::draw(
         inspectorPanel_.draw(
             context.scene,
             context.assets,
+            texturePreviews_,
             selection_,
             &showInspector_);
     }

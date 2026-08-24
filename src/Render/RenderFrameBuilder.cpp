@@ -13,7 +13,6 @@ namespace VkRenderer
 RenderFrame buildRenderFrame(
     const Scene& scene,
     const AssetManager& assets,
-    const RenderAssetCache& renderAssets,
     RenderView view)
 {
     std::vector<RenderCandidate> candidates =
@@ -26,8 +25,7 @@ RenderFrame buildRenderFrame(
         candidates,
         cullingResults,
         view,
-        assets,
-        renderAssets);
+        assets);
     frame.view = std::move(view);
     return frame;
 }

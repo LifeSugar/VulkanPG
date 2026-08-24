@@ -10,19 +10,12 @@
 namespace VkRenderer
 {
 
-class GpuMaterial;
-class Mesh;
-
-/// One view-specific, backend-ready draw produced from a visible candidate.
+/// One view-specific, backend-neutral draw produced from a visible candidate.
 struct RenderItem
 {
-    /// Non-owning GPU resources valid for the lifetime of the render asset cache.
-    const Mesh* mesh = nullptr;
-    const GpuMaterial* material = nullptr;
-
-    /// Stable asset identities retained for sorting, diagnostics, and cache keys.
-    MeshAssetHandle meshHandle;
-    MaterialAssetHandle materialHandle;
+    /// Stable asset identities resolved by the active render backend.
+    MeshAssetHandle mesh;
+    MaterialAssetHandle material;
 
     /// Stable material binding identity and material-controlled PSO variant.
     MaterialKey materialKey;

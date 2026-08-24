@@ -7,7 +7,6 @@ namespace VkRenderer
 {
 
 class AssetManager;
-class RenderAssetCache;
 struct RenderView;
 
 /// Resolves, classifies, and orders visible candidates for one RenderView.
@@ -18,8 +17,7 @@ public:
         const std::vector<RenderCandidate>& candidates,
         const CullingResults& cullingResults,
         const RenderView& view,
-        const AssetManager& assets,
-        const RenderAssetCache& renderAssets) const;
+        const AssetManager& assets) const;
 };
 
 } // namespace VkRenderer

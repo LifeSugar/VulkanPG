@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Editor/EditorSelection.h"
+#include "Editor/EditorTexturePreview.h"
+#include "Editor/Panels/TransformPanel.h"
 
 #include <optional>
 
@@ -17,6 +19,7 @@ public:
     void draw(
         const Scene& scene,
         const AssetManager& assets,
+        EditorTexturePreviewProvider& texturePreviews,
         EditorSelection& selection,
         bool* open = nullptr);
 
@@ -29,6 +32,7 @@ private:
         const AssetManager& assets,
         ModelAssetHandle target);
     void drawModelNode(
+        const Scene& scene,
         const AssetManager& assets,
         ModelNodeTarget target);
     void drawMeshAsset(
@@ -39,16 +43,19 @@ private:
         SubmeshTarget target);
     void drawMaterialAsset(
         const AssetManager& assets,
+        EditorTexturePreviewProvider& texturePreviews,
         MaterialAssetHandle target);
     void drawMaterialTemplate(
         const AssetManager& assets,
         MaterialTemplateAssetHandle target);
     void drawTextureAsset(
         const AssetManager& assets,
+        EditorTexturePreviewProvider& texturePreviews,
         TextureAssetHandle target);
     void requestNavigation(InspectorTarget target);
 
     std::optional<InspectorTarget> pendingNavigation_;
+    TransformPanel transformPanel_;
 };
 
 } // namespace VkRenderer
