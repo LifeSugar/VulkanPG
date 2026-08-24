@@ -1,5 +1,7 @@
 #include "Asset/AssetManager.h"
 
+#include "Asset/MaterialValidation.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -116,20 +118,24 @@ TextureAssetHandle AssetManager::createTexture(
 MaterialTemplateAssetHandle AssetManager::createMaterialTemplate(
     MaterialTemplateAsset::CreateInfo createInfo)
 {
-    for (ShaderAssetHandle shader : createInfo.shaders)
+    ValidationReport report = validateMaterialTemplate(createInfo);
+    if (!report.valid())
     {
-        if (!shaders_.contains(shader))
-        {
-            throw std::invalid_argument(
-                "material template references a shader outside this AssetManager");
-        }
+        throw AssetValidationError(std::move(report));
     }
+    createInfo.shaderInterfaceSignature =
+        calculateShaderInterfaceSignature(createInfo.shaders, *this);
     return materialTemplates_.emplace(std::move(createInfo));
 }
 
 MaterialAssetHandle AssetManager::createMaterial(
     MaterialAsset::CreateInfo createInfo)
 {
+    ValidationReport report = validateMaterial(createInfo);
+    if (!report.valid())
+    {
+        throw AssetValidationError(std::move(report));
+    }
     validateMaterialRenderState(createInfo.renderState);
 
     if (!materialTemplates_.contains(createInfo.materialTemplate))
@@ -253,6 +259,18 @@ MaterialAssetHandle AssetManager::createMaterial(
     return materials_.insert(MaterialAsset(std::move(compiled)));
 }
 
+ValidationReport AssetManager::validateMaterialTemplate(
+    const MaterialTemplateAsset::CreateInfo& createInfo) const
+{
+    return validateMaterialTemplateCreateInfo(createInfo, *this);
+}
+
+ValidationReport AssetManager::validateMaterial(
+    const MaterialAsset::CreateInfo& createInfo) const
+{
+    return validateMaterialCreateInfo(createInfo, *this);
+}
+
 MeshAssetHandle AssetManager::createMesh(MeshAsset::CreateInfo createInfo)
 {
     for (const SubmeshData& submesh : createInfo.submeshes)
@@ -347,6 +365,20 @@ bool AssetManager::contains(ShaderAssetHandle handle) const noexcept
 bool AssetManager::contains(ModelAssetHandle handle) const noexcept
 {
     return models_.contains(handle);
+}
+
+bool AssetManager::isMaterialTemplateCurrent(
+    MaterialTemplateAssetHandle handle) const noexcept
+{
+    if (!materialTemplates_.contains(handle))
+    {
+        return false;
+    }
+    const MaterialTemplateAsset& materialTemplate =
+        materialTemplates_.get(handle);
+    return calculateShaderInterfaceSignature(
+        materialTemplate.shaders(),
+        *this) == materialTemplate.shaderInterfaceSignature();
 }
 
 void AssetManager::reset() noexcept

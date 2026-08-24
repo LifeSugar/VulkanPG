@@ -7,6 +7,7 @@
 #include "Asset/ModelAsset.h"
 #include "Asset/ShaderAsset.h"
 #include "Asset/TextureAsset.h"
+#include "Asset/ValidationReport.h"
 
 namespace VkRenderer
 {
@@ -21,6 +22,10 @@ public:
         MaterialTemplateAsset::CreateInfo createInfo);
     [[nodiscard]] MaterialAssetHandle createMaterial(
         MaterialAsset::CreateInfo createInfo);
+    [[nodiscard]] ValidationReport validateMaterialTemplate(
+        const MaterialTemplateAsset::CreateInfo& createInfo) const;
+    [[nodiscard]] ValidationReport validateMaterial(
+        const MaterialAsset::CreateInfo& createInfo) const;
     [[nodiscard]] MeshAssetHandle createMesh(
         MeshAsset::CreateInfo createInfo);
     [[nodiscard]] ShaderAssetHandle createShader(
@@ -42,6 +47,8 @@ public:
     [[nodiscard]] bool contains(MeshAssetHandle handle) const noexcept;
     [[nodiscard]] bool contains(ShaderAssetHandle handle) const noexcept;
     [[nodiscard]] bool contains(ModelAssetHandle handle) const noexcept;
+    [[nodiscard]] bool isMaterialTemplateCurrent(
+        MaterialTemplateAssetHandle handle) const noexcept;
 
     void reset() noexcept;
 

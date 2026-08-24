@@ -16,8 +16,10 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace VkRenderer
@@ -26,6 +28,20 @@ namespace Test
 {
 namespace
 {
+
+[[nodiscard]] bool hasValidationIssue(
+    const ValidationReport& report,
+    const std::string& code,
+    ValidationSeverity severity)
+{
+    return std::any_of(
+        report.issues().begin(),
+        report.issues().end(),
+        [&](const ValidationIssue& issue)
+        {
+            return issue.code == code && issue.severity == severity;
+        });
+}
 
 void validateAssetId()
 {
@@ -334,6 +350,113 @@ void validateCullingSystem()
     }
 }
 
+void validateOfflineMaterialAssets(
+    AssetManager& assets,
+    const DemoContent& content)
+{
+    const ShaderAsset& fragmentShader = assets.shader(
+        content.pbrFragmentShader);
+    const auto materialBlock = std::find_if(
+        fragmentShader.interface().parameterBlocks.begin(),
+        fragmentShader.interface().parameterBlocks.end(),
+        [](const ShaderParameterBlockDesc& block)
+        {
+            return block.set == 1 && block.binding == 0;
+        });
+    if (fragmentShader.interface().signature == 0 ||
+        materialBlock == fragmentShader.interface().parameterBlocks.end() ||
+        materialBlock->byteSize != 36 ||
+        materialBlock->members.size() != 4)
+    {
+        throw std::runtime_error(
+            "CPU-only SPIR-V reflection produced an invalid material interface");
+    }
+
+    const MaterialTemplateAsset& materialTemplate =
+        assets.materialTemplate(content.materialTemplate);
+    MaterialTemplateAsset::CreateInfo templateInfo{};
+    templateInfo.name = materialTemplate.name();
+    templateInfo.shaders = materialTemplate.shaders();
+    templateInfo.parameterBlock = materialTemplate.parameterBlock();
+    templateInfo.parameterDataSize = materialTemplate.parameterDataSize();
+    templateInfo.parameters = materialTemplate.parameters();
+    templateInfo.textureSlots = materialTemplate.textureSlots();
+
+    const ValidationReport currentTemplateReport =
+        assets.validateMaterialTemplate(templateInfo);
+    if (!currentTemplateReport.valid() ||
+        !hasValidationIssue(
+            currentTemplateReport,
+            "Template.InactiveImageBinding",
+            ValidationSeverity::Warning) ||
+        !assets.isMaterialTemplateCurrent(content.materialTemplate))
+    {
+        throw std::runtime_error(
+            "valid material template did not pass offline validation");
+    }
+
+    MaterialTemplateAsset::CreateInfo invalidTemplate = templateInfo;
+    invalidTemplate.parameters.back().byteOffset = 36;
+    const ValidationReport invalidTemplateReport =
+        assets.validateMaterialTemplate(invalidTemplate);
+    if (invalidTemplateReport.valid() ||
+        !hasValidationIssue(
+            invalidTemplateReport,
+            "Template.ParameterOffsetMismatch",
+            ValidationSeverity::Error))
+    {
+        throw std::runtime_error(
+            "invalid material template passed shader-interface validation");
+    }
+
+    MaterialAsset::CreateInfo invalidMaterial{};
+    invalidMaterial.name = "Invalid Offline Material";
+    invalidMaterial.materialTemplate = content.materialTemplate;
+    invalidMaterial.parameters = {
+        {"baseColorFactor", glm::vec4(1.0f)},
+        {"emissiveFactor", glm::vec3(0.0f)},
+        {"metallicFactor", 0.0f},
+        {"roughnessFactor", glm::vec4(1.0f)}
+    };
+    invalidMaterial.textures = {
+        {"baseColorTexture", content.defaultTexture},
+        {"metallicRoughnessTexture", content.defaultTexture},
+        {"normalTexture", content.defaultTexture},
+        {"occlusionTexture", content.defaultTexture},
+        {"emissiveTexture", content.defaultTexture}
+    };
+    const ValidationReport invalidMaterialReport =
+        assets.validateMaterial(invalidMaterial);
+    if (invalidMaterialReport.valid() ||
+        !hasValidationIssue(
+            invalidMaterialReport,
+            "Material.ParameterTypeMismatch",
+            ValidationSeverity::Error))
+    {
+        throw std::runtime_error(
+            "invalid material instance passed template validation");
+    }
+
+    bool creationRejected = false;
+    try
+    {
+        static_cast<void>(assets.createMaterial(
+            std::move(invalidMaterial)));
+    }
+    catch (const AssetValidationError& error)
+    {
+        creationRejected = hasValidationIssue(
+            error.report(),
+            "Material.ParameterTypeMismatch",
+            ValidationSeverity::Error);
+    }
+    if (!creationRejected)
+    {
+        throw std::runtime_error(
+            "AssetManager accepted an invalid material instance");
+    }
+}
+
 
 void validateRenderFrame(const RenderFrame& renderFrame)
 {
@@ -373,6 +496,7 @@ void AppSmokeTests::runAssetImportTest()
     validateRenderItemComparators();
     validateCullingSystem();
     app.demoContent = DemoContentLoader::load(app.assetManager, app.scene);
+    validateOfflineMaterialAssets(app.assetManager, app.demoContent);
 
     const std::vector<RenderCandidate> candidates =
         SceneRenderExtractor{}.extract(app.scene, app.assetManager);
@@ -475,6 +599,3 @@ void AppSmokeTests::runRenderTest(
 
 } // namespace Test
 } // namespace VkRenderer
-
-
-

@@ -1,18 +1,13 @@
 #pragma once
 
+#include "Asset/ShaderInterface.h"
+
 #include <cstdint>
 #include <string>
 #include <vector>
 
 namespace VkRenderer
 {
-
-enum class ShaderStage
-{
-    Vertex,
-    Fragment,
-    Compute
-};
 
 /// Source-independent ownership wrapper for SPIR-V shader bytecode.
 class ShaderAsset final
@@ -24,6 +19,7 @@ public:
         ShaderStage stage = ShaderStage::Vertex;
         std::string entryPoint = "main";
         std::vector<uint32_t> spirv;
+        ShaderInterface interface;
     };
 
     ShaderAsset() = default;
@@ -36,6 +32,10 @@ public:
     [[nodiscard]] ShaderStage stage() const noexcept { return stage_; }
     [[nodiscard]] const std::string& entryPoint() const noexcept { return entryPoint_; }
     [[nodiscard]] const std::vector<uint32_t>& spirv() const noexcept { return spirv_; }
+    [[nodiscard]] const ShaderInterface& interface() const noexcept
+    {
+        return interface_;
+    }
     [[nodiscard]] explicit operator bool() const noexcept { return !spirv_.empty(); }
 
 private:
@@ -43,6 +43,7 @@ private:
     ShaderStage stage_ = ShaderStage::Vertex;
     std::string entryPoint_ = "main";
     std::vector<uint32_t> spirv_;
+    ShaderInterface interface_;
 };
 
 } // namespace VkRenderer

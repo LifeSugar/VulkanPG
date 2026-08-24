@@ -102,11 +102,11 @@ DemoContent DemoContentLoader::load(
         {"roughnessFactor", MaterialValueType::Float, 32, true}
     };
     templateInfo.textureSlots = {
-        {"baseColorTexture", 0, true},
-        {"metallicRoughnessTexture", 1, true},
-        {"normalTexture", 2, true},
-        {"occlusionTexture", 3, true},
-        {"emissiveTexture", 4, true}
+        {"baseColorTexture", 0, true, {1, 1}, {1, 6}},
+        {"metallicRoughnessTexture", 1, true, {1, 2}, {1, 7}},
+        {"normalTexture", 2, true, {1, 3}, {1, 8}},
+        {"occlusionTexture", 3, true, {1, 4}, {1, 9}},
+        {"emissiveTexture", 4, true, {1, 5}, {1, 10}}
     };
     content.materialTemplate =
         assets.createMaterialTemplate(std::move(templateInfo));

@@ -1,5 +1,6 @@
 #include "Vulkan/GpuMaterial.h"
 
+#include "Asset/MaterialTemplateAsset.h"
 #include "Vulkan/Device.h"
 #include "Vulkan/GpuTexture.h"
 
@@ -14,6 +15,7 @@ namespace VkRenderer
 void GpuMaterial::create(
     const Device& device,
     const MaterialAsset& asset,
+    const MaterialTemplateAsset& materialTemplate,
     const std::vector<const GpuTexture*>& textures,
     VkDescriptorSet descriptorSet)
 {
@@ -50,38 +52,47 @@ void GpuMaterial::create(
     bufferInfo.buffer = parameterBuffer.get();
     bufferInfo.range = asset.parameterData().size();
 
-    std::vector<VkDescriptorImageInfo> imageInfos(textures.size());
-    std::vector<VkDescriptorImageInfo> samplerInfos(textures.size());
-    std::vector<VkWriteDescriptorSet> writes(1 + textures.size() * 2);
+    const std::vector<MaterialTextureSlotDesc>& textureSlots =
+        materialTemplate.textureSlots();
+    std::vector<VkDescriptorImageInfo> imageInfos(textureSlots.size());
+    std::vector<VkDescriptorImageInfo> samplerInfos(textureSlots.size());
+    std::vector<VkWriteDescriptorSet> writes(1 + textureSlots.size() * 2);
 
     writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writes[0].dstSet = descriptorSet;
-    writes[0].dstBinding = 0;
+    writes[0].dstBinding =
+        materialTemplate.parameterBlock().descriptor.binding;
     writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writes[0].descriptorCount = 1;
     writes[0].pBufferInfo = &bufferInfo;
 
-    const uint32_t textureCount =
-        static_cast<uint32_t>(textures.size());
-    for (uint32_t index = 0; index < textureCount; ++index)
+    const uint32_t textureSlotCount =
+        static_cast<uint32_t>(textureSlots.size());
+    for (uint32_t index = 0; index < textureSlotCount; ++index)
     {
-        imageInfos[index].imageView = textures[index]->view();
+        const MaterialTextureSlotDesc& slot = textureSlots[index];
+        if (slot.slot >= textures.size())
+        {
+            throw std::invalid_argument(
+                "GpuMaterial texture slot is outside its compiled texture table");
+        }
+        imageInfos[index].imageView = textures[slot.slot]->view();
         imageInfos[index].imageLayout =
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkWriteDescriptorSet& imageWrite = writes[1 + index];
         imageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         imageWrite.dstSet = descriptorSet;
-        imageWrite.dstBinding = 1 + index;
+        imageWrite.dstBinding = slot.imageBinding.binding;
         imageWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         imageWrite.descriptorCount = 1;
         imageWrite.pImageInfo = &imageInfos[index];
 
-        samplerInfos[index].sampler = textures[index]->sampler();
+        samplerInfos[index].sampler = textures[slot.slot]->sampler();
         VkWriteDescriptorSet& samplerWrite =
-            writes[1 + textureCount + index];
+            writes[1 + textureSlotCount + index];
         samplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         samplerWrite.dstSet = descriptorSet;
-        samplerWrite.dstBinding = 1 + textureCount + index;
+        samplerWrite.dstBinding = slot.samplerBinding.binding;
         samplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
         samplerWrite.descriptorCount = 1;
         samplerWrite.pImageInfo = &samplerInfos[index];

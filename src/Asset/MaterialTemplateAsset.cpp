@@ -16,6 +16,18 @@ MaterialTemplateAsset::MaterialTemplateAsset(CreateInfo createInfo)
 
 void MaterialTemplateAsset::create(CreateInfo createInfo)
 {
+    if (createInfo.shaderInterfaceSignature == 0)
+    {
+        throw std::invalid_argument(
+            "material template requires a validated shader interface");
+    }
+    if (createInfo.parameterBlock.descriptor.binding ==
+        kInvalidShaderBinding)
+    {
+        throw std::invalid_argument(
+            "material template parameter block binding is invalid");
+    }
+
     std::unordered_set<std::string> names;
     uint32_t requiredParameterBytes = 0;
     for (const MaterialParameterDesc& parameter : createInfo.parameters)
@@ -60,14 +72,28 @@ void MaterialTemplateAsset::create(CreateInfo createInfo)
     }
 
     std::unordered_set<uint32_t> textureSlots;
+    std::unordered_set<uint64_t> descriptorBindings;
+    const auto descriptorKey = [](MaterialDescriptorBinding binding)
+    {
+        return (static_cast<uint64_t>(binding.set) << 32u) |
+            binding.binding;
+    };
+    descriptorBindings.insert(descriptorKey(
+        createInfo.parameterBlock.descriptor));
     for (const MaterialTextureSlotDesc& texture : createInfo.textureSlots)
     {
         if (texture.slot == std::numeric_limits<uint32_t>::max() ||
             texture.name.empty() || !names.insert(texture.name).second ||
-            !textureSlots.insert(texture.slot).second)
+            !textureSlots.insert(texture.slot).second ||
+            texture.imageBinding.binding == kInvalidShaderBinding ||
+            texture.samplerBinding.binding == kInvalidShaderBinding ||
+            !descriptorBindings.insert(
+                descriptorKey(texture.imageBinding)).second ||
+            !descriptorBindings.insert(
+                descriptorKey(texture.samplerBinding)).second)
         {
             throw std::invalid_argument(
-                "material template texture names and slots must be unique");
+                "material template texture names, slots, and bindings must be unique");
         }
     }
 
@@ -83,18 +109,22 @@ void MaterialTemplateAsset::create(CreateInfo createInfo)
 
     name_ = std::move(createInfo.name);
     shaders_ = std::move(createInfo.shaders);
+    parameterBlock_ = createInfo.parameterBlock;
     parameterDataSize_ = createInfo.parameterDataSize;
     parameters_ = std::move(createInfo.parameters);
     textureSlots_ = std::move(createInfo.textureSlots);
+    shaderInterfaceSignature_ = createInfo.shaderInterfaceSignature;
 }
 
 void MaterialTemplateAsset::reset() noexcept
 {
     name_.clear();
     shaders_.clear();
+    parameterBlock_ = {};
     parameterDataSize_ = 0;
     parameters_.clear();
     textureSlots_.clear();
+    shaderInterfaceSignature_ = 0;
 }
 
 uint32_t MaterialTemplateAsset::valueSize(MaterialValueType type) noexcept

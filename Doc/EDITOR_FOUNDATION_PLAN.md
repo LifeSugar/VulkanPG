@@ -155,6 +155,19 @@ struct Transform
 
 需要渲染矩阵时再由 Transform 计算，避免 Inspector 反复对矩阵做不稳定的分解和重组。
 
+### 9.1 Asset Validation 离线边界
+
+Material Template 与 Material 的合法性在 Asset 创建阶段确定，不依赖 Window、Vulkan Device、RenderPass 或帧渲染流程：
+
+- [x] 将 Asset 模型、SPIR-V CPU Reflection 和校验逻辑收敛到独立 `asset-core` 静态库。
+- [x] `ShaderAsset` 持久化后端无关的 `ShaderInterface`，包含 Stage IO、Descriptor、Parameter Block 和 Push Constant。
+- [x] `MaterialTemplateAsset` 显式声明 Parameter Block、Texture/Sampler Binding 与验证过的 Shader Interface Signature。
+- [x] Template 校验覆盖 Shader Stage/IO、跨 Stage Descriptor、参数类型/偏移/范围以及 Binding 冲突。
+- [x] Material 实例校验覆盖 Template 版本签名、参数类型/必填性、Texture Slot 与 Render State。
+- [x] `AssetManager` 提供无副作用的 dry-run Validation Report；真正创建时对同一套规则强制校验。
+- [x] `--asset-test` 在创建窗口和 GPU 资源之前执行正例与反例，并验证结构化错误码。
+- [ ] 后续将 Shader Interface Signature 和 Validation Report 接入资产序列化、热重载与 Inspector 诊断 UI。
+
 ## 10. Scene Viewport 渲染路径
 
 Editor 不能继续把场景最终结果直接占满 Swapchain。目标路径为：

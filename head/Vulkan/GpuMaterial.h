@@ -12,6 +12,7 @@ namespace VkRenderer
 
 class Device;
 class GpuTexture;
+class MaterialTemplateAsset;
 
 /// Parameter buffer and texture descriptors compiled for one MaterialAsset.
 class GpuMaterial final
@@ -27,6 +28,7 @@ public:
     void create(
         const Device& device,
         const MaterialAsset& asset,
+        const MaterialTemplateAsset& materialTemplate,
         const std::vector<const GpuTexture*>& textures,
         VkDescriptorSet descriptorSet);
     void reset() noexcept;

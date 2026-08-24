@@ -1,5 +1,7 @@
 #include "Import/SpirvShaderImporter.h"
 
+#include "Import/SpirvReflection.h"
+
 #include <cstdint>
 #include <fstream>
 #include <limits>
@@ -64,6 +66,11 @@ ShaderAssetHandle SpirvShaderImporter::import(
             "failed to read SPIR-V shader: " +
             createInfo.path.string());
     }
+
+    shaderInfo.interface = SpirvReflection::reflect(
+        shaderInfo.spirv,
+        shaderInfo.stage,
+        shaderInfo.entryPoint);
 
     return createInfo.assets->createShader(std::move(shaderInfo));
 }

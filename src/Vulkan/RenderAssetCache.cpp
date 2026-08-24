@@ -83,18 +83,18 @@ void RenderAssetCache::create(
         }
     }
 
-    MaterialTemplateAssetHandle materialTemplate;
+    MaterialTemplateAssetHandle materialTemplateHandle;
     uint32_t textureCount = 0;
     for (MaterialAssetHandle materialHandle : materialHandles)
     {
         const MaterialAsset& materialAsset = assets.material(materialHandle);
-        if (!materialTemplate)
+        if (!materialTemplateHandle)
         {
-            materialTemplate = materialAsset.materialTemplate();
+            materialTemplateHandle = materialAsset.materialTemplate();
             textureCount =
                 static_cast<uint32_t>(materialAsset.textures().size());
         }
-        else if (materialAsset.materialTemplate() != materialTemplate ||
+        else if (materialAsset.materialTemplate() != materialTemplateHandle ||
                  materialAsset.textures().size() != textureCount)
         {
             throw std::invalid_argument(
@@ -110,28 +110,35 @@ void RenderAssetCache::create(
         throw std::invalid_argument(
             "render model contains no textured materials");
     }
+    const MaterialTemplateAsset& materialTemplate =
+        assets.materialTemplate(materialTemplateHandle);
+    const uint32_t textureSlotCount = static_cast<uint32_t>(
+        materialTemplate.textureSlots().size());
 
     reset();
     try
     {
         std::vector<VkDescriptorSetLayoutBinding> bindings(
-            1 + textureCount * 2);
-        bindings[0].binding = 0;
+            1 + textureSlotCount * 2);
+        bindings[0].binding =
+            materialTemplate.parameterBlock().descriptor.binding;
         bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[0].descriptorCount = 1;
         bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        for (uint32_t index = 0; index < textureCount; ++index)
+        for (uint32_t index = 0; index < textureSlotCount; ++index)
         {
+            const MaterialTextureSlotDesc& slot =
+                materialTemplate.textureSlots()[index];
             VkDescriptorSetLayoutBinding& imageBinding =
                 bindings[1 + index];
-            imageBinding.binding = 1 + index;
+            imageBinding.binding = slot.imageBinding.binding;
             imageBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
             imageBinding.descriptorCount = 1;
             imageBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
             VkDescriptorSetLayoutBinding& samplerBinding =
-                bindings[1 + textureCount + index];
-            samplerBinding.binding = 1 + textureCount + index;
+                bindings[1 + textureSlotCount + index];
+            samplerBinding.binding = slot.samplerBinding.binding;
             samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
             samplerBinding.descriptorCount = 1;
             samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -141,7 +148,9 @@ void RenderAssetCache::create(
         const uint32_t materialCount =
             static_cast<uint32_t>(materialHandles.size());
         const uint32_t materialTextureDescriptors =
-            checkedDescriptorCount(materialHandles.size(), textureCount);
+            checkedDescriptorCount(
+                materialHandles.size(),
+                textureSlotCount);
         materialDescriptorPool_.create(
             device.get(),
             {
@@ -184,6 +193,7 @@ void RenderAssetCache::create(
             entry.material.create(
                 device,
                 materialAsset,
+                materialTemplate,
                 materialTextures,
                 materialDescriptorSets[index]);
             materials_.push_back(std::move(entry));
