@@ -8,6 +8,7 @@
 
 #include <cstring>
 #include <algorithm>
+#include <filesystem>
 #include <limits>
 #include <map>
 #include <functional>
@@ -54,7 +55,7 @@ std::unique_ptr<GLBModel> GLBLoader::load(const std::string& filePath)
     }
 
     // 提取各项数据
-    m_model->name = filePath;
+    m_model->name = std::filesystem::path(filePath).filename().string();
     extractTextures(scene);
     extractMaterials(scene);
     extractMeshes(scene);

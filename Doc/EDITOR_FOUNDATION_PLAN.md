@@ -107,18 +107,20 @@ struct EditorContext
 
 ## 7. EditorSelection
 
-- [ ] 保存当前选中的 `SceneNodeId`，不保存 `SceneNode*` 或 vector 下标。
-- [ ] 支持设置和清空选择。
-- [ ] 节点被删除或 Scene 被替换后自动清理无效选择。
-- [ ] Hierarchy、Inspector 和 Scene Viewport 共用同一选择状态。
-- [ ] 接口为后续资产选择、多选和 Gizmo 状态留出扩展空间。
+- [x] 建立统一 `EditorSelection`，不保存 Scene/Asset 裸指针。
+- [x] 使用 `InspectorTarget` variant 区分 SceneNode、ModelNode、Model、Mesh、Submesh、Material、MaterialTemplate 和 Texture。
+- [x] 支持主选择、清空选择、Inspector 引用导航和 Back 历史。
+- [x] Hierarchy 和 Inspector 共用同一选择状态。
+- [x] SceneNode/ModelNode 索引或 AssetHandle 失效时显示安全空状态或清理选择。
+- [ ] `SceneNodeId` 建立后，用稳定 ID 替换当前临时 SceneNode vector 下标。
+- [ ] Scene Viewport、Gizmo 和多选接入同一选择状态。
 
 ## 8. Scene Hierarchy Panel
 
 - [x] 独立 `SceneHierarchyPanel` 依赖 Scene/Asset 数据，不依赖 Renderer。
 - [x] 按 `SceneNode::parent` 一次构建 roots/children 并递归绘制场景树。
-- [x] 在引用模型的 SceneNode 下只读投影 `ModelAsset::ModelNode` 层级。
-- [x] 点击节点后保存临时 node index 选择；稳定 `EditorSelection` 后再替换。
+- [x] 在引用模型的 SceneNode 下直接只读投影 `ModelAsset::ModelNode` 层级，不添加 Asset 包装节点。
+- [x] 在 ModelNode 下直接显示 Mesh/Submesh，点击 SceneNode、ModelNode、Mesh 或 Submesh 后写入统一 `EditorSelection`。
 - [x] 正确显示当前选择和展开状态。
 - [x] 点击空白区域取消选择。
 - [ ] 右键菜单支持创建和删除节点。
@@ -126,19 +128,19 @@ struct EditorContext
 - [ ] 支持拖放调整父子关系。
 - [ ] 拒绝无效或会形成循环的拖放操作。
 
-当前固定 Demo Scene 只有一个真正的 `SceneNode`；GLB 的 50 个内部节点属于 `ModelAsset::ModelNode`。Hierarchy 会将其作为只读子树显示，但不会把它们复制成 SceneNode，避免与现有 Render Extractor 重复展开。
+当前固定 Demo Scene 只有一个真正的 `SceneNode`；GLB 的内部 ModelNode、Mesh 和 Submesh 会作为只读子树直接显示，但不会复制成 SceneNode，避免与现有 Render Extractor 重复展开。
 
 ## 9. Inspector Panel
 
-第一阶段只编辑 Scene Node：
+第一阶段建立只读、多类型 Inspector：
 
-- [ ] 未选择节点时显示明确的空状态。
-- [ ] 编辑节点名称。
-- [ ] 编辑 Position、Rotation 和 Scale。
-- [ ] 编辑 Layer Mask。
-- [ ] 编辑 Bounds Culling Mode。
-- [ ] 显示或更换 Model 资源。
-- [ ] 所有修改通过 Scene 编辑 API 完成，不直接修改内部容器。
+- [x] 未选择对象时显示明确的空状态。
+- [x] 使用 `std::visit` 将选择路由到类型专属 drawer，不使用 RTTI，也不让引擎对象依赖 ImGui。
+- [x] 支持 SceneNode、ModelNode、Model、Mesh、Submesh、Material、MaterialTemplate 和 Texture 的最小只读信息。
+- [x] Mesh/Submesh 由 Hierarchy 直接选择；Inspector 支持从 SceneNode 进入 Model，以及从 Submesh 继续进入 Material → Texture。
+- [x] Inspector 只依赖 Scene/Asset 数据，不依赖 Renderer。
+- [ ] 补全 Transform、Layer、Culling、Bounds、材质参数和采样器等只读字段。
+- [ ] 编辑阶段的所有修改通过 Scene/Asset 编辑 API 完成，不直接修改内部容器。
 
 Transform 建议逐步从单独的 `glm::mat4` 提升为可编辑数据：
 

@@ -2,6 +2,7 @@
 
 #include "Asset/AssetManager.h"
 #include "Asset/ModelAsset.h"
+#include "Editor/EditorSelection.h"
 #include "Scene/Scene.h"
 
 #include <imgui.h>
@@ -46,9 +47,94 @@ struct ModelHierarchy final
     return hierarchy;
 }
 
+void drawMeshHierarchy(
+    const AssetManager& assets,
+    MeshAssetHandle meshHandle,
+    EditorSelection& selection)
+{
+    if (!assets.contains(meshHandle))
+    {
+        ImGui::TextDisabled("Missing MeshAsset");
+        return;
+    }
+
+    const MeshAsset& mesh = assets.mesh(meshHandle);
+    const bool hasSubmeshes = !mesh.submeshes().empty();
+    ImGuiTreeNodeFlags flags =
+        ImGuiTreeNodeFlags_OpenOnArrow |
+        ImGuiTreeNodeFlags_SpanAvailWidth;
+    const MeshAssetHandle* selectedMesh =
+        std::get_if<MeshAssetHandle>(&selection.target());
+    if (selectedMesh != nullptr && *selectedMesh == meshHandle)
+    {
+        flags |= ImGuiTreeNodeFlags_Selected;
+    }
+    if (!hasSubmeshes)
+    {
+        flags |= ImGuiTreeNodeFlags_Leaf |
+            ImGuiTreeNodeFlags_NoTreePushOnOpen;
+    }
+
+    const char* meshLabel = mesh.name().empty()
+        ? "Unnamed Mesh"
+        : mesh.name().c_str();
+    const bool meshOpen = ImGui::TreeNodeEx(meshLabel, flags);
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+    {
+        selection.select(meshHandle);
+    }
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("MeshAsset (read-only)");
+    }
+
+    if (meshOpen && hasSubmeshes)
+    {
+        for (uint32_t submeshIndex = 0;
+             submeshIndex <
+                 static_cast<uint32_t>(mesh.submeshes().size());
+             ++submeshIndex)
+        {
+            ImGui::PushID(static_cast<int>(submeshIndex));
+            ImGuiTreeNodeFlags submeshFlags =
+                ImGuiTreeNodeFlags_Leaf |
+                ImGuiTreeNodeFlags_NoTreePushOnOpen |
+                ImGuiTreeNodeFlags_SpanAvailWidth;
+            const SubmeshTarget* selectedSubmesh =
+                std::get_if<SubmeshTarget>(&selection.target());
+            if (selectedSubmesh != nullptr &&
+                selectedSubmesh->mesh == meshHandle &&
+                selectedSubmesh->submeshIndex == submeshIndex)
+            {
+                submeshFlags |= ImGuiTreeNodeFlags_Selected;
+            }
+
+            const std::string label =
+                "Submesh " + std::to_string(submeshIndex);
+            ImGui::TreeNodeEx(label.c_str(), submeshFlags);
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+            {
+                selection.select(SubmeshTarget{
+                    meshHandle,
+                    submeshIndex
+                });
+            }
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetTooltip("Submesh (read-only)");
+            }
+            ImGui::PopID();
+        }
+        ImGui::TreePop();
+    }
+}
+
 void drawModelHierarchy(
+    const AssetManager& assets,
     const ModelAsset& model,
-    uint32_t sceneNodeIndex)
+    ModelAssetHandle modelHandle,
+    uint32_t sceneNodeIndex,
+    EditorSelection& selection)
 {
     const std::vector<ModelNode>& nodes = model.nodes();
     if (nodes.empty())
@@ -59,74 +145,82 @@ void drawModelHierarchy(
     const ModelHierarchy hierarchy = buildModelHierarchy(model);
     ImGui::PushID("ModelAssetHierarchy");
     ImGui::PushID(static_cast<int>(sceneNodeIndex));
+    ImGui::PushStyleColor(
+        ImGuiCol_Text,
+        ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
 
-    const char* modelName = model.name().empty()
-        ? "Unnamed Model"
-        : model.name().c_str();
-    const ImGuiTreeNodeFlags modelFlags =
-        ImGuiTreeNodeFlags_DefaultOpen |
-        ImGuiTreeNodeFlags_OpenOnArrow |
-        ImGuiTreeNodeFlags_SpanAvailWidth;
-    const bool modelOpen = ImGui::TreeNodeEx(
-        "##ModelAsset",
-        modelFlags,
-        "Model: %s",
-        modelName);
-    if (ImGui::IsItemHovered())
-    {
-        ImGui::SetTooltip("Read-only ModelAsset hierarchy");
-    }
+    std::function<void(uint32_t)> drawModelNode =
+        [&](uint32_t nodeIndex)
+        {
+            const ModelNode& node = nodes[nodeIndex];
+            const bool hasChildren =
+                !hierarchy.children[nodeIndex].empty() ||
+                !node.meshes.empty();
 
-    if (modelOpen)
-    {
-        ImGui::PushStyleColor(
-            ImGuiCol_Text,
-            ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-
-        std::function<void(uint32_t)> drawModelNode =
-            [&](uint32_t nodeIndex)
+            ImGuiTreeNodeFlags flags =
+                ImGuiTreeNodeFlags_OpenOnArrow |
+                ImGuiTreeNodeFlags_SpanAvailWidth;
+            const ModelNodeTarget* selected =
+                std::get_if<ModelNodeTarget>(&selection.target());
+            if (selected != nullptr &&
+                selected->model == modelHandle &&
+                selected->nodeIndex == nodeIndex &&
+                selected->sceneNodeIndex == sceneNodeIndex)
             {
-                const ModelNode& node = nodes[nodeIndex];
-                const bool hasChildren =
-                    !hierarchy.children[nodeIndex].empty();
+                flags |= ImGuiTreeNodeFlags_Selected;
+            }
+            if (!hasChildren)
+            {
+                flags |= ImGuiTreeNodeFlags_Leaf |
+                    ImGuiTreeNodeFlags_NoTreePushOnOpen;
+            }
 
-                ImGuiTreeNodeFlags flags =
-                    ImGuiTreeNodeFlags_OpenOnArrow |
-                    ImGuiTreeNodeFlags_SpanAvailWidth;
-                if (!hasChildren)
+            ImGui::PushID(static_cast<int>(nodeIndex));
+            const char* label = node.name.empty()
+                ? "Unnamed ModelNode"
+                : node.name.c_str();
+            const bool nodeOpen = ImGui::TreeNodeEx(label, flags);
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+            {
+                selection.select(ModelNodeTarget{
+                    modelHandle,
+                    nodeIndex,
+                    sceneNodeIndex
+                });
+            }
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetTooltip("ModelNode (read-only)");
+            }
+            if (nodeOpen && hasChildren)
+            {
+                for (uint32_t childIndex : hierarchy.children[nodeIndex])
                 {
-                    flags |= ImGuiTreeNodeFlags_Leaf |
-                        ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                    drawModelNode(childIndex);
                 }
-
-                ImGui::PushID(static_cast<int>(nodeIndex));
-                const char* label = node.name.empty()
-                    ? "Unnamed ModelNode"
-                    : node.name.c_str();
-                const bool nodeOpen = ImGui::TreeNodeEx(label, flags);
-                if (ImGui::IsItemHovered())
+                ImGui::PushID("MeshReferences");
+                for (std::size_t meshIndex = 0;
+                     meshIndex < node.meshes.size();
+                     ++meshIndex)
                 {
-                    ImGui::SetTooltip("ModelNode (read-only)");
-                }
-                if (nodeOpen && hasChildren)
-                {
-                    for (uint32_t childIndex :
-                         hierarchy.children[nodeIndex])
-                    {
-                        drawModelNode(childIndex);
-                    }
-                    ImGui::TreePop();
+                    ImGui::PushID(static_cast<int>(meshIndex));
+                    drawMeshHierarchy(
+                        assets,
+                        node.meshes[meshIndex],
+                        selection);
+                    ImGui::PopID();
                 }
                 ImGui::PopID();
-            };
+                ImGui::TreePop();
+            }
+            ImGui::PopID();
+        };
 
-        for (uint32_t rootIndex : hierarchy.roots)
-        {
-            drawModelNode(rootIndex);
-        }
-        ImGui::PopStyleColor();
-        ImGui::TreePop();
+    for (uint32_t rootIndex : hierarchy.roots)
+    {
+        drawModelNode(rootIndex);
     }
+    ImGui::PopStyleColor();
 
     ImGui::PopID();
     ImGui::PopID();
@@ -137,6 +231,7 @@ void drawModelHierarchy(
 void SceneHierarchyPanel::draw(
     const Scene& scene,
     const AssetManager& assets,
+    EditorSelection& selection,
     bool* open)
 {
     const bool visible = ImGui::Begin("Scene Hierarchy", open);
@@ -147,9 +242,37 @@ void SceneHierarchyPanel::draw(
     }
 
     const std::vector<SceneNode>& nodes = scene.nodes();
-    if (selectedNodeIndex_ >= nodes.size())
+    if (const SceneNodeTarget* target =
+            std::get_if<SceneNodeTarget>(&selection.target());
+        target != nullptr && target->nodeIndex >= nodes.size())
     {
-        clearSelection();
+        selection.clear();
+    }
+    else if (const ModelNodeTarget* target =
+                 std::get_if<ModelNodeTarget>(&selection.target());
+             target != nullptr &&
+             (!assets.contains(target->model) ||
+              target->nodeIndex >=
+                  assets.model(target->model).nodes().size() ||
+              (target->sceneNodeIndex &&
+               *target->sceneNodeIndex >= nodes.size())))
+    {
+        selection.clear();
+    }
+    else if (const MeshAssetHandle* target =
+                 std::get_if<MeshAssetHandle>(&selection.target());
+             target != nullptr && !assets.contains(*target))
+    {
+        selection.clear();
+    }
+    else if (const SubmeshTarget* target =
+                 std::get_if<SubmeshTarget>(&selection.target());
+             target != nullptr &&
+             (!assets.contains(target->mesh) ||
+              target->submeshIndex >=
+                  assets.mesh(target->mesh).submeshes().size()))
+    {
+        selection.clear();
     }
 
     std::vector<uint32_t> roots;
@@ -202,7 +325,10 @@ void SceneHierarchyPanel::draw(
                 ImGuiTreeNodeFlags flags =
                     ImGuiTreeNodeFlags_OpenOnArrow |
                     ImGuiTreeNodeFlags_SpanAvailWidth;
-                if (selectedNodeIndex_ == nodeIndex)
+                const SceneNodeTarget* selected =
+                    std::get_if<SceneNodeTarget>(&selection.target());
+                if (selected != nullptr &&
+                    selected->nodeIndex == nodeIndex)
                 {
                     flags |= ImGuiTreeNodeFlags_Selected;
                 }
@@ -224,7 +350,7 @@ void SceneHierarchyPanel::draw(
                 const bool nodeOpen = ImGui::TreeNodeEx(label, flags);
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
                 {
-                    selectedNodeIndex_ = nodeIndex;
+                    selection.select(SceneNodeTarget{nodeIndex});
                 }
 
                 if (nodeOpen && hasChildren)
@@ -235,7 +361,12 @@ void SceneHierarchyPanel::draw(
                     }
                     if (model != nullptr)
                     {
-                        drawModelHierarchy(*model, nodeIndex);
+                        drawModelHierarchy(
+                            assets,
+                            *model,
+                            node.model,
+                            nodeIndex,
+                            selection);
                     }
                     ImGui::TreePop();
                 }
@@ -253,24 +384,9 @@ void SceneHierarchyPanel::draw(
         ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
         !ImGui::IsAnyItemHovered())
     {
-        clearSelection();
+        selection.clear();
     }
     ImGui::End();
-}
-
-std::optional<uint32_t> SceneHierarchyPanel::selectedNodeIndex() const
-    noexcept
-{
-    if (selectedNodeIndex_ == std::numeric_limits<uint32_t>::max())
-    {
-        return std::nullopt;
-    }
-    return selectedNodeIndex_;
-}
-
-void SceneHierarchyPanel::clearSelection() noexcept
-{
-    selectedNodeIndex_ = std::numeric_limits<uint32_t>::max();
 }
 
 } // namespace VkRenderer

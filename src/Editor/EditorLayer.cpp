@@ -36,11 +36,16 @@ ApplicationGuiFrameOutput EditorLayer::draw(
         sceneHierarchyPanel_.draw(
             context.scene,
             context.assets,
+            selection_,
             &showSceneHierarchy_);
     }
     if (showInspector_)
     {
-        drawInspector(context);
+        inspectorPanel_.draw(
+            context.scene,
+            context.assets,
+            selection_,
+            &showInspector_);
     }
     if (showSceneViewport_)
     {
@@ -135,14 +140,6 @@ void EditorLayer::drawDockSpace()
         ImGui::DockBuilderFinish(dockspaceId);
     }
     ImGui::DockSpace(dockspaceId, ImVec2(0.0f, 0.0f), dockspaceFlags);
-    ImGui::End();
-}
-
-void EditorLayer::drawInspector(const ApplicationGuiContext& context)
-{
-    ImGui::Begin("Inspector", &showInspector_);
-    static_cast<void>(context);
-    ImGui::TextDisabled("Inspector is not connected yet");
     ImGui::End();
 }
 
