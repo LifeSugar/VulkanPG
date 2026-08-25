@@ -72,20 +72,23 @@ void RenderTarget::create(
 
         AttachmentResources resources;
         resources.info = info;
-        resources.image.create(
-            device,
+        Image::CreateInfo imageInfo{};
+        imageInfo.extent = {
             createInfo.extent.width,
             createInfo.extent.height,
-            info.format,
-            info.tiling,
-            info.usage,
-            info.memoryProperties,
-            info.samples);
-        resources.view.create(
-            device.get(),
-            resources.image.get(),
-            info.format,
-            info.aspectMask);
+            1};
+        imageInfo.format = info.format;
+        imageInfo.tiling = info.tiling;
+        imageInfo.usage = info.usage;
+        imageInfo.memoryProperties = info.memoryProperties;
+        imageInfo.samples = info.samples;
+        resources.image.create(device, imageInfo);
+
+        ImageView::CreateInfo viewInfo{};
+        viewInfo.image = resources.image.get();
+        viewInfo.format = info.format;
+        viewInfo.subresourceRange.aspectMask = info.aspectMask;
+        resources.view.create(device.get(), viewInfo);
 
         newAttachmentViews.push_back(resources.view.get());
         newAttachments.push_back(std::move(resources));

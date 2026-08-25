@@ -30,7 +30,7 @@ std::vector<TextureAssetHandle> GLBTextureImporter::import(
     for (const GLBTexture& texture : source)
     {
         TextureAsset::CreateInfo textureInfo{};
-        if (texture.storage == GLBTextureStorage::Rgba8Pixels)
+        if (texture.storage == GLBTextureStorage::Rgba8Payload)
         {
             if (texture.width == 0 || texture.height == 0 ||
                 static_cast<std::size_t>(texture.width) >
@@ -58,9 +58,9 @@ std::vector<TextureAssetHandle> GLBTextureImporter::import(
             textureInfo.format = TextureFormat::RGBA8UNorm;
             textureInfo.colorSpace = createInfo.colorSpace;
             textureInfo.sampler = createInfo.sampler;
-            textureInfo.pixels.resize(texture.data.size());
+            textureInfo.payload.resize(texture.data.size());
             std::memcpy(
-                textureInfo.pixels.data(),
+                textureInfo.payload.data(),
                 texture.data.data(),
                 texture.data.size());
         }

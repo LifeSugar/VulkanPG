@@ -44,7 +44,7 @@ struct GLBMesh {
 enum class GLBTextureStorage {
     ExternalUri,
     EncodedBytes,
-    Rgba8Pixels
+    Rgba8Payload
 };
 
 struct GLBTexture {

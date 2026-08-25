@@ -4,6 +4,7 @@
 #include "ApplicationGuiRenderBridge.h"
 #include "Asset/AssetId.h"
 #include "Content/DemoContent.h"
+#include "Import/KtxTextureImporter.h"
 #include "Render/CullingSystem.h"
 #include "Render/MaterialKey.h"
 #include "Render/PipelineVariantKey.h"
@@ -11,14 +12,21 @@
 #include "Render/RenderItemComparator.h"
 #include "Render/SceneRenderExtractor.h"
 #include "RuntimeGui.h"
+#include "Vulkan/CommandPool.h"
+#include "Vulkan/GpuTexture.h"
+#include "Vulkan/UploadContext.h"
 #include "Vulkan/VulkanDrawListCompiler.h"
 
 #include <imgui.h>
+#include <ktx.h>
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <unordered_set>
 #include <utility>
@@ -526,6 +534,167 @@ void validateVulkanDrawListCompilation(
     }
 }
 
+void validateTextureFormats()
+{
+    const TextureFormatInfo rgba8 =
+        textureFormatInfo(TextureFormat::RGBA8UNorm);
+    const TextureFormatInfo bc1 =
+        textureFormatInfo(TextureFormat::BC1RGBAUNorm);
+    const TextureFormatInfo bc7 =
+        textureFormatInfo(TextureFormat::BC7UNorm);
+    if (rgba8.compressed || rgba8.bytesPerBlock != 4 ||
+        !rgba8.supportsSrgb ||
+        !bc1.compressed || bc1.blockWidth != 4 ||
+        bc1.blockHeight != 4 || bc1.bytesPerBlock != 8 ||
+        !bc1.supportsSrgb ||
+        !bc7.compressed || bc7.bytesPerBlock != 16 ||
+        !bc7.supportsSrgb ||
+        textureMipByteSize(TextureFormat::RGBA8UNorm, 4, 4) != 64 ||
+        textureMipByteSize(TextureFormat::BC1RGBAUNorm, 7, 5) != 32 ||
+        textureMipByteSize(TextureFormat::BC7UNorm, 2, 2) != 16)
+    {
+        throw std::runtime_error("texture format layout validation failed");
+    }
+}
+
+[[noreturn]] void throwKtxTestError(
+    const char* operation,
+    KTX_error_code error)
+{
+    throw std::runtime_error(
+        std::string(operation) + ": " + ktxErrorString(error));
+}
+
+std::vector<uint8_t> makeKtx2Fixture(bool basisEncoded)
+{
+    ktxTextureCreateInfo createInfo{};
+    createInfo.vkFormat = basisEncoded
+        ? VK_FORMAT_R8G8B8A8_UNORM
+        : VK_FORMAT_BC7_UNORM_BLOCK;
+    createInfo.baseWidth = 4;
+    createInfo.baseHeight = 4;
+    createInfo.baseDepth = 1;
+    createInfo.numDimensions = 2;
+    createInfo.numLevels = 3;
+    createInfo.numLayers = 1;
+    createInfo.numFaces = 1;
+
+    ktxTexture2* rawTexture = nullptr;
+    KTX_error_code error = ktxTexture2_Create(
+        &createInfo,
+        KTX_TEXTURE_CREATE_ALLOC_STORAGE,
+        &rawTexture);
+    if (error != KTX_SUCCESS)
+    {
+        throwKtxTestError("failed to create KTX2 test texture", error);
+    }
+    using TexturePointer =
+        std::unique_ptr<ktxTexture2, decltype(&ktxTexture2_Destroy)>;
+    TexturePointer texture(rawTexture, &ktxTexture2_Destroy);
+
+    for (uint32_t mipLevel = 0; mipLevel < createInfo.numLevels; ++mipLevel)
+    {
+        const uint32_t width = std::max(1u, createInfo.baseWidth >> mipLevel);
+        const uint32_t height = std::max(1u, createInfo.baseHeight >> mipLevel);
+        const TextureFormat format = basisEncoded
+            ? TextureFormat::RGBA8UNorm
+            : TextureFormat::BC7UNorm;
+        std::vector<uint8_t> levelData(
+            textureMipByteSize(format, width, height),
+            static_cast<uint8_t>(0x40 + mipLevel * 0x20));
+        error = ktxTexture_SetImageFromMemory(
+            ktxTexture(texture.get()),
+            mipLevel,
+            0,
+            0,
+            levelData.data(),
+            levelData.size());
+        if (error != KTX_SUCCESS)
+        {
+            throwKtxTestError("failed to populate KTX2 test mip", error);
+        }
+    }
+
+    if (basisEncoded)
+    {
+        error = ktxTexture2_CompressBasis(texture.get(), 128);
+        if (error != KTX_SUCCESS)
+        {
+            throwKtxTestError("failed to Basis-encode KTX2 test texture", error);
+        }
+    }
+
+    ktx_uint8_t* encodedData = nullptr;
+    ktx_size_t encodedSize = 0;
+    error = ktxTexture2_WriteToMemory(
+        texture.get(),
+        &encodedData,
+        &encodedSize);
+    if (error != KTX_SUCCESS)
+    {
+        throwKtxTestError("failed to serialize KTX2 test texture", error);
+    }
+    using EncodedPointer =
+        std::unique_ptr<ktx_uint8_t, decltype(&std::free)>;
+    EncodedPointer encoded(encodedData, &std::free);
+    return std::vector<uint8_t>(encoded.get(), encoded.get() + encodedSize);
+}
+
+void validateKtxTextureImportAndUpload(const Device& device)
+{
+    const KtxTextureImporter importer;
+    KtxTextureImporter::CreateInfo importInfo{};
+    importInfo.name = "Direct BC7 KTX2 smoke texture";
+
+    const std::vector<uint8_t> directBytes = makeKtx2Fixture(false);
+    TextureAsset::CreateInfo directInfo = importer.importMemory(
+        directBytes.data(),
+        directBytes.size(),
+        importInfo);
+    if (directInfo.format != TextureFormat::BC7UNorm ||
+        directInfo.colorSpace != TextureColorSpace::Linear ||
+        directInfo.payload.size() != 48 ||
+        directInfo.mipLevels.size() != 3)
+    {
+        throw std::runtime_error(
+            "direct BC7 KTX2 import produced invalid asset metadata");
+    }
+
+    importInfo.name = "Basis-to-BC7 KTX2 smoke texture";
+    importInfo.transcodeFormat = TextureFormat::BC7UNorm;
+    const std::vector<uint8_t> basisBytes = makeKtx2Fixture(true);
+    TextureAsset::CreateInfo textureInfo = importer.importMemory(
+        basisBytes.data(),
+        basisBytes.size(),
+        importInfo);
+    if (textureInfo.format != TextureFormat::BC7UNorm ||
+        textureInfo.colorSpace != TextureColorSpace::Linear ||
+        textureInfo.payload.size() != 48 ||
+        textureInfo.mipLevels.size() != 3)
+    {
+        throw std::runtime_error(
+            "Basis-to-BC7 KTX2 transcode produced invalid asset metadata");
+    }
+
+    CommandPool commandPool(
+        device,
+        device.graphicsQueueFamily(),
+        VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+    UploadContext uploadContext(device, commandPool);
+
+    const TextureAsset texture(std::move(textureInfo));
+    GpuTexture::CreateInfo gpuTextureInfo{};
+    gpuTextureInfo.asset = &texture;
+    gpuTextureInfo.viewRange.baseMipLevel = 1;
+    gpuTextureInfo.viewRange.levelCount = 2;
+    const GpuTexture gpuTexture(device, uploadContext, gpuTextureInfo);
+    if (!gpuTexture || gpuTexture.format() != VK_FORMAT_BC7_UNORM_BLOCK)
+    {
+        throw std::runtime_error(
+            "transcoded BC7 KTX2 upload produced an invalid GPU texture");
+    }
+}
+
 } // namespace
 
 void AppSmokeTests::runAssetImportTest()
@@ -533,6 +702,7 @@ void AppSmokeTests::runAssetImportTest()
     App app;
 
     validateAssetId();
+    validateTextureFormats();
     validateRenderKeys();
     validateRenderItemComparators();
     validateCullingSystem();
@@ -597,6 +767,7 @@ void AppSmokeTests::runRenderTest(
 {
     app.initWindow(config, false);
     app.initVulkan(config);
+    validateKtxTextureImportAndUpload(app.vulkanContext.device());
     app.initImGui(config);
     app.guiRenderBridge.attach(app.renderer, app.renderAssets);
     ApplicationGuiContext guiContext{

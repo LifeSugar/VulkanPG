@@ -300,7 +300,7 @@ void GLBLoader::extractTextures(const void* aiScenePtr)
                     "embedded GLB texture dimensions are too large");
             }
 
-            tex.storage = GLBTextureStorage::Rgba8Pixels;
+            tex.storage = GLBTextureStorage::Rgba8Payload;
             tex.width = src->mWidth;
             tex.height = src->mHeight;
             tex.data.resize(pixelCount * 4);

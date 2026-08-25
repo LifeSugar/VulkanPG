@@ -22,6 +22,17 @@ namespace
     case TextureFormat::RGBA8UNorm: return "RGBA8 UNorm";
     case TextureFormat::RGBA16Float: return "RGBA16 Float";
     case TextureFormat::RGBA32Float: return "RGBA32 Float";
+    case TextureFormat::BC1RGBUNorm: return "BC1 RGB UNorm";
+    case TextureFormat::BC1RGBAUNorm: return "BC1 RGBA UNorm";
+    case TextureFormat::BC2UNorm: return "BC2 UNorm";
+    case TextureFormat::BC3UNorm: return "BC3 UNorm";
+    case TextureFormat::BC4UNorm: return "BC4 UNorm";
+    case TextureFormat::BC4SNorm: return "BC4 SNorm";
+    case TextureFormat::BC5UNorm: return "BC5 UNorm";
+    case TextureFormat::BC5SNorm: return "BC5 SNorm";
+    case TextureFormat::BC6HUFloat: return "BC6H UFloat";
+    case TextureFormat::BC6HSFloat: return "BC6H SFloat";
+    case TextureFormat::BC7UNorm: return "BC7 UNorm";
     }
     return "Unknown";
 }

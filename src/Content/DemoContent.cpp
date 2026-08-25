@@ -54,7 +54,7 @@ DemoContent DemoContentLoader::load(
     textureInfo.height = 1;
     textureInfo.format = TextureFormat::RGBA8UNorm;
     textureInfo.colorSpace = TextureColorSpace::Srgb;
-    textureInfo.pixels = {
+    textureInfo.payload = {
         std::byte{0xff},
         std::byte{0xff},
         std::byte{0xff},

@@ -10,7 +10,7 @@
 namespace VkRenderer
 {
 
-/// Decodes common encoded image formats into RGBA8 CPU pixels with stb_image.
+/// Decodes common encoded image formats into a tightly packed RGBA8 payload.
 /// This decoder has no platform-specific runtime dependencies.
 class StbImageDecoder final
 {

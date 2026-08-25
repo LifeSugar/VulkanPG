@@ -9,10 +9,29 @@ namespace VkRenderer
 class ImageView final
 {
 public:
+    /// Vulkan properties of a view over an existing image.
+    struct CreateInfo
+    {
+        VkImage image = VK_NULL_HANDLE;
+        VkImageViewType type = VK_IMAGE_VIEW_TYPE_2D;
+        VkFormat format = VK_FORMAT_UNDEFINED;
+        VkComponentMapping components{
+            VK_COMPONENT_SWIZZLE_IDENTITY,
+            VK_COMPONENT_SWIZZLE_IDENTITY,
+            VK_COMPONENT_SWIZZLE_IDENTITY,
+            VK_COMPONENT_SWIZZLE_IDENTITY};
+        VkImageSubresourceRange subresourceRange{
+            0,
+            0,
+            1,
+            0,
+            1};
+    };
+
     /// Creates an empty image-view wrapper.
     ImageView() = default;
-    /// Creates a 2D view for the supplied image.
-    ImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+    /// Creates a view for the supplied image.
+    ImageView(VkDevice device, const CreateInfo& createInfo);
     /// Destroys the owned image view.
     ~ImageView();
 
@@ -24,7 +43,7 @@ public:
     ImageView& operator=(ImageView&& other) noexcept;
 
     /// Creates or replaces the view for the supplied image.
-    void create(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+    void create(VkDevice device, const CreateInfo& createInfo);
     /// Destroys the owned image view and clears its state.
     void reset() noexcept;
 

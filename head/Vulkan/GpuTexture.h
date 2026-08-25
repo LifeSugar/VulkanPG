@@ -14,11 +14,29 @@ namespace VkRenderer
 class GpuTexture final
 {
 public:
+    /// Source asset and sampling view used to create one GPU texture.
+    struct CreateInfo
+    {
+        const TextureAsset* asset = nullptr;
+        VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D;
+        VkComponentMapping components{
+            VK_COMPONENT_SWIZZLE_IDENTITY,
+            VK_COMPONENT_SWIZZLE_IDENTITY,
+            VK_COMPONENT_SWIZZLE_IDENTITY,
+            VK_COMPONENT_SWIZZLE_IDENTITY};
+        VkImageSubresourceRange viewRange{
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            0,
+            VK_REMAINING_MIP_LEVELS,
+            0,
+            VK_REMAINING_ARRAY_LAYERS};
+    };
+
     GpuTexture() = default;
     GpuTexture(
         const Device& device,
         UploadContext& uploadContext,
-        const TextureAsset& asset);
+        const CreateInfo& createInfo);
     ~GpuTexture();
 
     GpuTexture(const GpuTexture&) = delete;
@@ -29,18 +47,21 @@ public:
     void create(
         const Device& device,
         UploadContext& uploadContext,
-        const TextureAsset& asset);
+        const CreateInfo& createInfo);
     void reset() noexcept;
 
+    [[nodiscard]] VkFormat format() const noexcept { return format_; }
     [[nodiscard]] VkImageView view() const noexcept { return view_.get(); }
     [[nodiscard]] VkSampler sampler() const noexcept { return sampler_; }
     [[nodiscard]] explicit operator bool() const noexcept
     {
-        return image_ && view_ && sampler_ != VK_NULL_HANDLE;
+        return format_ != VK_FORMAT_UNDEFINED &&
+            image_ && view_ && sampler_ != VK_NULL_HANDLE;
     }
 
 private:
     VkDevice device_ = VK_NULL_HANDLE;
+    VkFormat format_ = VK_FORMAT_UNDEFINED;
     Image image_;
     ImageView view_;
     VkSampler sampler_ = VK_NULL_HANDLE;

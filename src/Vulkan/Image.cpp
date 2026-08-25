@@ -38,25 +38,9 @@ uint32_t findMemoryType(
 } // namespace
 #endif
 
-Image::Image(
-    const Device& device,
-    uint32_t width,
-    uint32_t height,
-    VkFormat format,
-    VkImageTiling tiling,
-    VkImageUsageFlags usage,
-    VkMemoryPropertyFlags memoryProperties,
-    VkSampleCountFlagBits samples)
+Image::Image(const Device& device, const CreateInfo& createInfo)
 {
-    create(
-        device,
-        width,
-        height,
-        format,
-        tiling,
-        usage,
-        memoryProperties,
-        samples);
+    create(device, createInfo);
 }
 
 Image::~Image()
@@ -99,40 +83,41 @@ Image& Image::operator=(Image&& other) noexcept
     return *this;
 }
 
-void Image::create(
-    const Device& device,
-    uint32_t width,
-    uint32_t height,
-    VkFormat format,
-    VkImageTiling tiling,
-    VkImageUsageFlags usage,
-    VkMemoryPropertyFlags memoryProperties,
-    VkSampleCountFlagBits samples)
+void Image::create(const Device& device, const CreateInfo& createInfo)
 {
-    if (!device || width == 0 || height == 0 || format == VK_FORMAT_UNDEFINED ||
-        usage == 0 || samples == 0)
+    if (!device ||
+        createInfo.extent.width == 0 ||
+        createInfo.extent.height == 0 ||
+        createInfo.extent.depth == 0 ||
+        createInfo.mipLevels == 0 ||
+        createInfo.arrayLayers == 0 ||
+        createInfo.format == VK_FORMAT_UNDEFINED ||
+        createInfo.usage == 0 ||
+        createInfo.samples == 0)
     {
-        throw std::invalid_argument("cannot create a Image with invalid arguments");
+        throw std::invalid_argument(
+            "cannot create an Image with invalid arguments");
     }
 
     VkImageCreateInfo imageInfo{};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.extent = {width, height, 1};
-    imageInfo.mipLevels = 1;
-    imageInfo.arrayLayers = 1;
-    imageInfo.format = format;
-    imageInfo.tiling = tiling;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage = usage;
-    imageInfo.samples = samples;
+    imageInfo.flags = createInfo.flags;
+    imageInfo.imageType = createInfo.type;
+    imageInfo.extent = createInfo.extent;
+    imageInfo.mipLevels = createInfo.mipLevels;
+    imageInfo.arrayLayers = createInfo.arrayLayers;
+    imageInfo.format = createInfo.format;
+    imageInfo.tiling = createInfo.tiling;
+    imageInfo.initialLayout = createInfo.initialLayout;
+    imageInfo.usage = createInfo.usage;
+    imageInfo.samples = createInfo.samples;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 #if VK_RENDERER_USE_VMA
     VmaAllocationCreateInfo allocationCreateInfo{};
     allocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocationCreateInfo.requiredFlags = memoryProperties;
-    if ((memoryProperties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0)
+    allocationCreateInfo.requiredFlags = createInfo.memoryProperties;
+    if ((createInfo.memoryProperties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0)
     {
         allocationCreateInfo.flags |=
             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
@@ -181,7 +166,7 @@ void Image::create(
         allocationInfo.memoryTypeIndex = findMemoryType(
             device.physical(),
             requirements.memoryTypeBits,
-            memoryProperties);
+            createInfo.memoryProperties);
 
         if (vkAllocateMemory(
                 device.get(),

@@ -32,8 +32,9 @@ TextureAsset::CreateInfo decodeRgba8(
 
     int width = 0;
     int height = 0;
-    using ImagePixels = std::unique_ptr<stbi_uc, decltype(&stbi_image_free)>;
-    ImagePixels pixels(
+    using DecodedPayload =
+        std::unique_ptr<stbi_uc, decltype(&stbi_image_free)>;
+    DecodedPayload decodedPayload(
         stbi_load_from_memory(
             encodedBytes,
             static_cast<int>(encodedSize),
@@ -42,7 +43,7 @@ TextureAsset::CreateInfo decodeRgba8(
             nullptr,
             STBI_rgb_alpha),
         &stbi_image_free);
-    if (!pixels)
+    if (!decodedPayload)
     {
         const char* reason = stbi_failure_reason();
         throw std::runtime_error(
@@ -64,8 +65,11 @@ TextureAsset::CreateInfo decodeRgba8(
     textureInfo.width = static_cast<uint32_t>(width);
     textureInfo.height = static_cast<uint32_t>(height);
     textureInfo.format = TextureFormat::RGBA8UNorm;
-    textureInfo.pixels.resize(byteSize);
-    std::memcpy(textureInfo.pixels.data(), pixels.get(), byteSize);
+    textureInfo.payload.resize(byteSize);
+    std::memcpy(
+        textureInfo.payload.data(),
+        decodedPayload.get(),
+        byteSize);
     return textureInfo;
 }
 

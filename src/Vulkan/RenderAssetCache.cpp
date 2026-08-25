@@ -182,10 +182,12 @@ void RenderAssetCache::create(
         {
             TextureEntry& entry = textures_[handle.index];
             entry.generation = handle.generation;
+            GpuTexture::CreateInfo textureInfo{};
+            textureInfo.asset = &assets.texture(handle);
             entry.texture.create(
                 device,
                 uploadContext,
-                assets.texture(handle));
+                textureInfo);
         }
 
         materials_.resize(requiredSlotCount(materialHandles));

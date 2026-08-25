@@ -6,13 +6,9 @@
 namespace VkRenderer
 {
 
-ImageView::ImageView(
-    VkDevice device,
-    VkImage image,
-    VkFormat format,
-    VkImageAspectFlags aspectFlags)
+ImageView::ImageView(VkDevice device, const CreateInfo& createInfo)
 {
-    create(device, image, format, aspectFlags);
+    create(device, createInfo);
 }
 
 ImageView::~ImageView()
@@ -37,35 +33,29 @@ ImageView& ImageView::operator=(ImageView&& other) noexcept
     return *this;
 }
 
-void ImageView::create(
-    VkDevice device,
-    VkImage image,
-    VkFormat format,
-    VkImageAspectFlags aspectFlags)
+void ImageView::create(VkDevice device, const CreateInfo& createInfo)
 {
-    if (device == VK_NULL_HANDLE || image == VK_NULL_HANDLE ||
-        format == VK_FORMAT_UNDEFINED || aspectFlags == 0)
+    if (device == VK_NULL_HANDLE ||
+        createInfo.image == VK_NULL_HANDLE ||
+        createInfo.format == VK_FORMAT_UNDEFINED ||
+        createInfo.subresourceRange.aspectMask == 0 ||
+        createInfo.subresourceRange.levelCount == 0 ||
+        createInfo.subresourceRange.layerCount == 0)
     {
-        throw std::invalid_argument("cannot create a ImageView with invalid arguments");
+        throw std::invalid_argument(
+            "cannot create an ImageView with invalid arguments");
     }
 
-    VkImageViewCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    createInfo.image = image;
-    createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    createInfo.format = format;
-    createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.subresourceRange.aspectMask = aspectFlags;
-    createInfo.subresourceRange.baseMipLevel = 0;
-    createInfo.subresourceRange.levelCount = 1;
-    createInfo.subresourceRange.baseArrayLayer = 0;
-    createInfo.subresourceRange.layerCount = 1;
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = createInfo.image;
+    viewInfo.viewType = createInfo.type;
+    viewInfo.format = createInfo.format;
+    viewInfo.components = createInfo.components;
+    viewInfo.subresourceRange = createInfo.subresourceRange;
 
     VkImageView newImageView = VK_NULL_HANDLE;
-    if (vkCreateImageView(device, &createInfo, nullptr, &newImageView) != VK_SUCCESS)
+    if (vkCreateImageView(device, &viewInfo, nullptr, &newImageView) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create image view!");
     }

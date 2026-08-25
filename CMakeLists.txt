@@ -11,6 +11,7 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(Stb REQUIRED)
+find_package(Ktx CONFIG REQUIRED)
 
 option(VK_RENDERER_USE_VMA "Use Vulkan Memory Allocator in renderer resources" ON)
 
@@ -202,8 +203,24 @@ target_link_libraries(VulkanApp PRIVATE
     assimp::assimp
     asset-core
     imgui
+    KTX::ktx
 )
 
 if(VK_RENDERER_USE_VMA)
     target_link_libraries(VulkanApp PRIVATE VulkanMemoryAllocator)
+endif()
+
+# KTX is a shared vcpkg dependency on Windows. Keep its runtime and zstd
+# dependency beside the executable so tests and the editor do not depend on
+# the caller's PATH.
+if(WIN32)
+    add_custom_command(TARGET VulkanApp POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "$<TARGET_FILE:KTX::ktx>"
+                "$<TARGET_FILE_DIR:VulkanApp>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "$<TARGET_FILE:zstd::libzstd_shared>"
+                "$<TARGET_FILE_DIR:VulkanApp>"
+        COMMENT "Copying KTX runtime dependencies"
+    )
 endif()

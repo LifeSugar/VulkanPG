@@ -151,11 +151,12 @@ void Swapchain::create(
         newImageViews.reserve(newImages.size());
         for (VkImage image : newImages)
         {
-            newImageViews.emplace_back(
-                device,
-                image,
-                surfaceFormat.format,
-                VK_IMAGE_ASPECT_COLOR_BIT);
+            ImageView::CreateInfo viewInfo{};
+            viewInfo.image = image;
+            viewInfo.format = surfaceFormat.format;
+            viewInfo.subresourceRange.aspectMask =
+                VK_IMAGE_ASPECT_COLOR_BIT;
+            newImageViews.emplace_back(device, viewInfo);
         }
     }
     catch (...)

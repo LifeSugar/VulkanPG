@@ -292,19 +292,22 @@ SwapchainResources::makeImageResources(
     for (const ImageView& colorView : imageViews)
     {
         ImageResources imageResources;
-        imageResources.depthImage.create(
-            device,
+        Image::CreateInfo imageInfo{};
+        imageInfo.extent = {
             swapchain.extent().width,
             swapchain.extent().height,
-            depthFormat,
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        imageResources.depthImageView.create(
-            device.get(),
-            imageResources.depthImage.get(),
-            depthFormat,
-            VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+            1};
+        imageInfo.format = depthFormat;
+        imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        imageInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        imageResources.depthImage.create(device, imageInfo);
+
+        ImageView::CreateInfo viewInfo{};
+        viewInfo.image = imageResources.depthImage.get();
+        viewInfo.format = depthFormat;
+        viewInfo.subresourceRange.aspectMask =
+            VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        imageResources.depthImageView.create(device.get(), viewInfo);
 
         const std::vector<VkImageView> attachments = {
             colorView.get(),

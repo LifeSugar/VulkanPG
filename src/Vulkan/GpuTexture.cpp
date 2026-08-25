@@ -1,27 +1,19 @@
 #include "Vulkan/GpuTexture.h"
 
 #include "Vulkan/Device.h"
+#include "Vulkan/TextureVkFormat.h"
 
+#include <algorithm>
 #include <cstddef>
+#include <limits>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace VkRenderer
 {
 namespace
 {
-
-VkFormat textureFormat(const TextureAsset& asset)
-{
-    if (asset.format() != TextureFormat::RGBA8UNorm)
-    {
-        throw std::invalid_argument(
-            "GpuTexture currently requires an RGBA8 TextureAsset");
-    }
-    return asset.colorSpace() == TextureColorSpace::Srgb
-        ? VK_FORMAT_R8G8B8A8_SRGB
-        : VK_FORMAT_R8G8B8A8_UNORM;
-}
 
 VkFilter textureFilter(TextureFilter filter)
 {
@@ -51,14 +43,46 @@ VkSamplerAddressMode addressMode(TextureAddressMode mode)
     return VK_SAMPLER_ADDRESS_MODE_REPEAT;
 }
 
+VkImageSubresourceRange resolveViewRange(
+    VkImageSubresourceRange range,
+    uint32_t mipLevels,
+    uint32_t arrayLayers)
+{
+    if (range.aspectMask == 0 ||
+        range.baseMipLevel >= mipLevels ||
+        range.baseArrayLayer >= arrayLayers)
+    {
+        throw std::invalid_argument(
+            "GpuTexture view range starts outside the image");
+    }
+
+    if (range.levelCount == VK_REMAINING_MIP_LEVELS)
+    {
+        range.levelCount = mipLevels - range.baseMipLevel;
+    }
+    if (range.layerCount == VK_REMAINING_ARRAY_LAYERS)
+    {
+        range.layerCount = arrayLayers - range.baseArrayLayer;
+    }
+    if (range.levelCount == 0 ||
+        range.levelCount > mipLevels - range.baseMipLevel ||
+        range.layerCount == 0 ||
+        range.layerCount > arrayLayers - range.baseArrayLayer)
+    {
+        throw std::invalid_argument(
+            "GpuTexture view range exceeds the image");
+    }
+    return range;
+}
+
 } // namespace
 
 GpuTexture::GpuTexture(
     const Device& device,
     UploadContext& uploadContext,
-    const TextureAsset& asset)
+    const CreateInfo& createInfo)
 {
-    create(device, uploadContext, asset);
+    create(device, uploadContext, createInfo);
 }
 
 GpuTexture::~GpuTexture()
@@ -68,6 +92,7 @@ GpuTexture::~GpuTexture()
 
 GpuTexture::GpuTexture(GpuTexture&& other) noexcept
     : device_(std::exchange(other.device_, VK_NULL_HANDLE)),
+      format_(std::exchange(other.format_, VK_FORMAT_UNDEFINED)),
       image_(std::move(other.image_)),
       view_(std::move(other.view_)),
       sampler_(std::exchange(other.sampler_, VK_NULL_HANDLE))
@@ -80,6 +105,7 @@ GpuTexture& GpuTexture::operator=(GpuTexture&& other) noexcept
     {
         reset();
         device_ = std::exchange(other.device_, VK_NULL_HANDLE);
+        format_ = std::exchange(other.format_, VK_FORMAT_UNDEFINED);
         image_ = std::move(other.image_);
         view_ = std::move(other.view_);
         sampler_ = std::exchange(other.sampler_, VK_NULL_HANDLE);
@@ -90,35 +116,102 @@ GpuTexture& GpuTexture::operator=(GpuTexture&& other) noexcept
 void GpuTexture::create(
     const Device& device,
     UploadContext& uploadContext,
-    const TextureAsset& asset)
+    const CreateInfo& createInfo)
 {
-    if (!device || !asset || asset.mipLevels().empty())
+    if (!device || createInfo.asset == nullptr ||
+        !*createInfo.asset || createInfo.asset->mipLevels().empty())
     {
         throw std::invalid_argument(
             "cannot create GpuTexture from incomplete inputs");
     }
+    const TextureAsset& asset = *createInfo.asset;
 
-    const TextureMipLevel& mip = asset.mipLevels().front();
-    if (mip.width != asset.width() || mip.height != asset.height())
+    if (asset.mipLevels().size() >
+        std::numeric_limits<uint32_t>::max())
     {
-        throw std::invalid_argument(
-            "GpuTexture requires the first mip to match the base dimensions");
+        throw std::overflow_error(
+            "GpuTexture mip count exceeds the Vulkan limit");
     }
 
-    const VkFormat format = textureFormat(asset);
+    const uint32_t mipCount =
+        static_cast<uint32_t>(asset.mipLevels().size());
+    std::vector<VkBufferImageCopy> copyRegions;
+    copyRegions.reserve(mipCount);
+    for (uint32_t mipIndex = 0; mipIndex < mipCount; ++mipIndex)
+    {
+        const TextureMipLevel& mip = asset.mipLevels()[mipIndex];
+        const uint32_t expectedWidth =
+            std::max(1u, asset.width() >> std::min(mipIndex, 31u));
+        const uint32_t expectedHeight =
+            std::max(1u, asset.height() >> std::min(mipIndex, 31u));
+        if (mip.width != expectedWidth || mip.height != expectedHeight)
+        {
+            throw std::invalid_argument(
+                "GpuTexture mip dimensions do not match the base image");
+        }
+
+        VkBufferImageCopy region{};
+        region.bufferOffset = static_cast<VkDeviceSize>(mip.byteOffset);
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.mipLevel = mipIndex;
+        region.imageSubresource.layerCount = 1;
+        region.imageExtent = {mip.width, mip.height, 1};
+        copyRegions.push_back(region);
+    }
+
+    if (asset.payload().size() >
+        std::numeric_limits<VkDeviceSize>::max())
+    {
+        throw std::overflow_error(
+            "GpuTexture payload exceeds the Vulkan address range");
+    }
+
+    const VkFormat format = device.findSupportedFormat(
+        {textureVkFormat(asset.format(), asset.colorSpace())},
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
     GpuTexture replacement;
     replacement.device_ = device.get();
-    replacement.image_ = uploadContext.uploadImage2D(
-        asset.pixels().data() + mip.byteOffset,
-        mip.byteSize,
-        mip.width,
-        mip.height,
-        format);
-    replacement.view_.create(
-        device.get(),
-        replacement.image_.get(),
-        format,
-        VK_IMAGE_ASPECT_COLOR_BIT);
+    replacement.format_ = format;
+    Image::CreateInfo imageInfo{};
+    imageInfo.extent = {
+        asset.width(),
+        asset.height(),
+        1};
+    imageInfo.mipLevels = mipCount;
+    imageInfo.format = format;
+    imageInfo.usage =
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    replacement.image_.create(device, imageInfo);
+
+    const VkImageSubresourceRange viewRange = resolveViewRange(
+        createInfo.viewRange,
+        imageInfo.mipLevels,
+        imageInfo.arrayLayers);
+
+    UploadContext::ImageUploadInfo uploadInfo{};
+    uploadInfo.sourceData = asset.payload().data();
+    uploadInfo.sourceSize =
+        static_cast<VkDeviceSize>(asset.payload().size());
+    uploadInfo.destination.image = replacement.image_.get();
+    uploadInfo.destination.format = format;
+    uploadInfo.destination.extent = imageInfo.extent;
+    uploadInfo.destination.mipLevels = mipCount;
+    uploadInfo.destination.arrayLayers = imageInfo.arrayLayers;
+    uploadInfo.copyRegions = std::move(copyRegions);
+    uploadInfo.destinationRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    uploadInfo.destinationRange.levelCount = mipCount;
+    uploadInfo.destinationRange.layerCount = 1;
+    uploadContext.uploadImage(uploadInfo);
+
+    ImageView::CreateInfo viewInfo{};
+    viewInfo.image = replacement.image_.get();
+    viewInfo.type = createInfo.viewType;
+    viewInfo.format = format;
+    viewInfo.components = createInfo.components;
+    viewInfo.subresourceRange = viewRange;
+    replacement.view_.create(device.get(), viewInfo);
 
     const TextureSamplerDesc& sourceSampler = asset.sampler();
     VkSamplerCreateInfo samplerInfo{};
@@ -132,7 +225,7 @@ void GpuTexture::create(
     samplerInfo.anisotropyEnable = VK_FALSE;
     samplerInfo.maxAnisotropy = 1.0f;
     samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = 0.0f;
+    samplerInfo.maxLod = static_cast<float>(viewRange.levelCount - 1);
     if (vkCreateSampler(
             device.get(),
             &samplerInfo,
@@ -154,6 +247,7 @@ void GpuTexture::reset() noexcept
     sampler_ = VK_NULL_HANDLE;
     view_.reset();
     image_.reset();
+    format_ = VK_FORMAT_UNDEFINED;
     device_ = VK_NULL_HANDLE;
 }
 
