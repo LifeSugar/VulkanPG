@@ -42,3 +42,6 @@ MinSizeRel/
 
 # Local Dear ImGui editor layout
 /editor_imgui.ini
+
+# Local design notes and generated documentation
+/Doc/
