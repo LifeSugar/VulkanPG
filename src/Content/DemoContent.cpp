@@ -4,7 +4,7 @@
 #include "GLBLoader.h"
 #include "Import/GLBModelImporter.h"
 #include "Import/SpirvShaderImporter.h"
-#include "Import/WicImageDecoder.h"
+#include "Import/StbImageDecoder.h"
 #include "Scene/Scene.h"
 
 #include <cstddef>
@@ -146,7 +146,7 @@ DemoContent DemoContentLoader::load(
     importerInfo.baseDirectory =
         std::filesystem::path(resolvedModelPath).parent_path();
     importerInfo.defaultTexture = content.defaultTexture;
-    WicImageDecoder imageDecoder;
+    StbImageDecoder imageDecoder;
     importerInfo.textureDecoder =
         [&imageDecoder](
             const GLBTexture& texture,

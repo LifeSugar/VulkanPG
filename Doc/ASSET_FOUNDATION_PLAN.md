@@ -20,7 +20,7 @@
 
 ```text
 文件系统
-  -> GLBLoader / WicImageDecoder / SpirvShaderImporter
+  -> GLBLoader / StbImageDecoder / SpirvShaderImporter
   -> 各格式 Importer
   -> AssetManager（已校验 CPU Asset）
   -> RenderAssetCache（GPU Asset）

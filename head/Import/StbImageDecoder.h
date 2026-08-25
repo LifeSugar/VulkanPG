@@ -10,8 +10,9 @@
 namespace VkRenderer
 {
 
-/// Decodes common encoded image formats into RGBA8 CPU pixels through WIC.
-class WicImageDecoder final
+/// Decodes common encoded image formats into RGBA8 CPU pixels with stb_image.
+/// This decoder has no platform-specific runtime dependencies.
+class StbImageDecoder final
 {
 public:
     [[nodiscard]] TextureAsset::CreateInfo decodeMemory(
