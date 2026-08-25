@@ -11,36 +11,68 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(Stb REQUIRED)
-file(TO_CMAKE_PATH "$ENV{VULKAN_SDK}" VULKAN_SDK_CMAKE_ROOT)
+
+option(VK_RENDERER_USE_VMA "Use Vulkan Memory Allocator in renderer resources" ON)
+
+add_library(VulkanMemoryAllocator INTERFACE)
+target_include_directories(VulkanMemoryAllocator INTERFACE
+    "${CMAKE_SOURCE_DIR}/third_party/vma/include"
+)
+target_link_libraries(VulkanMemoryAllocator INTERFACE Vulkan::Vulkan)
+
+if(DEFINED ENV{VULKAN_SDK})
+    file(TO_CMAKE_PATH "$ENV{VULKAN_SDK}" VULKAN_SDK_CMAKE_ROOT)
+elseif(Vulkan_INCLUDE_DIRS)
+    list(GET Vulkan_INCLUDE_DIRS 0 VULKAN_INCLUDE_ROOT)
+    get_filename_component(VULKAN_SDK_CMAKE_ROOT
+        "${VULKAN_INCLUDE_ROOT}" DIRECTORY)
+else()
+    message(FATAL_ERROR "Unable to determine the Vulkan SDK root")
+endif()
+
+# Vulkan SDK package metadata isn't consistently relocatable across platforms,
+# so resolve SPIRV-Cross from the SDK root while supporting both directory
+# casings used by Windows and macOS distributions.
 find_path(SPIRV_CROSS_INCLUDE_DIR spirv_cross.hpp
     PATHS
-        "${VULKAN_SDK_CMAKE_ROOT}/Include/spirv_cross" # Windows SDK
-        "${VULKAN_SDK_CMAKE_ROOT}/include/spirv_cross" # macOS SDK
+        "${VULKAN_SDK_CMAKE_ROOT}/Include/spirv_cross"
+        "${VULKAN_SDK_CMAKE_ROOT}/include/spirv_cross"
     NO_DEFAULT_PATH
 )
 find_library(SPIRV_CROSS_CORE_RELEASE spirv-cross-core
     PATHS
-        "${VULKAN_SDK_CMAKE_ROOT}/Lib" # Windows SDK
-        "${VULKAN_SDK_CMAKE_ROOT}/lib" # macOS SDK
+        "${VULKAN_SDK_CMAKE_ROOT}/Lib"
+        "${VULKAN_SDK_CMAKE_ROOT}/lib"
     NO_DEFAULT_PATH
 )
-find_library(SPIRV_CROSS_CORE_DEBUG spirv-cross-cored
-    PATHS
-        "${VULKAN_SDK_CMAKE_ROOT}/Lib" # Windows SDK
-        "${VULKAN_SDK_CMAKE_ROOT}/lib" # macOS SDK
-    NO_DEFAULT_PATH
-)
-if(NOT SPIRV_CROSS_INCLUDE_DIR OR NOT SPIRV_CROSS_CORE_RELEASE)
-    message(FATAL_ERROR "SPIRV-Cross core was not found in VULKAN_SDK")
+if(MSVC)
+    find_library(SPIRV_CROSS_CORE_DEBUG spirv-cross-cored
+        PATHS
+            "${VULKAN_SDK_CMAKE_ROOT}/Lib"
+            "${VULKAN_SDK_CMAKE_ROOT}/lib"
+        NO_DEFAULT_PATH
+    )
 endif()
+
+if(NOT SPIRV_CROSS_INCLUDE_DIR OR NOT SPIRV_CROSS_CORE_RELEASE)
+    message(FATAL_ERROR "SPIRV-Cross core was not found in the Vulkan SDK")
+endif()
+
 add_library(spirv-cross-core STATIC IMPORTED)
 set_target_properties(spirv-cross-core PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${SPIRV_CROSS_INCLUDE_DIR}"
     IMPORTED_LOCATION "${SPIRV_CROSS_CORE_RELEASE}"
 )
-if(SPIRV_CROSS_CORE_DEBUG)
+
+if(MSVC AND SPIRV_CROSS_CORE_DEBUG)
     set_target_properties(spirv-cross-core PROPERTIES
         IMPORTED_LOCATION_DEBUG "${SPIRV_CROSS_CORE_DEBUG}"
+    )
+    # The SDK's Debug archive is ABI-compatible with an MSVC Debug consumer,
+    # but its referenced compiler PDB is not distributed. Suppress only that
+    # missing third-party debug-symbol warning for consumers of this target.
+    set_property(TARGET spirv-cross-core APPEND PROPERTY
+        INTERFACE_LINK_OPTIONS "$<$<CONFIG:Debug>:/IGNORE:4099>"
     )
 endif()
 
@@ -159,6 +191,7 @@ add_custom_command(TARGET VulkanApp POST_BUILD
 target_compile_definitions(VulkanApp PRIVATE
     PROJECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
     GLM_FORCE_DEPTH_ZERO_TO_ONE
+    VK_RENDERER_USE_VMA=$<BOOL:${VK_RENDERER_USE_VMA}>
 )
 
 # 3. 链接所有库
@@ -170,3 +203,7 @@ target_link_libraries(VulkanApp PRIVATE
     asset-core
     imgui
 )
+
+if(VK_RENDERER_USE_VMA)
+    target_link_libraries(VulkanApp PRIVATE VulkanMemoryAllocator)
+endif()

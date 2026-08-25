@@ -2,6 +2,7 @@
 
 #include "Vulkan/Swapchain.h"
 
+#include <algorithm>
 #include <array>
 #include <iostream>
 #include <set>
@@ -32,9 +33,10 @@ std::vector<const char*> requiredDeviceExtensions()
 Device::Device(
     VkInstance instance,
     VkSurfaceKHR surface,
-    bool preferIntegratedGpu)
+    bool preferIntegratedGpu,
+    uint32_t vulkanApiVersion)
 {
-    create(instance, surface, preferIntegratedGpu);
+    create(instance, surface, preferIntegratedGpu, vulkanApiVersion);
 }
 
 Device::~Device()
@@ -45,6 +47,9 @@ Device::~Device()
 Device::Device(Device&& other) noexcept
     : physicalDevice_(std::exchange(other.physicalDevice_, VK_NULL_HANDLE)),
       device_(std::exchange(other.device_, VK_NULL_HANDLE)),
+#if VK_RENDERER_USE_VMA
+      allocator_(std::exchange(other.allocator_, VK_NULL_HANDLE)),
+#endif
       graphicsQueue_(std::exchange(other.graphicsQueue_, VK_NULL_HANDLE)),
       presentQueue_(std::exchange(other.presentQueue_, VK_NULL_HANDLE)),
       graphicsQueueFamily_(std::exchange(other.graphicsQueueFamily_, 0)),
@@ -59,6 +64,9 @@ Device& Device::operator=(Device&& other) noexcept
         reset();
         physicalDevice_ = std::exchange(other.physicalDevice_, VK_NULL_HANDLE);
         device_ = std::exchange(other.device_, VK_NULL_HANDLE);
+#if VK_RENDERER_USE_VMA
+        allocator_ = std::exchange(other.allocator_, VK_NULL_HANDLE);
+#endif
         graphicsQueue_ = std::exchange(other.graphicsQueue_, VK_NULL_HANDLE);
         presentQueue_ = std::exchange(other.presentQueue_, VK_NULL_HANDLE);
         graphicsQueueFamily_ = std::exchange(other.graphicsQueueFamily_, 0);
@@ -70,7 +78,8 @@ Device& Device::operator=(Device&& other) noexcept
 void Device::create(
     VkInstance instance,
     VkSurfaceKHR surface,
-    bool preferIntegratedGpu)
+    bool preferIntegratedGpu,
+    uint32_t vulkanApiVersion)
 {
     if (instance == VK_NULL_HANDLE || surface == VK_NULL_HANDLE)
     {
@@ -181,9 +190,34 @@ void Device::create(
     vkGetDeviceQueue(newDevice, *selectedQueueFamilies.graphics, 0, &newGraphicsQueue);
     vkGetDeviceQueue(newDevice, *selectedQueueFamilies.present, 0, &newPresentQueue);
 
+#if VK_RENDERER_USE_VMA
+    VmaAllocatorCreateInfo allocatorCreateInfo{};
+    allocatorCreateInfo.instance = instance;
+    allocatorCreateInfo.physicalDevice = selectedPhysicalDevice;
+    allocatorCreateInfo.device = newDevice;
+    VkPhysicalDeviceProperties selectedDeviceProperties{};
+    vkGetPhysicalDeviceProperties(
+        selectedPhysicalDevice,
+        &selectedDeviceProperties);
+    allocatorCreateInfo.vulkanApiVersion =
+        std::min(vulkanApiVersion, selectedDeviceProperties.apiVersion);
+
+    VmaAllocator newAllocator = VK_NULL_HANDLE;
+    if (vmaCreateAllocator(&allocatorCreateInfo, &newAllocator) != VK_SUCCESS)
+    {
+        vkDestroyDevice(newDevice, nullptr);
+        throw std::runtime_error("failed to create Vulkan memory allocator!");
+    }
+#else
+    (void)vulkanApiVersion;
+#endif
+
     reset();
     physicalDevice_ = selectedPhysicalDevice;
     device_ = newDevice;
+#if VK_RENDERER_USE_VMA
+    allocator_ = newAllocator;
+#endif
     graphicsQueue_ = newGraphicsQueue;
     presentQueue_ = newPresentQueue;
     graphicsQueueFamily_ = *selectedQueueFamilies.graphics;
@@ -192,6 +226,12 @@ void Device::create(
 
 void Device::reset() noexcept
 {
+#if VK_RENDERER_USE_VMA
+    if (allocator_ != VK_NULL_HANDLE)
+    {
+        vmaDestroyAllocator(allocator_);
+    }
+#endif
     if (device_ != VK_NULL_HANDLE)
     {
         vkDestroyDevice(device_, nullptr);
@@ -199,6 +239,9 @@ void Device::reset() noexcept
 
     physicalDevice_ = VK_NULL_HANDLE;
     device_ = VK_NULL_HANDLE;
+#if VK_RENDERER_USE_VMA
+    allocator_ = VK_NULL_HANDLE;
+#endif
     graphicsQueue_ = VK_NULL_HANDLE;
     presentQueue_ = VK_NULL_HANDLE;
     graphicsQueueFamily_ = 0;

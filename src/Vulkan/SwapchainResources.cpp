@@ -293,8 +293,7 @@ SwapchainResources::makeImageResources(
     {
         ImageResources imageResources;
         imageResources.depthImage.create(
-            device.physical(),
-            device.get(),
+            device,
             swapchain.extent().width,
             swapchain.extent().height,
             depthFormat,

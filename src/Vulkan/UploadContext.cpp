@@ -32,8 +32,7 @@ Buffer UploadContext::uploadBuffer(
     }
 
     Buffer stagingBuffer(
-        device_->physical(),
-        device_->get(),
+        *device_,
         size,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -43,8 +42,7 @@ Buffer UploadContext::uploadBuffer(
     stagingBuffer.unmap();
 
     Buffer destinationBuffer(
-        device_->physical(),
-        device_->get(),
+        *device_,
         size,
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | destinationUsage,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -73,8 +71,7 @@ Image UploadContext::uploadImage2D(
     }
 
     Buffer stagingBuffer(
-        device_->physical(),
-        device_->get(),
+        *device_,
         size,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -84,8 +81,7 @@ Image UploadContext::uploadImage2D(
     stagingBuffer.unmap();
 
     Image destinationImage(
-        device_->physical(),
-        device_->get(),
+        *device_,
         width,
         height,
         format,

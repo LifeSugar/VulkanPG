@@ -124,7 +124,8 @@ void VulkanContext::create(
     replacement.device_.create(
         replacement.instance_,
         replacement.surface_,
-        createInfo.preferIntegratedGpu);
+        createInfo.preferIntegratedGpu,
+        createInfo.apiVersion);
     replacement.validationLayersEnabled_ =
         createInfo.enableValidationLayers;
 
