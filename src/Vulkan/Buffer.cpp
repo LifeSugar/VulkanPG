@@ -1,13 +1,17 @@
 #include "Vulkan/Buffer.h"
 
+#include "Vulkan/Device.h"
+
 #include <stdexcept>
 #include <utility>
 
 namespace VkRenderer
 {
 
+#if !VK_RENDERER_USE_VMA
 namespace
 {
+
 uint32_t findMemoryType(
     VkPhysicalDevice physicalDevice,
     uint32_t typeFilter,
@@ -16,29 +20,31 @@ uint32_t findMemoryType(
     VkPhysicalDeviceMemoryProperties memoryProperties{};
     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
 
-    for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
+    for (uint32_t index = 0; index < memoryProperties.memoryTypeCount; ++index)
     {
-        const bool isCompatible = (typeFilter & (1u << i)) != 0;
+        const bool isCompatible = (typeFilter & (1u << index)) != 0;
         const bool hasRequiredProperties =
-            (memoryProperties.memoryTypes[i].propertyFlags & requiredProperties) == requiredProperties;
+            (memoryProperties.memoryTypes[index].propertyFlags &
+                requiredProperties) == requiredProperties;
         if (isCompatible && hasRequiredProperties)
         {
-            return i;
+            return index;
         }
     }
 
     throw std::runtime_error("failed to find a suitable buffer memory type!");
 }
-}
+
+} // namespace
+#endif
 
 Buffer::Buffer(
-    VkPhysicalDevice physicalDevice,
-    VkDevice device,
+    const Device& device,
     VkDeviceSize size,
     VkBufferUsageFlags usage,
     VkMemoryPropertyFlags memoryProperties)
 {
-    create(physicalDevice, device, size, usage, memoryProperties);
+    create(device, size, usage, memoryProperties);
 }
 
 Buffer::~Buffer()
@@ -47,9 +53,17 @@ Buffer::~Buffer()
 }
 
 Buffer::Buffer(Buffer&& other) noexcept
+#if VK_RENDERER_USE_VMA
+    : allocator_(std::exchange(other.allocator_, VK_NULL_HANDLE)),
+#else
     : device_(std::exchange(other.device_, VK_NULL_HANDLE)),
+#endif
       buffer_(std::exchange(other.buffer_, VK_NULL_HANDLE)),
+#if VK_RENDERER_USE_VMA
+      allocation_(std::exchange(other.allocation_, VK_NULL_HANDLE)),
+#else
       memory_(std::exchange(other.memory_, VK_NULL_HANDLE)),
+#endif
       size_(std::exchange(other.size_, 0)),
       mappedData_(std::exchange(other.mappedData_, nullptr))
 {
@@ -60,9 +74,17 @@ Buffer& Buffer::operator=(Buffer&& other) noexcept
     if (this != &other)
     {
         reset();
+#if VK_RENDERER_USE_VMA
+        allocator_ = std::exchange(other.allocator_, VK_NULL_HANDLE);
+#else
         device_ = std::exchange(other.device_, VK_NULL_HANDLE);
+#endif
         buffer_ = std::exchange(other.buffer_, VK_NULL_HANDLE);
+#if VK_RENDERER_USE_VMA
+        allocation_ = std::exchange(other.allocation_, VK_NULL_HANDLE);
+#else
         memory_ = std::exchange(other.memory_, VK_NULL_HANDLE);
+#endif
         size_ = std::exchange(other.size_, 0);
         mappedData_ = std::exchange(other.mappedData_, nullptr);
     }
@@ -70,19 +92,15 @@ Buffer& Buffer::operator=(Buffer&& other) noexcept
 }
 
 void Buffer::create(
-    VkPhysicalDevice physicalDevice,
-    VkDevice device,
+    const Device& device,
     VkDeviceSize size,
     VkBufferUsageFlags usage,
     VkMemoryPropertyFlags memoryProperties)
 {
-    if (physicalDevice == VK_NULL_HANDLE || device == VK_NULL_HANDLE || size == 0)
+    if (!device || size == 0)
     {
         throw std::invalid_argument("cannot create a Buffer with an invalid device or zero size");
     }
-
-    VkBuffer newBuffer = VK_NULL_HANDLE;
-    VkDeviceMemory newMemory = VK_NULL_HANDLE;
 
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -90,7 +108,41 @@ void Buffer::create(
     bufferInfo.usage = usage;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if (vkCreateBuffer(device, &bufferInfo, nullptr, &newBuffer) != VK_SUCCESS)
+#if VK_RENDERER_USE_VMA
+    VmaAllocationCreateInfo allocationCreateInfo{};
+    allocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocationCreateInfo.requiredFlags = memoryProperties;
+    if ((memoryProperties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0)
+    {
+        allocationCreateInfo.flags |=
+            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    }
+
+    VkBuffer newBuffer = VK_NULL_HANDLE;
+    VmaAllocation newAllocation = VK_NULL_HANDLE;
+    if (vmaCreateBuffer(
+            device.allocator(),
+            &bufferInfo,
+            &allocationCreateInfo,
+            &newBuffer,
+            &newAllocation,
+            nullptr) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create VMA buffer allocation!");
+    }
+
+    reset();
+    allocator_ = device.allocator();
+    buffer_ = newBuffer;
+    allocation_ = newAllocation;
+#else
+    VkBuffer newBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory newMemory = VK_NULL_HANDLE;
+    if (vkCreateBuffer(
+            device.get(),
+            &bufferInfo,
+            nullptr,
+            &newBuffer) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to create buffer!");
     }
@@ -98,38 +150,51 @@ void Buffer::create(
     try
     {
         VkMemoryRequirements requirements{};
-        vkGetBufferMemoryRequirements(device, newBuffer, &requirements);
+        vkGetBufferMemoryRequirements(
+            device.get(),
+            newBuffer,
+            &requirements);
 
         VkMemoryAllocateInfo allocationInfo{};
         allocationInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocationInfo.allocationSize = requirements.size;
-        allocationInfo.memoryTypeIndex =
-            findMemoryType(physicalDevice, requirements.memoryTypeBits, memoryProperties);
+        allocationInfo.memoryTypeIndex = findMemoryType(
+            device.physical(),
+            requirements.memoryTypeBits,
+            memoryProperties);
 
-        if (vkAllocateMemory(device, &allocationInfo, nullptr, &newMemory) != VK_SUCCESS)
+        if (vkAllocateMemory(
+                device.get(),
+                &allocationInfo,
+                nullptr,
+                &newMemory) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to allocate buffer memory!");
         }
-
-        if (vkBindBufferMemory(device, newBuffer, newMemory, 0) != VK_SUCCESS)
+        if (vkBindBufferMemory(
+                device.get(),
+                newBuffer,
+                newMemory,
+                0) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to bind buffer memory!");
         }
     }
     catch (...)
     {
-        vkDestroyBuffer(device, newBuffer, nullptr);
+        vkDestroyBuffer(device.get(), newBuffer, nullptr);
         if (newMemory != VK_NULL_HANDLE)
         {
-            vkFreeMemory(device, newMemory, nullptr);
+            vkFreeMemory(device.get(), newMemory, nullptr);
         }
         throw;
     }
 
     reset();
-    device_ = device;
+    device_ = device.get();
     buffer_ = newBuffer;
     memory_ = newMemory;
+#endif
     size_ = size;
 }
 
@@ -137,6 +202,16 @@ void Buffer::reset() noexcept
 {
     unmap();
 
+#if VK_RENDERER_USE_VMA
+    if (allocator_ != VK_NULL_HANDLE && buffer_ != VK_NULL_HANDLE)
+    {
+        vmaDestroyBuffer(allocator_, buffer_, allocation_);
+    }
+
+    allocator_ = VK_NULL_HANDLE;
+    buffer_ = VK_NULL_HANDLE;
+    allocation_ = VK_NULL_HANDLE;
+#else
     if (device_ != VK_NULL_HANDLE && buffer_ != VK_NULL_HANDLE)
     {
         vkDestroyBuffer(device_, buffer_, nullptr);
@@ -149,12 +224,18 @@ void Buffer::reset() noexcept
     device_ = VK_NULL_HANDLE;
     buffer_ = VK_NULL_HANDLE;
     memory_ = VK_NULL_HANDLE;
+#endif
     size_ = 0;
 }
 
 void* Buffer::map(VkDeviceSize offset, VkDeviceSize size)
 {
-    if (memory_ == VK_NULL_HANDLE)
+#if VK_RENDERER_USE_VMA
+    const bool isEmpty = allocation_ == VK_NULL_HANDLE;
+#else
+    const bool isEmpty = memory_ == VK_NULL_HANDLE;
+#endif
+    if (isEmpty)
     {
         throw std::logic_error("cannot map an empty Buffer");
     }
@@ -163,21 +244,66 @@ void* Buffer::map(VkDeviceSize offset, VkDeviceSize size)
         throw std::logic_error("Buffer memory is already mapped");
     }
 
-    if (vkMapMemory(device_, memory_, offset, size, 0, &mappedData_) != VK_SUCCESS)
+    if (offset >= size_ || size == 0 ||
+        (size != VK_WHOLE_SIZE && size > size_ - offset))
+    {
+        throw std::out_of_range("buffer mapping range is out of bounds");
+    }
+
+#if VK_RENDERER_USE_VMA
+    if (vmaMapMemory(allocator_, allocation_, &mappedData_) != VK_SUCCESS)
+    {
+        mappedData_ = nullptr;
+        throw std::runtime_error("failed to map buffer memory!");
+    }
+    return static_cast<char*>(mappedData_) + offset;
+#else
+    if (vkMapMemory(
+            device_,
+            memory_,
+            offset,
+            size,
+            0,
+            &mappedData_) != VK_SUCCESS)
     {
         mappedData_ = nullptr;
         throw std::runtime_error("failed to map buffer memory!");
     }
     return mappedData_;
+#endif
 }
 
 void Buffer::unmap() noexcept
 {
-    if (device_ != VK_NULL_HANDLE && memory_ != VK_NULL_HANDLE && mappedData_ != nullptr)
+#if VK_RENDERER_USE_VMA
+    if (allocator_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE && mappedData_ != nullptr)
+    {
+        vmaUnmapMemory(allocator_, allocation_);
+        mappedData_ = nullptr;
+    }
+#else
+    if (device_ != VK_NULL_HANDLE && memory_ != VK_NULL_HANDLE &&
+        mappedData_ != nullptr)
     {
         vkUnmapMemory(device_, memory_);
         mappedData_ = nullptr;
     }
+#endif
+}
+
+VkDeviceMemory Buffer::memory() const noexcept
+{
+#if VK_RENDERER_USE_VMA
+    if (allocator_ == VK_NULL_HANDLE || allocation_ == VK_NULL_HANDLE)
+    {
+        return VK_NULL_HANDLE;
+    }
+    VmaAllocationInfo allocationInfo{};
+    vmaGetAllocationInfo(allocator_, allocation_, &allocationInfo);
+    return allocationInfo.deviceMemory;
+#else
+    return memory_;
+#endif
 }
 
 } // namespace VkRenderer

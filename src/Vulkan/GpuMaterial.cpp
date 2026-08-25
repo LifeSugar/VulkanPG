@@ -35,8 +35,7 @@ void GpuMaterial::create(
     }
 
     Buffer parameterBuffer(
-        device.physical(),
-        device.get(),
+        device,
         asset.parameterData().size(),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |

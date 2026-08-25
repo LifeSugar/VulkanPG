@@ -1,6 +1,11 @@
 #pragma once
 
+#include "Vulkan/VulkanMemoryConfig.h"
+
 #include <vulkan/vulkan.h>
+#if VK_RENDERER_USE_VMA
+#include <vk_mem_alloc.h>
+#endif
 
 #include <optional>
 #include <string>
@@ -19,7 +24,8 @@ public:
     Device(
         VkInstance instance,
         VkSurfaceKHR surface,
-        bool preferIntegratedGpu = false);
+        bool preferIntegratedGpu = false,
+        uint32_t vulkanApiVersion = VK_API_VERSION_1_0);
     /// Destroys the owned logical device.
     ~Device();
 
@@ -35,7 +41,8 @@ public:
     void create(
         VkInstance instance,
         VkSurfaceKHR surface,
-        bool preferIntegratedGpu = false);
+        bool preferIntegratedGpu = false,
+        uint32_t vulkanApiVersion = VK_API_VERSION_1_0);
     /// Destroys the logical device and clears all cached handles.
     void reset() noexcept;
     /// Waits until all queues on the logical device are idle.
@@ -53,6 +60,10 @@ public:
     [[nodiscard]] VkPhysicalDevice physical() const noexcept { return physicalDevice_; }
     /// Returns the owned logical-device handle.
     [[nodiscard]] VkDevice get() const noexcept { return device_; }
+#if VK_RENDERER_USE_VMA
+    /// Returns the allocator associated with the logical device.
+    [[nodiscard]] VmaAllocator allocator() const noexcept { return allocator_; }
+#endif
     /// Returns the graphics queue handle.
     [[nodiscard]] VkQueue graphicsQueue() const noexcept { return graphicsQueue_; }
     /// Returns the presentation queue handle.
@@ -62,7 +73,14 @@ public:
     /// Returns the presentation queue-family index.
     [[nodiscard]] uint32_t presentQueueFamily() const noexcept { return presentQueueFamily_; }
     /// Returns whether a logical device is currently owned.
-    [[nodiscard]] explicit operator bool() const noexcept { return device_ != VK_NULL_HANDLE; }
+    [[nodiscard]] explicit operator bool() const noexcept
+    {
+#if VK_RENDERER_USE_VMA
+        return device_ != VK_NULL_HANDLE && allocator_ != VK_NULL_HANDLE;
+#else
+        return device_ != VK_NULL_HANDLE;
+#endif
+    }
 
 private:
     /// Graphics and presentation queue families found for a physical device.
@@ -97,6 +115,10 @@ private:
     VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
     /// Owned logical-device handle.
     VkDevice device_ = VK_NULL_HANDLE;
+#if VK_RENDERER_USE_VMA
+    /// VMA allocator bound to the physical and logical device.
+    VmaAllocator allocator_ = VK_NULL_HANDLE;
+#endif
     /// Queue used to submit graphics work.
     VkQueue graphicsQueue_ = VK_NULL_HANDLE;
     /// Queue used to present swapchain images.

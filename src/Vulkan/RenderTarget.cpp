@@ -73,8 +73,7 @@ void RenderTarget::create(
         AttachmentResources resources;
         resources.info = info;
         resources.image.create(
-            device.physical(),
-            device.get(),
+            device,
             createInfo.extent.width,
             createInfo.extent.height,
             info.format,

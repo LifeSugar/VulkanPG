@@ -31,8 +31,7 @@ void PerFrameBuffer::create(
         for (Buffer& buffer : buffers_)
         {
             buffer.create(
-                device.physical(),
-                device.get(),
+                device,
                 size,
                 usage,
                 memoryProperties);
