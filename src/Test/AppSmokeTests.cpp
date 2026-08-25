@@ -1,9 +1,9 @@
 #include "Test/AppSmokeTests.h"
 
 #include "ApplicationGui.h"
+#include "ApplicationGuiRenderBridge.h"
 #include "Asset/AssetId.h"
 #include "Content/DemoContent.h"
-#include "Editor/Vulkan/VulkanEditorTexturePreview.h"
 #include "Render/CullingSystem.h"
 #include "Render/MaterialKey.h"
 #include "Render/PipelineVariantKey.h"
@@ -598,21 +598,19 @@ void AppSmokeTests::runRenderTest(
     app.initWindow(config, false);
     app.initVulkan(config);
     app.initImGui(config);
+    app.guiRenderBridge.attach(app.renderer, app.renderAssets);
     ApplicationGuiContext guiContext{
         app.assetManager,
         app.scene,
-        app.renderAssets,
-        app.renderer
+        app.guiRenderBridge
     };
     gui.attach(guiContext);
-    VulkanEditorTexturePreview smokeTexturePreviews;
-    EditorTexturePreview smokeTexturePreview;
     try
     {
         if (config.outputMode == VulkanRenderer::OutputMode::Editor)
         {
-            smokeTexturePreviews.attach(app.renderAssets);
-            smokeTexturePreview = smokeTexturePreviews.preview(
+            const ApplicationGuiTexture smokeTexturePreview =
+                app.guiRenderBridge.preview(
                 app.demoContent.defaultTexture);
             if (!smokeTexturePreview)
             {
@@ -626,8 +624,11 @@ void AppSmokeTests::runRenderTest(
             app.window.pollEvents();
             app.imguiLayer.beginFrame();
             app.drawGui(gui);
-            if (smokeTexturePreview)
+            if (config.outputMode == VulkanRenderer::OutputMode::Editor)
             {
+                const ApplicationGuiTexture smokeTexturePreview =
+                    app.guiRenderBridge.preview(
+                        app.demoContent.defaultTexture);
                 ImGui::Begin("Texture Preview Smoke Test");
                 ImGui::Image(
                     ImTextureRef(static_cast<ImTextureID>(
@@ -670,13 +671,11 @@ void AppSmokeTests::runRenderTest(
     catch (...)
     {
         app.renderer.waitIdle();
-        smokeTexturePreviews.detach();
         gui.detach();
         app.cleanup();
         throw;
     }
     app.renderer.waitIdle();
-    smokeTexturePreviews.detach();
     gui.detach();
     app.cleanup();
 }

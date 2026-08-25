@@ -8,7 +8,7 @@
 namespace VkRenderer
 {
 
-class EditorTexturePreviewProvider;
+class ApplicationGuiRenderBridge;
 class TextureAsset;
 
 namespace InspectorWidgets
@@ -28,7 +28,7 @@ void drawProperty(const char* label, float value);
     int id);
 
 void drawTextureImage(
-    EditorTexturePreviewProvider& texturePreviews,
+    ApplicationGuiRenderBridge& texturePreviews,
     TextureAssetHandle handle,
     const TextureAsset& texture,
     float maxWidth,

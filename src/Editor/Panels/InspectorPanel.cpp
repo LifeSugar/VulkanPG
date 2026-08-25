@@ -1,7 +1,7 @@
 #include "Editor/Panels/InspectorPanel.h"
 
 #include "Asset/AssetManager.h"
-#include "Editor/EditorTexturePreview.h"
+#include "ApplicationGuiRenderBridge.h"
 #include "Scene/Scene.h"
 
 #include <imgui.h>
@@ -30,7 +30,7 @@ Overloaded(Visitors...) -> Overloaded<Visitors...>;
 void InspectorPanel::draw(
     const Scene& scene,
     const AssetManager& assets,
-    EditorTexturePreviewProvider& texturePreviews,
+    ApplicationGuiRenderBridge& texturePreviews,
     EditorSelection& selection,
     bool* open)
 {

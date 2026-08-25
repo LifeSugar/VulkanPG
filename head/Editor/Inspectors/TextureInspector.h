@@ -6,14 +6,14 @@ namespace VkRenderer
 {
 
 class AssetManager;
-class EditorTexturePreviewProvider;
+class ApplicationGuiRenderBridge;
 
 class TextureInspector final
 {
 public:
     void draw(
         const AssetManager& assets,
-        EditorTexturePreviewProvider& texturePreviews,
+        ApplicationGuiRenderBridge& texturePreviews,
         TextureAssetHandle target) const;
 };
 

@@ -35,11 +35,11 @@ void App::run(const RunConfig& config, ApplicationGui& gui)
     initWindow(config, true);
     initVulkan(config);
     initImGui(config);
+    guiRenderBridge.attach(renderer, renderAssets);
     ApplicationGuiContext guiContext{
         assetManager,
         scene,
-        renderAssets,
-        renderer};
+        guiRenderBridge};
     gui.attach(guiContext);
     try
     {
@@ -114,6 +114,7 @@ void App::initVulkan(const RunConfig& config)
 void App::cleanup()
 {
     renderer.waitIdle();
+    guiRenderBridge.detach();
     imguiLayer.reset();
     renderer.reset();
     renderAssets.reset();
@@ -189,8 +190,7 @@ void App::drawGui(ApplicationGui& gui)
     ApplicationGuiContext context{
         assetManager,
         scene,
-        renderAssets,
-        renderer};
+        guiRenderBridge};
     const ApplicationGuiFrameOutput output = gui.draw(context);
     if (output.sceneAspectRatio)
     {

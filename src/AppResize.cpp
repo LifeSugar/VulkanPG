@@ -32,6 +32,7 @@ void App::recreateSwapChain(ApplicationGui& gui)
     const bool recreateImGui = static_cast<bool>(imguiLayer);
     renderer.waitIdle();
     gui.detach();
+    guiRenderBridge.detach();
     renderer.resize(extent);
 
     if (recreateImGui)
@@ -40,11 +41,12 @@ void App::recreateSwapChain(ApplicationGui& gui)
             renderer.presentRenderPass());
     }
 
+    guiRenderBridge.attach(renderer, renderAssets);
+
     ApplicationGuiContext guiContext{
         assetManager,
         scene,
-        renderAssets,
-        renderer};
+        guiRenderBridge};
     gui.attach(guiContext);
 
     const VkExtent2D renderExtent = renderer.extent();
@@ -56,4 +58,3 @@ void App::recreateSwapChain(ApplicationGui& gui)
 }
 
 } // namespace VkRenderer
-

@@ -6,17 +6,15 @@ namespace VkRenderer
 {
 
 class AssetManager;
-class RenderAssetCache;
+class ApplicationGuiRenderBridge;
 class Scene;
-class VulkanRenderer;
 
 /// Non-owning services exposed to one application GUI frame.
 struct ApplicationGuiContext
 {
     AssetManager& assets;
     Scene& scene;
-    RenderAssetCache& renderAssets;
-    VulkanRenderer& renderer;
+    ApplicationGuiRenderBridge& render;
 };
 
 /// Per-frame GUI decisions consumed before building the scene RenderFrame.

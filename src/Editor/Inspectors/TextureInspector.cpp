@@ -1,7 +1,7 @@
 #include "Editor/Inspectors/TextureInspector.h"
 
 #include "Asset/AssetManager.h"
-#include "Editor/EditorTexturePreview.h"
+#include "ApplicationGuiRenderBridge.h"
 #include "Editor/Inspectors/InspectorWidgets.h"
 
 #include <imgui.h>
@@ -30,7 +30,7 @@ namespace
 
 void TextureInspector::draw(
     const AssetManager& assets,
-    EditorTexturePreviewProvider& texturePreviews,
+    ApplicationGuiRenderBridge& texturePreviews,
     TextureAssetHandle target) const
 {
     using namespace InspectorWidgets;

@@ -1,6 +1,6 @@
 #include "RuntimeGui.h"
 
-#include "Vulkan/VulkanRenderer.h"
+#include "ApplicationGuiRenderBridge.h"
 
 #include <imgui.h>
 
@@ -10,15 +10,16 @@ namespace VkRenderer
 ApplicationGuiFrameOutput RuntimeGui::draw(
     const ApplicationGuiContext& context)
 {
-    const VkExtent2D renderExtent = context.renderer.extent();
+    const ApplicationGuiRenderFrame renderFrame =
+        context.render.currentFrame();
     const ImGuiIO& io = ImGui::GetIO();
 
     ImGui::SetNextWindowBgAlpha(0.85f);
     ImGui::Begin("Renderer");
     ImGui::Text(
         "Resolution: %u x %u",
-        renderExtent.width,
-        renderExtent.height);
+        renderFrame.width,
+        renderFrame.height);
     ImGui::Text(
         "Frame: %.3f ms (%.1f FPS)",
         io.Framerate > 0.0f ? 1000.0f / io.Framerate : 0.0f,

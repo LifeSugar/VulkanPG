@@ -1,7 +1,7 @@
 #include "Editor/Inspectors/MaterialInspector.h"
 
 #include "Asset/AssetManager.h"
-#include "Editor/EditorTexturePreview.h"
+#include "ApplicationGuiRenderBridge.h"
 #include "Editor/Inspectors/InspectorWidgets.h"
 #include "Render/PipelineVariantKey.h"
 #include "Render/RenderQueue.h"
@@ -197,7 +197,7 @@ void drawMaterialParameterValue(
 
 std::optional<InspectorTarget> MaterialInspector::drawMaterialAsset(
     const AssetManager& assets,
-    EditorTexturePreviewProvider& texturePreviews,
+    ApplicationGuiRenderBridge& texturePreviews,
     MaterialAssetHandle target) const
 {
     using namespace InspectorWidgets;

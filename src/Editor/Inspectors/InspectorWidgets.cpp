@@ -1,7 +1,7 @@
 #include "Editor/Inspectors/InspectorWidgets.h"
 
 #include "Asset/TextureAsset.h"
-#include "Editor/EditorTexturePreview.h"
+#include "ApplicationGuiRenderBridge.h"
 
 #include <imgui.h>
 
@@ -49,7 +49,7 @@ bool drawReference(const char* label, const char* value, int id)
 }
 
 void drawTextureImage(
-    EditorTexturePreviewProvider& texturePreviews,
+    ApplicationGuiRenderBridge& texturePreviews,
     TextureAssetHandle handle,
     const TextureAsset& texture,
     float maxWidth,
@@ -62,7 +62,7 @@ void drawTextureImage(
         return;
     }
 
-    const EditorTexturePreview preview = texturePreviews.preview(handle);
+    const ApplicationGuiTexture preview = texturePreviews.preview(handle);
     if (!preview)
     {
         ImGui::TextDisabled("Preview unavailable");

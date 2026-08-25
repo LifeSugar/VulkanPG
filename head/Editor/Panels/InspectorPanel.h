@@ -10,7 +10,7 @@ namespace VkRenderer
 {
 
 class AssetManager;
-class EditorTexturePreviewProvider;
+class ApplicationGuiRenderBridge;
 class Scene;
 
 /// Owns the Inspector window and routes selections to type inspectors.
@@ -20,7 +20,7 @@ public:
     void draw(
         const Scene& scene,
         const AssetManager& assets,
-        EditorTexturePreviewProvider& texturePreviews,
+        ApplicationGuiRenderBridge& texturePreviews,
         EditorSelection& selection,
         bool* open = nullptr);
 

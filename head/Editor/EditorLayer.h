@@ -4,12 +4,8 @@
 #include "Editor/EditorSelection.h"
 #include "Editor/Panels/InspectorPanel.h"
 #include "Editor/Panels/SceneHierarchyPanel.h"
-#include "Editor/Vulkan/VulkanEditorTexturePreview.h"
-
-#include <vulkan/vulkan.h>
 
 #include <cstdint>
-#include <vector>
 
 namespace VkRenderer
 {
@@ -18,8 +14,6 @@ namespace VkRenderer
 class EditorLayer final : public ApplicationGui
 {
 public:
-    void attach(const ApplicationGuiContext& context) override;
-    void detach() noexcept override;
     [[nodiscard]] ApplicationGuiFrameOutput draw(
         const ApplicationGuiContext& context) override;
 
@@ -28,17 +22,12 @@ private:
     [[nodiscard]] std::optional<float> drawSceneViewport(
         const ApplicationGuiContext& context);
     void drawRendererStats(const ApplicationGuiContext& context);
-    void registerViewportTextures(const VulkanRenderer& renderer);
-    void releaseViewportTextures() noexcept;
-    void refreshViewportTexturesIfNeeded(const VulkanRenderer& renderer);
 
     EditorSelection selection_;
     SceneHierarchyPanel sceneHierarchyPanel_;
     InspectorPanel inspectorPanel_;
-    VulkanEditorTexturePreview texturePreviews_;
-    std::vector<VkDescriptorSet> viewportTextures_;
-    uint64_t viewportTextureRevision_ = 0;
-    VkExtent2D sceneViewportExtent_{};
+    uint32_t sceneViewportWidth_ = 0;
+    uint32_t sceneViewportHeight_ = 0;
     bool showSceneHierarchy_ = true;
     bool showInspector_ = true;
     bool showSceneViewport_ = true;

@@ -1,37 +1,23 @@
 #include "Editor/EditorLayer.h"
 
+#include "ApplicationGuiRenderBridge.h"
 #include "Scene/Scene.h"
-#include "Vulkan/VulkanRenderer.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <imgui_impl_vulkan.h>
 
 #include <cstdint>
-#include <stdexcept>
 
 namespace VkRenderer
 {
 
-void EditorLayer::attach(const ApplicationGuiContext& context)
-{
-    texturePreviews_.attach(context.renderAssets);
-    registerViewportTextures(context.renderer);
-}
-
-void EditorLayer::detach() noexcept
-{
-    texturePreviews_.detach();
-    releaseViewportTextures();
-}
-
 ApplicationGuiFrameOutput EditorLayer::draw(
     const ApplicationGuiContext& context)
 {
-    refreshViewportTexturesIfNeeded(context.renderer);
     drawDockSpace();
     ApplicationGuiFrameOutput output{};
-    sceneViewportExtent_ = {};
+    sceneViewportWidth_ = 0;
+    sceneViewportHeight_ = 0;
 
     if (showSceneHierarchy_)
     {
@@ -46,7 +32,7 @@ ApplicationGuiFrameOutput EditorLayer::draw(
         inspectorPanel_.draw(
             context.scene,
             context.assets,
-            texturePreviews_,
+            context.render,
             selection_,
             &showInspector_);
     }
@@ -161,17 +147,16 @@ std::optional<float> EditorLayer::drawSceneViewport(
     const ImVec2 available = ImGui::GetContentRegionAvail();
     if (available.x > 0.0f && available.y > 0.0f)
     {
-        sceneViewportExtent_ = {
-            static_cast<uint32_t>(available.x),
-            static_cast<uint32_t>(available.y)
-        };
+        sceneViewportWidth_ = static_cast<uint32_t>(available.x);
+        sceneViewportHeight_ = static_cast<uint32_t>(available.y);
     }
-    const uint32_t frameIndex = context.renderer.currentFrameIndex();
+    const ApplicationGuiRenderFrame renderFrame =
+        context.render.currentFrame();
     if (available.x > 0.0f && available.y > 0.0f &&
-        frameIndex < viewportTextures_.size())
+        renderFrame.sceneViewport)
     {
         const ImTextureID textureId = static_cast<ImTextureID>(
-            reinterpret_cast<uintptr_t>(viewportTextures_[frameIndex]));
+            renderFrame.sceneViewport.textureId);
         ImGui::Image(ImTextureRef(textureId), available);
     }
     ImGui::End();
@@ -188,12 +173,12 @@ void EditorLayer::drawRendererStats(
     ImGui::Begin("Renderer Stats", &showRendererStats_);
     static_cast<void>(context);
     const ImGuiIO& io = ImGui::GetIO();
-    if (sceneViewportExtent_.width > 0 && sceneViewportExtent_.height > 0)
+    if (sceneViewportWidth_ > 0 && sceneViewportHeight_ > 0)
     {
         ImGui::Text(
             "Scene View: %u x %u",
-            sceneViewportExtent_.width,
-            sceneViewportExtent_.height);
+            sceneViewportWidth_,
+            sceneViewportHeight_);
     }
     else
     {
@@ -204,75 +189,6 @@ void EditorLayer::drawRendererStats(
         io.Framerate > 0.0f ? 1000.0f / io.Framerate : 0.0f,
         io.Framerate);
     ImGui::End();
-}
-
-void EditorLayer::registerViewportTextures(
-    const VulkanRenderer& renderer)
-{
-    if (renderer.outputMode() != VulkanRenderer::OutputMode::Editor ||
-        renderer.frameCount() == 0)
-    {
-        throw std::logic_error(
-            "EditorLayer requires Renderer Editor output mode");
-    }
-
-    releaseViewportTextures();
-    viewportTextures_.reserve(renderer.frameCount());
-    try
-    {
-        for (uint32_t frameIndex = 0;
-             frameIndex < renderer.frameCount();
-             ++frameIndex)
-        {
-            const VulkanRenderer::EditorViewportOutput output =
-                renderer.editorViewportOutput(frameIndex);
-            const VkDescriptorSet texture =
-                ImGui_ImplVulkan_AddTexture(
-                    output.imageView,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-            if (texture == VK_NULL_HANDLE)
-            {
-                throw std::runtime_error(
-                    "failed to register Editor viewport texture with ImGui");
-            }
-            viewportTextures_.push_back(texture);
-            viewportTextureRevision_ = output.revision;
-        }
-    }
-    catch (...)
-    {
-        releaseViewportTextures();
-        throw;
-    }
-}
-
-void EditorLayer::releaseViewportTextures() noexcept
-{
-    for (VkDescriptorSet texture : viewportTextures_)
-    {
-        if (texture != VK_NULL_HANDLE)
-        {
-            ImGui_ImplVulkan_RemoveTexture(texture);
-        }
-    }
-    viewportTextures_.clear();
-    viewportTextureRevision_ = 0;
-}
-
-void EditorLayer::refreshViewportTexturesIfNeeded(
-    const VulkanRenderer& renderer)
-{
-    if (renderer.frameCount() == 0)
-    {
-        return;
-    }
-    const VulkanRenderer::EditorViewportOutput output =
-        renderer.editorViewportOutput(0);
-    if (viewportTextures_.size() != renderer.frameCount() ||
-        viewportTextureRevision_ != output.revision)
-    {
-        registerViewportTextures(renderer);
-    }
 }
 
 } // namespace VkRenderer

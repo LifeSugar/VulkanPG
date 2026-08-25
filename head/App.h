@@ -7,6 +7,7 @@
 #include "Vulkan/RenderAssetCache.h"
 #include "Scene/Scene.h"
 #include "Vulkan/VulkanContext.h"
+#include "Vulkan/VulkanApplicationGuiRenderBridge.h"
 #include "Vulkan/VulkanRenderer.h"
 #include "Window.h"
 
@@ -58,6 +59,8 @@ private:
     VulkanRenderer renderer;
     // Must be destroyed before the renderer, device, and GLFW window.
     ImGuiLayer imguiLayer;
+    // Must release ImGui descriptors before ImGuiLayer is destroyed.
+    VulkanApplicationGuiRenderBridge guiRenderBridge;
 
     Camera camera;
     static constexpr uint32_t kMaxFramesInFlight = 2;
