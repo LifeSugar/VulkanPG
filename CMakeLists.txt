@@ -10,6 +10,86 @@ find_package(Vulkan REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
+find_package(Stb REQUIRED)
+file(TO_CMAKE_PATH "$ENV{VULKAN_SDK}" VULKAN_SDK_CMAKE_ROOT)
+find_path(SPIRV_CROSS_INCLUDE_DIR spirv_cross.hpp
+    PATHS
+        "${VULKAN_SDK_CMAKE_ROOT}/Include/spirv_cross" # Windows SDK
+        "${VULKAN_SDK_CMAKE_ROOT}/include/spirv_cross" # macOS SDK
+    NO_DEFAULT_PATH
+)
+find_library(SPIRV_CROSS_CORE_RELEASE spirv-cross-core
+    PATHS
+        "${VULKAN_SDK_CMAKE_ROOT}/Lib" # Windows SDK
+        "${VULKAN_SDK_CMAKE_ROOT}/lib" # macOS SDK
+    NO_DEFAULT_PATH
+)
+find_library(SPIRV_CROSS_CORE_DEBUG spirv-cross-cored
+    PATHS
+        "${VULKAN_SDK_CMAKE_ROOT}/Lib" # Windows SDK
+        "${VULKAN_SDK_CMAKE_ROOT}/lib" # macOS SDK
+    NO_DEFAULT_PATH
+)
+if(NOT SPIRV_CROSS_INCLUDE_DIR OR NOT SPIRV_CROSS_CORE_RELEASE)
+    message(FATAL_ERROR "SPIRV-Cross core was not found in VULKAN_SDK")
+endif()
+add_library(spirv-cross-core STATIC IMPORTED)
+set_target_properties(spirv-cross-core PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${SPIRV_CROSS_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${SPIRV_CROSS_CORE_RELEASE}"
+)
+if(SPIRV_CROSS_CORE_DEBUG)
+    set_target_properties(spirv-cross-core PROPERTIES
+        IMPORTED_LOCATION_DEBUG "${SPIRV_CROSS_CORE_DEBUG}"
+    )
+endif()
+
+set(IMGUI_DIR "${CMAKE_SOURCE_DIR}/third_party/imgui")
+
+add_library(imgui STATIC
+    "${IMGUI_DIR}/imgui.cpp"
+    "${IMGUI_DIR}/imgui_draw.cpp"
+    "${IMGUI_DIR}/imgui_tables.cpp"
+    "${IMGUI_DIR}/imgui_widgets.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_glfw.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp"
+)
+
+target_include_directories(imgui PUBLIC
+    "${IMGUI_DIR}"
+    "${IMGUI_DIR}/backends"
+)
+
+target_compile_options(imgui PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/utf-8>
+)
+
+target_link_libraries(imgui PUBLIC
+    Vulkan::Vulkan
+    glfw
+)
+
+file(GLOB_RECURSE ASSET_CORE_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/src/Asset/*.cpp"
+)
+list(APPEND ASSET_CORE_SOURCES
+    "${CMAKE_SOURCE_DIR}/src/Import/SpirvReflection.cpp"
+)
+
+add_library(asset-core STATIC ${ASSET_CORE_SOURCES})
+target_include_directories(asset-core PUBLIC
+    ${CMAKE_SOURCE_DIR}/head
+)
+target_compile_options(asset-core PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/utf-8>
+)
+target_compile_definitions(asset-core PUBLIC
+    GLM_FORCE_DEPTH_ZERO_TO_ONE
+)
+target_link_libraries(asset-core PUBLIC
+    glm::glm
+    spirv-cross-core
+)
 
 set(VULKAN_APP_SOURCES)
 
@@ -19,6 +99,12 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/src")
         "${CMAKE_SOURCE_DIR}/src/*.cc"
         "${CMAKE_SOURCE_DIR}/src/*.cpp"
         "${CMAKE_SOURCE_DIR}/src/*.cxx"
+    )
+    list(FILTER VULKAN_APP_SRC_FILES EXCLUDE REGEX
+        ".*/src/Asset/.*\\.cpp$"
+    )
+    list(FILTER VULKAN_APP_SRC_FILES EXCLUDE REGEX
+        ".*/src/Import/SpirvReflection\\.cpp$"
     )
     list(APPEND VULKAN_APP_SOURCES ${VULKAN_APP_SRC_FILES})
 endif()
@@ -40,6 +126,7 @@ target_include_directories(VulkanApp PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/head
     ${CMAKE_SOURCE_DIR}/src
+    ${Stb_INCLUDE_DIR}
 )
 
 target_compile_options(VulkanApp PRIVATE
@@ -80,4 +167,6 @@ target_link_libraries(VulkanApp PRIVATE
     glfw 
     glm::glm
     assimp::assimp
+    asset-core
+    imgui
 )

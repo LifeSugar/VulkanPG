@@ -1,19 +1,24 @@
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$vert = Join-Path $scriptDir "triangle.vert.hlsl"
-$frag = Join-Path $scriptDir "triangle.frag.hlsl"
-$vertSpv = Join-Path $scriptDir "triangle.vert.spv"
-$fragSpv = Join-Path $scriptDir "triangle.frag.spv"
-
 $dxc = Get-Command dxc -ErrorAction SilentlyContinue
 if (-not $dxc) {
     throw "dxc not found. Open a terminal with Vulkan SDK or add dxc to PATH."
 }
 
-& dxc -spirv -T vs_6_0 -E main -Fo $vertSpv $vert
-& dxc -spirv -T ps_6_0 -E main -Fo $fragSpv $frag
+$shaders = @(
+    @{ Source = "triangle.vert.hlsl"; Target = "vs_6_0" },
+    @{ Source = "triangle.frag.hlsl"; Target = "ps_6_0" },
+    @{ Source = "present.vert.hlsl";  Target = "vs_6_0" },
+    @{ Source = "present.frag.hlsl";  Target = "ps_6_0" }
+)
 
-Write-Host "[OK] Compiled shaders:"
-Write-Host "  $vertSpv"
-Write-Host "  $fragSpv"
+foreach ($shader in $shaders) {
+    $source = Join-Path $scriptDir $shader.Source
+    $output = [System.IO.Path]::ChangeExtension($source, ".spv")
+    & dxc -spirv -T $shader.Target -E main -Fo $output $source
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to compile $($shader.Source)."
+    }
+    Write-Host "[OK] $($shader.Source) -> $(Split-Path -Leaf $output)"
+}

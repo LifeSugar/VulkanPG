@@ -1,0 +1,5 @@
+Repository: https://github.com/ocornut/imgui
+Branch: docking
+Commit: fd13a1e8923a0a7077b404fc36fd063b25a0c0b5
+Description: v1.92.9b-docking-35-gfd13a1e89
+License: MIT, see LICENSE.txt

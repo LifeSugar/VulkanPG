@@ -1,14 +1,6 @@
-// Vertex shader: receives mesh data from the vertex buffer and MVP from set 0 binding 0.
+// Vertex shader: selects per-camera and per-object data through draw indices.
 
-#pragma pack_matrix(column_major)
-
-[[vk::binding(0, 0)]]
-cbuffer MVPUniformBuffer : register(b0, space0)
-{
-    float4x4 model;
-    float4x4 view;
-    float4x4 proj;
-};
+#include "RenderData.hlsli"
 
 struct VSInput
 {
@@ -16,10 +8,14 @@ struct VSInput
     float3 position : POSITION;
 
     [[vk::location(1)]]
-    float3 color    : COLOR0;
+    float4 color    : COLOR0;
 
     [[vk::location(2)]]
     float3 normal   : NORMAL;
+
+    [[vk::location(3)]]
+    float2 texCoord : TEXCOORD0;
+
 };
 
 struct VSOutput
@@ -33,17 +29,24 @@ struct VSOutput
     float3 normal        : NORMAL;
 
     [[vk::location(2)]]
-    float3 color         : COLOR0;
+    float4 color         : COLOR0;
+
+    [[vk::location(3)]]
+    float2 texCoord      : TEXCOORD1;
 };
 
 VSOutput main(VSInput input)
 {
+    const CameraGpuData camera =
+        cameraBuffer.cameras[drawPushConstants.cameraIndex];
+    const ObjectGpuData object = objectData[drawPushConstants.objectIndex];
+
     VSOutput output;
-    float4 worldPosition = mul(model, float4(input.position, 1.0));
-    float4 viewPosition = mul(view, worldPosition);
-    output.position = mul(proj, viewPosition);
+    float4 worldPosition = mul(object.world, float4(input.position, 1.0));
+    output.position = mul(camera.viewProjection, worldPosition);
     output.worldPosition = worldPosition.xyz;
-    output.normal = normalize(mul((float3x3)model, input.normal));
+    output.normal = normalize(mul((float3x3)object.normalMatrix, input.normal));
     output.color = input.color;
+    output.texCoord = input.texCoord;
     return output;
 }

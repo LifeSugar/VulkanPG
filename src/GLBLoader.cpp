@@ -8,8 +8,11 @@
 
 #include <cstring>
 #include <algorithm>
+#include <filesystem>
+#include <limits>
 #include <map>
 #include <functional>
+#include <stdexcept>
 
 // ============================================================================
 // pimpl 实现体
@@ -52,9 +55,9 @@ std::unique_ptr<GLBModel> GLBLoader::load(const std::string& filePath)
     }
 
     // 提取各项数据
-    m_model->name = filePath;
-    extractMaterials(scene);
+    m_model->name = std::filesystem::path(filePath).filename().string();
     extractTextures(scene);
+    extractMaterials(scene);
     extractMeshes(scene);
     extractSkins(scene);
     extractNode(scene->mRootNode, m_model->rootNode);
@@ -272,9 +275,44 @@ void GLBLoader::extractTextures(const void* aiScenePtr)
     for (unsigned int i = 0; i < scene->mNumTextures; ++i) {
         const aiTexture* src = scene->mTextures[i];
         GLBTexture tex;
-        tex.name = src->mFilename.C_Str();
-        // 嵌入纹理用文件名标识
-        tex.uri  = src->mFilename.C_Str();
+        tex.uri = "*" + std::to_string(i);
+        tex.name = src->mFilename.length > 0
+            ? src->mFilename.C_Str()
+            : tex.uri;
+        tex.formatHint = src->achFormatHint;
+
+        if (src->mHeight == 0)
+        {
+            tex.storage = GLBTextureStorage::EncodedBytes;
+            tex.data.resize(src->mWidth);
+            const auto* bytes =
+                reinterpret_cast<const uint8_t*>(src->pcData);
+            std::copy(bytes, bytes + src->mWidth, tex.data.begin());
+        }
+        else
+        {
+            const std::size_t pixelCount =
+                static_cast<std::size_t>(src->mWidth) * src->mHeight;
+            if (pixelCount >
+                std::numeric_limits<std::size_t>::max() / 4)
+            {
+                throw std::overflow_error(
+                    "embedded GLB texture dimensions are too large");
+            }
+
+            tex.storage = GLBTextureStorage::Rgba8Pixels;
+            tex.width = src->mWidth;
+            tex.height = src->mHeight;
+            tex.data.resize(pixelCount * 4);
+            for (std::size_t pixel = 0; pixel < pixelCount; ++pixel)
+            {
+                const aiTexel& source = src->pcData[pixel];
+                tex.data[pixel * 4 + 0] = source.r;
+                tex.data[pixel * 4 + 1] = source.g;
+                tex.data[pixel * 4 + 2] = source.b;
+                tex.data[pixel * 4 + 3] = source.a;
+            }
+        }
         m_model->textures.push_back(std::move(tex));
     }
 }

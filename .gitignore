@@ -39,3 +39,6 @@ MinSizeRel/
 
 # VS Code
 .vscode/
+
+# Local Dear ImGui editor layout
+/editor_imgui.ini
