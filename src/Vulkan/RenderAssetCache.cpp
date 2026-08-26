@@ -227,6 +227,85 @@ void RenderAssetCache::create(
     }
 }
 
+GpuTexture RenderAssetCache::stageTextureReplacement(
+    const Device& device,
+    UploadContext& uploadContext,
+    const TextureAsset& replacement) const
+{
+    GpuTexture::CreateInfo createInfo{};
+    createInfo.asset = &replacement;
+    return GpuTexture(device, uploadContext, createInfo);
+}
+
+GpuTexture RenderAssetCache::commitTextureReplacement(
+    const Device& device,
+    const AssetManager& assets,
+    TextureAssetHandle handle,
+    GpuTexture replacement)
+{
+    if (!device || !replacement || tryTexture(handle) == nullptr)
+    {
+        throw std::invalid_argument(
+            "cannot replace a texture absent from RenderAssetCache");
+    }
+
+    struct MaterialTextureUpdate
+    {
+        GpuMaterial* material = nullptr;
+        const MaterialTemplateAsset* materialTemplate = nullptr;
+        std::vector<const GpuTexture*> textures;
+    };
+    std::vector<MaterialTextureUpdate> updates;
+
+    for (uint32_t index = 0;
+         index < static_cast<uint32_t>(materials_.size());
+         ++index)
+    {
+        MaterialEntry& entry = materials_[index];
+        if (!entry.material || entry.generation == 0)
+        {
+            continue;
+        }
+
+        const MaterialAssetHandle materialHandle{index, entry.generation};
+        const MaterialAsset& materialAsset = assets.material(materialHandle);
+        if (std::find(
+                materialAsset.textures().begin(),
+                materialAsset.textures().end(),
+                handle) == materialAsset.textures().end())
+        {
+            continue;
+        }
+
+        MaterialTextureUpdate update{};
+        update.material = &entry.material;
+        update.materialTemplate = &assets.materialTemplate(
+            materialAsset.materialTemplate());
+        update.textures.reserve(materialAsset.textures().size());
+        for (TextureAssetHandle textureHandle : materialAsset.textures())
+        {
+            update.textures.push_back(
+                textureHandle == handle
+                    ? &replacement
+                    : &texture(textureHandle));
+        }
+        updates.push_back(std::move(update));
+    }
+
+    // All references were validated above. vkUpdateDescriptorSets has no
+    // failure return; after these writes the no-throw move commits ownership.
+    for (MaterialTextureUpdate& update : updates)
+    {
+        update.material->updateTextures(
+            device,
+            *update.materialTemplate,
+            update.textures);
+    }
+    GpuTexture previous = std::move(textures_[handle.index].texture);
+    textures_[handle.index].texture = std::move(replacement);
+    return previous;
+}
+
 void RenderAssetCache::reset() noexcept
 {
     materialDescriptorPool_.reset();

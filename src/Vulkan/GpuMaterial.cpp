@@ -11,19 +11,15 @@
 
 namespace VkRenderer
 {
-
-void GpuMaterial::create(
-    const Device& device,
-    const MaterialAsset& asset,
-    const MaterialTemplateAsset& materialTemplate,
-    const std::vector<const GpuTexture*>& textures,
-    VkDescriptorSet descriptorSet)
+namespace
 {
-    if (!device || !asset || asset.parameterData().empty() ||
-        textures.empty() || descriptorSet == VK_NULL_HANDLE)
+
+void validateTextures(const std::vector<const GpuTexture*>& textures)
+{
+    if (textures.empty())
     {
         throw std::invalid_argument(
-            "cannot create GpuMaterial from incomplete inputs");
+            "GpuMaterial requires at least one texture");
     }
     for (const GpuTexture* texture : textures)
     {
@@ -33,6 +29,84 @@ void GpuMaterial::create(
                 "GpuMaterial references an invalid GpuTexture");
         }
     }
+}
+
+void writeTextureDescriptors(
+    VkDevice device,
+    VkDescriptorSet descriptorSet,
+    const MaterialTemplateAsset& materialTemplate,
+    const std::vector<const GpuTexture*>& textures)
+{
+    validateTextures(textures);
+    if (device == VK_NULL_HANDLE || descriptorSet == VK_NULL_HANDLE)
+    {
+        throw std::invalid_argument(
+            "GpuMaterial texture descriptor destination is invalid");
+    }
+
+    const std::vector<MaterialTextureSlotDesc>& textureSlots =
+        materialTemplate.textureSlots();
+    const uint32_t textureSlotCount =
+        static_cast<uint32_t>(textureSlots.size());
+    for (const MaterialTextureSlotDesc& slot : textureSlots)
+    {
+        if (slot.slot >= textures.size())
+        {
+            throw std::invalid_argument(
+                "GpuMaterial texture slot is outside its compiled texture table");
+        }
+
+    }
+
+    // Validation above is complete before the first descriptor is changed.
+    // Per-slot stack storage keeps this commit path allocation-free.
+    for (uint32_t index = 0; index < textureSlotCount; ++index)
+    {
+        const MaterialTextureSlotDesc& slot = textureSlots[index];
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageView = textures[slot.slot]->view();
+        imageInfo.imageLayout =
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkDescriptorImageInfo samplerInfo{};
+        samplerInfo.sampler = textures[slot.slot]->sampler();
+
+        VkWriteDescriptorSet writes[2]{};
+        VkWriteDescriptorSet& imageWrite = writes[0];
+        imageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        imageWrite.dstSet = descriptorSet;
+        imageWrite.dstBinding = slot.imageBinding.binding;
+        imageWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        imageWrite.descriptorCount = 1;
+        imageWrite.pImageInfo = &imageInfo;
+
+        VkWriteDescriptorSet& samplerWrite = writes[1];
+        samplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        samplerWrite.dstSet = descriptorSet;
+        samplerWrite.dstBinding = slot.samplerBinding.binding;
+        samplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+        samplerWrite.descriptorCount = 1;
+        samplerWrite.pImageInfo = &samplerInfo;
+
+        vkUpdateDescriptorSets(device, 2, writes, 0, nullptr);
+    }
+}
+
+} // namespace
+
+void GpuMaterial::create(
+    const Device& device,
+    const MaterialAsset& asset,
+    const MaterialTemplateAsset& materialTemplate,
+    const std::vector<const GpuTexture*>& textures,
+    VkDescriptorSet descriptorSet)
+{
+    if (!device || !asset || asset.parameterData().empty() ||
+        descriptorSet == VK_NULL_HANDLE)
+    {
+        throw std::invalid_argument(
+            "cannot create GpuMaterial from incomplete inputs");
+    }
+    validateTextures(textures);
 
     Buffer parameterBuffer(
         device,
@@ -51,64 +125,50 @@ void GpuMaterial::create(
     bufferInfo.buffer = parameterBuffer.get();
     bufferInfo.range = asset.parameterData().size();
 
-    const std::vector<MaterialTextureSlotDesc>& textureSlots =
-        materialTemplate.textureSlots();
-    std::vector<VkDescriptorImageInfo> imageInfos(textureSlots.size());
-    std::vector<VkDescriptorImageInfo> samplerInfos(textureSlots.size());
-    std::vector<VkWriteDescriptorSet> writes(1 + textureSlots.size() * 2);
+    VkWriteDescriptorSet parameterWrite{};
 
-    writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[0].dstSet = descriptorSet;
-    writes[0].dstBinding =
+    parameterWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    parameterWrite.dstSet = descriptorSet;
+    parameterWrite.dstBinding =
         materialTemplate.parameterBlock().descriptor.binding;
-    writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    writes[0].descriptorCount = 1;
-    writes[0].pBufferInfo = &bufferInfo;
-
-    const uint32_t textureSlotCount =
-        static_cast<uint32_t>(textureSlots.size());
-    for (uint32_t index = 0; index < textureSlotCount; ++index)
-    {
-        const MaterialTextureSlotDesc& slot = textureSlots[index];
-        if (slot.slot >= textures.size())
-        {
-            throw std::invalid_argument(
-                "GpuMaterial texture slot is outside its compiled texture table");
-        }
-        imageInfos[index].imageView = textures[slot.slot]->view();
-        imageInfos[index].imageLayout =
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        VkWriteDescriptorSet& imageWrite = writes[1 + index];
-        imageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        imageWrite.dstSet = descriptorSet;
-        imageWrite.dstBinding = slot.imageBinding.binding;
-        imageWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        imageWrite.descriptorCount = 1;
-        imageWrite.pImageInfo = &imageInfos[index];
-
-        samplerInfos[index].sampler = textures[slot.slot]->sampler();
-        VkWriteDescriptorSet& samplerWrite =
-            writes[1 + textureSlotCount + index];
-        samplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        samplerWrite.dstSet = descriptorSet;
-        samplerWrite.dstBinding = slot.samplerBinding.binding;
-        samplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-        samplerWrite.descriptorCount = 1;
-        samplerWrite.pImageInfo = &samplerInfos[index];
-    }
+    parameterWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    parameterWrite.descriptorCount = 1;
+    parameterWrite.pBufferInfo = &bufferInfo;
 
     vkUpdateDescriptorSets(
         device.get(),
-        static_cast<uint32_t>(writes.size()),
-        writes.data(),
+        1,
+        &parameterWrite,
         0,
         nullptr);
+    writeTextureDescriptors(
+        device.get(),
+        descriptorSet,
+        materialTemplate,
+        textures);
 
     reset();
     parameterBuffer_ = std::move(parameterBuffer);
     materialTemplate_ = asset.materialTemplate();
     renderState_ = asset.renderState();
     descriptorSet_ = descriptorSet;
+}
+
+void GpuMaterial::updateTextures(
+    const Device& device,
+    const MaterialTemplateAsset& materialTemplate,
+    const std::vector<const GpuTexture*>& textures)
+{
+    if (!device || !*this)
+    {
+        throw std::invalid_argument(
+            "cannot update textures on an incompatible GpuMaterial");
+    }
+    writeTextureDescriptors(
+        device.get(),
+        descriptorSet_,
+        materialTemplate,
+        textures);
 }
 
 void GpuMaterial::reset() noexcept

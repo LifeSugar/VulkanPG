@@ -5,6 +5,7 @@
 #include "Import/GLBModelImporter.h"
 #include "Import/SpirvShaderImporter.h"
 #include "Import/StbImageDecoder.h"
+#include "Import/TextureImportRegistry.h"
 #include "Scene/Scene.h"
 
 #include <cstddef>
@@ -20,32 +21,51 @@ namespace VkRenderer
 namespace
 {
 
-constexpr const char* kDemoModelPath =
-    "Assets/Models/ABeautifulGame.glb";
-
-std::string resolveAssetPath(const std::string& relativePath)
+std::filesystem::path resolveAssetPath(
+    const std::filesystem::path& cookedAssetDirectory,
+    const std::filesystem::path& assetPath)
 {
-    if (std::filesystem::exists(relativePath))
+    const std::filesystem::path configuredPath = assetPath.is_absolute()
+        ? assetPath
+        : cookedAssetDirectory / assetPath;
+    if (std::filesystem::exists(configuredPath))
     {
-        return relativePath;
+        return configuredPath;
     }
 
-    const std::string sourcePath =
-        std::string(PROJECT_SOURCE_DIR) + "/" + relativePath;
+    const std::filesystem::path sourcePath =
+        std::filesystem::path(PROJECT_SOURCE_DIR) / configuredPath;
     if (std::filesystem::exists(sourcePath))
     {
         return sourcePath;
     }
 
-    return relativePath;
+    return configuredPath;
+}
+
+void validateCreateInfo(const DemoContentLoader::CreateInfo& createInfo)
+{
+    if (createInfo.modelPath.empty() ||
+        createInfo.pbrVertexShader.empty() ||
+        createInfo.pbrFragmentShader.empty() ||
+        createInfo.presentVertexShader.empty() ||
+        createInfo.presentFragmentShader.empty() ||
+        createInfo.cookedAssetDirectory.empty())
+    {
+        throw std::invalid_argument(
+            "DemoContentLoader requires a cooked asset directory and all demo asset paths");
+    }
 }
 
 } // namespace
 
 DemoContent DemoContentLoader::load(
     AssetManager& assets,
-    Scene& scene)
+    Scene& scene,
+    const CreateInfo& createInfo,
+    TextureImportRegistry* textureImports)
 {
+    validateCreateInfo(createInfo);
     DemoContent content{};
 
     TextureAsset::CreateInfo textureInfo{};
@@ -62,29 +82,63 @@ DemoContent DemoContentLoader::load(
     };
     content.defaultTexture = assets.createTexture(std::move(textureInfo));
 
+    TextureAsset::CreateInfo dataTextureInfo{};
+    dataTextureInfo.name = "Default Linear White";
+    dataTextureInfo.width = 1;
+    dataTextureInfo.height = 1;
+    dataTextureInfo.format = TextureFormat::RGBA8UNorm;
+    dataTextureInfo.colorSpace = TextureColorSpace::Linear;
+    dataTextureInfo.payload = {
+        std::byte{0xff},
+        std::byte{0xff},
+        std::byte{0xff},
+        std::byte{0xff}
+    };
+    content.defaultDataTexture =
+        assets.createTexture(std::move(dataTextureInfo));
+
+    TextureAsset::CreateInfo normalTextureInfo{};
+    normalTextureInfo.name = "Default Flat Normal";
+    normalTextureInfo.width = 1;
+    normalTextureInfo.height = 1;
+    normalTextureInfo.format = TextureFormat::RGBA8UNorm;
+    normalTextureInfo.colorSpace = TextureColorSpace::Linear;
+    normalTextureInfo.payload = {
+        std::byte{0x80},
+        std::byte{0x80},
+        std::byte{0xff},
+        std::byte{0xff}
+    };
+    content.defaultNormalTexture =
+        assets.createTexture(std::move(normalTextureInfo));
+
     SpirvShaderImporter shaderImporter;
     SpirvShaderImporter::CreateInfo shaderInfo{};
     shaderInfo.assets = &assets;
     shaderInfo.path = resolveAssetPath(
-        "Assets/shaders/triangle.vert.spv");
+        createInfo.cookedAssetDirectory,
+        createInfo.pbrVertexShader);
     shaderInfo.name = "PBR Vertex";
     shaderInfo.stage = ShaderStage::Vertex;
     content.pbrVertexShader = shaderImporter.import(shaderInfo);
 
     shaderInfo.path = resolveAssetPath(
-        "Assets/shaders/triangle.frag.spv");
+        createInfo.cookedAssetDirectory,
+        createInfo.pbrFragmentShader);
     shaderInfo.name = "PBR Fragment";
     shaderInfo.stage = ShaderStage::Fragment;
     content.pbrFragmentShader = shaderImporter.import(shaderInfo);
 
     shaderInfo.path = resolveAssetPath(
-        "Assets/shaders/present.vert.spv");
+        createInfo.cookedAssetDirectory,
+        createInfo.presentVertexShader);
     shaderInfo.name = "Present Vertex";
     shaderInfo.stage = ShaderStage::Vertex;
     content.presentVertexShader = shaderImporter.import(shaderInfo);
 
     shaderInfo.path = resolveAssetPath(
-        "Assets/shaders/present.frag.spv");
+        createInfo.cookedAssetDirectory,
+        createInfo.presentFragmentShader);
     shaderInfo.name = "Present Fragment";
     shaderInfo.stage = ShaderStage::Fragment;
     content.presentFragmentShader = shaderImporter.import(shaderInfo);
@@ -122,30 +176,34 @@ DemoContent DemoContentLoader::load(
     };
     materialInfo.textures = {
         {"baseColorTexture", content.defaultTexture},
-        {"metallicRoughnessTexture", content.defaultTexture},
-        {"normalTexture", content.defaultTexture},
-        {"occlusionTexture", content.defaultTexture},
+        {"metallicRoughnessTexture", content.defaultDataTexture},
+        {"normalTexture", content.defaultNormalTexture},
+        {"occlusionTexture", content.defaultDataTexture},
         {"emissiveTexture", content.defaultTexture}
     };
     content.defaultMaterial =
         assets.createMaterial(std::move(materialInfo));
 
-    const std::string resolvedModelPath = resolveAssetPath(kDemoModelPath);
+    const std::filesystem::path resolvedModelPath = resolveAssetPath(
+        createInfo.cookedAssetDirectory,
+        createInfo.modelPath);
     GLBLoader loader;
     std::unique_ptr<GLBModel> sourceModel =
-        loader.load(resolvedModelPath);
+        loader.load(resolvedModelPath.string());
     if (!sourceModel)
     {
         throw std::runtime_error(
-            std::string("Failed to load model: ") + kDemoModelPath + "\n" +
+            "Failed to load model: " + createInfo.modelPath.string() + "\n" +
             loader.getLastError());
     }
 
     GLBModelImporter::CreateInfo importerInfo{};
     importerInfo.assets = &assets;
     importerInfo.baseDirectory =
-        std::filesystem::path(resolvedModelPath).parent_path();
+        resolvedModelPath.parent_path();
     importerInfo.defaultTexture = content.defaultTexture;
+    importerInfo.defaultDataTexture = content.defaultDataTexture;
+    importerInfo.defaultNormalTexture = content.defaultNormalTexture;
     StbImageDecoder imageDecoder;
     importerInfo.textureDecoder =
         [&imageDecoder](
@@ -183,17 +241,53 @@ DemoContent DemoContentLoader::load(
     GLBModelImporter importer;
     GLBModelImporter::Result importedModel =
         importer.import(*sourceModel, importerInfo);
+
+    if (textureImports != nullptr)
+    {
+        if (sourceModel->textures.size() != importedModel.textures.size())
+        {
+            throw std::runtime_error(
+                "imported texture handles do not match the source texture table");
+        }
+        for (std::size_t index = 0;
+             index < sourceModel->textures.size();
+             ++index)
+        {
+            const GLBTexture& sourceTexture = sourceModel->textures[index];
+            if (sourceTexture.storage != GLBTextureStorage::ExternalUri)
+            {
+                continue;
+            }
+
+            const std::filesystem::path sourcePath =
+                (resolvedModelPath.parent_path() / sourceTexture.uri)
+                    .lexically_normal();
+            std::filesystem::path cookedFilename =
+                std::filesystem::path(sourceTexture.uri).filename();
+            cookedFilename.replace_extension(".ktx2");
+
+            TextureImportRecord record{};
+            record.texture = importedModel.textures[index];
+            record.sourcePath = sourcePath;
+            record.cookedPath = resolvedModelPath.parent_path() /
+                "_cooked" / cookedFilename;
+            record.settings.colorSpace =
+                assets.texture(record.texture).colorSpace();
+            record.settings.transcodeFormat = TextureFormat::BC7UNorm;
+            textureImports->registerTexture(std::move(record));
+        }
+    }
     if (importedModel.meshes.empty())
     {
         throw std::runtime_error(
             std::string("Imported model contains no renderer meshes: ") +
-            kDemoModelPath);
+            createInfo.modelPath.string());
     }
     content.model = importedModel.model;
     const ModelAsset& demoModel = assets.model(content.model);
 
     std::clog
-        << "[Assets] Imported " << kDemoModelPath
+        << "[Assets] Imported " << createInfo.modelPath.string()
         << ": textures=" << importedModel.textures.size()
         << ", materials=" << importedModel.materials.size()
         << ", meshes=" << importedModel.meshes.size()

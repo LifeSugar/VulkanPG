@@ -5,6 +5,7 @@
 #include "Asset/AssetId.h"
 #include "Content/DemoContent.h"
 #include "Import/KtxTextureImporter.h"
+#include "Import/KtxTextureCooker.h"
 #include "Render/CullingSystem.h"
 #include "Render/MaterialKey.h"
 #include "Render/PipelineVariantKey.h"
@@ -21,13 +22,18 @@
 #include <ktx.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <thread>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -364,6 +370,57 @@ void validateOfflineMaterialAssets(
     AssetManager& assets,
     const DemoContent& content)
 {
+    const TextureAsset& flatNormal = assets.texture(
+        content.defaultNormalTexture);
+    if (flatNormal.colorSpace() != TextureColorSpace::Linear ||
+        flatNormal.payload().size() != 4 ||
+        flatNormal.payload()[0] != std::byte{0x80} ||
+        flatNormal.payload()[1] != std::byte{0x80} ||
+        flatNormal.payload()[2] != std::byte{0xff})
+    {
+        throw std::runtime_error(
+            "default normal texture is not a linear flat tangent-space normal");
+    }
+
+    bool foundImportedPbrMaterial = false;
+    const ModelAsset& model = assets.model(content.model);
+    for (const ModelNode& node : model.nodes())
+    {
+        for (MeshAssetHandle meshHandle : node.meshes)
+        {
+            for (const SubmeshData& submesh :
+                 assets.mesh(meshHandle).submeshes())
+            {
+                const MaterialAsset& material =
+                    assets.material(submesh.material);
+                if (material.textures().size() != 5)
+                {
+                    continue;
+                }
+                foundImportedPbrMaterial = true;
+                const auto colorSpace = [&](uint32_t slot)
+                {
+                    return assets.texture(
+                        material.textures()[slot]).colorSpace();
+                };
+                if (colorSpace(0) != TextureColorSpace::Srgb ||
+                    colorSpace(1) != TextureColorSpace::Linear ||
+                    colorSpace(2) != TextureColorSpace::Linear ||
+                    colorSpace(3) != TextureColorSpace::Linear ||
+                    colorSpace(4) != TextureColorSpace::Srgb)
+                {
+                    throw std::runtime_error(
+                        "glTF material textures use incorrect semantic color spaces");
+                }
+            }
+        }
+    }
+    if (!foundImportedPbrMaterial)
+    {
+        throw std::runtime_error(
+            "demo model contains no imported PBR material to validate");
+    }
+
     const ShaderAsset& fragmentShader = assets.shader(
         content.pbrFragmentShader);
     const auto materialBlock = std::find_if(
@@ -395,7 +452,7 @@ void validateOfflineMaterialAssets(
     const ValidationReport currentTemplateReport =
         assets.validateMaterialTemplate(templateInfo);
     if (!currentTemplateReport.valid() ||
-        !hasValidationIssue(
+        hasValidationIssue(
             currentTemplateReport,
             "Template.InactiveImageBinding",
             ValidationSeverity::Warning) ||
@@ -430,9 +487,9 @@ void validateOfflineMaterialAssets(
     };
     invalidMaterial.textures = {
         {"baseColorTexture", content.defaultTexture},
-        {"metallicRoughnessTexture", content.defaultTexture},
-        {"normalTexture", content.defaultTexture},
-        {"occlusionTexture", content.defaultTexture},
+        {"metallicRoughnessTexture", content.defaultDataTexture},
+        {"normalTexture", content.defaultNormalTexture},
+        {"occlusionTexture", content.defaultDataTexture},
         {"emissiveTexture", content.defaultTexture}
     };
     const ValidationReport invalidMaterialReport =
@@ -554,6 +611,88 @@ void validateTextureFormats()
         textureMipByteSize(TextureFormat::BC7UNorm, 2, 2) != 16)
     {
         throw std::runtime_error("texture format layout validation failed");
+    }
+}
+
+class TemporaryDirectory final
+{
+public:
+    explicit TemporaryDirectory(std::filesystem::path path)
+        : path_(std::move(path))
+    {
+        std::filesystem::create_directories(path_);
+    }
+
+    ~TemporaryDirectory()
+    {
+        std::error_code ignored;
+        std::filesystem::remove_all(path_, ignored);
+    }
+
+    [[nodiscard]] const std::filesystem::path& path() const noexcept
+    {
+        return path_;
+    }
+
+private:
+    std::filesystem::path path_;
+};
+
+void validateKtxFileCookAndImport()
+{
+    const auto suffix = std::chrono::high_resolution_clock::now()
+        .time_since_epoch().count();
+    const TemporaryDirectory temporary(
+        std::filesystem::temp_directory_path() /
+        ("learnvulkan_toktx_" + std::to_string(suffix)));
+    const std::filesystem::path inputPath =
+        temporary.path() / "source.ppm";
+    const std::filesystem::path outputPath =
+        temporary.path() / "cooked.ktx2";
+
+    {
+        std::ofstream input(inputPath, std::ios::binary);
+        constexpr std::array<uint8_t, 48> pixels{
+            255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255,
+            0, 255, 0, 0, 0, 255, 255, 255, 255, 255, 0, 0,
+            0, 0, 255, 255, 255, 255, 255, 0, 0, 0, 255, 0,
+            255, 255, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255};
+        input << "P6\n4 4\n255\n";
+        input.write(
+            reinterpret_cast<const char*>(pixels.data()),
+            static_cast<std::streamsize>(pixels.size()));
+        if (!input)
+        {
+            throw std::runtime_error(
+                "failed to write the toktx smoke-test source image");
+        }
+    }
+
+    KtxTextureCooker::Request request{};
+    request.inputPath = inputPath;
+    request.outputPath = outputPath;
+    request.colorSpace = TextureColorSpace::Srgb;
+    request.generateMipmaps = true;
+    request.mipFilter = TextureMipFilter::Mitchell;
+    request.mipEdgeMode = TextureMipEdgeMode::Clamp;
+    request.basis.encoding = KtxPayloadEncoding::Uastc;
+    request.basis.uastcQualityLevel = 0;
+    request.basis.threadCount = 1;
+    request.zstdLevel = 1;
+
+    KtxTextureImporter::CreateInfo importInfo{};
+    importInfo.name = "toktx file pipeline smoke texture";
+    importInfo.transcodeFormat = TextureFormat::BC7UNorm;
+    const TextureAsset::CreateInfo textureInfo =
+        KtxTextureCooker{}.cookAndImport(request, importInfo);
+    if (!std::filesystem::is_regular_file(outputPath) ||
+        textureInfo.format != TextureFormat::BC7UNorm ||
+        textureInfo.colorSpace != TextureColorSpace::Srgb ||
+        textureInfo.mipLevels.size() != 3 ||
+        textureInfo.payload.size() != 48)
+    {
+        throw std::runtime_error(
+            "toktx local-file cook/import pipeline produced invalid texture data");
     }
 }
 
@@ -695,6 +834,99 @@ void validateKtxTextureImportAndUpload(const Device& device)
     }
 }
 
+TextureAsset::CreateInfo cloneTextureCreateInfo(
+    const TextureAsset& source,
+    std::string name)
+{
+    TextureAsset::CreateInfo result{};
+    result.name = std::move(name);
+    result.width = source.width();
+    result.height = source.height();
+    result.format = source.format();
+    result.colorSpace = source.colorSpace();
+    result.sampler = source.sampler();
+    result.payload = source.payload();
+    result.mipLevels = source.mipLevels();
+    return result;
+}
+
+void validateStableTextureAssetReplacement()
+{
+    AssetManager assets;
+    TextureAsset::CreateInfo original{};
+    original.name = "Original";
+    original.width = 1;
+    original.height = 1;
+    original.format = TextureFormat::RGBA8UNorm;
+    original.payload = {
+        std::byte{0x10},
+        std::byte{0x20},
+        std::byte{0x30},
+        std::byte{0xff}};
+    const TextureAssetHandle handle =
+        assets.createTexture(std::move(original));
+
+    TextureAsset::CreateInfo replacement = cloneTextureCreateInfo(
+        assets.texture(handle),
+        "Replacement");
+    replacement.payload[0] = std::byte{0x80};
+    TextureAsset previous = assets.replaceTexture(
+        handle,
+        TextureAsset(std::move(replacement)));
+    if (!assets.contains(handle) ||
+        assets.texture(handle).name() != "Replacement" ||
+        previous.name() != "Original" ||
+        assets.texture(handle).payload()[0] != std::byte{0x80})
+    {
+        throw std::runtime_error(
+            "TextureAsset replacement did not preserve its handle and content boundary");
+    }
+}
+
+void validateGpuTextureReplacement(
+    const Device& device,
+    AssetManager& assets,
+    RenderAssetCache& renderAssets,
+    TextureAssetHandle handle)
+{
+    const GpuTexture* originalGpu = renderAssets.tryTexture(handle);
+    if (originalGpu == nullptr)
+    {
+        throw std::runtime_error(
+            "GPU texture replacement test requires a cached texture");
+    }
+    const VkImageView originalView = originalGpu->view();
+
+    TextureAsset replacementAsset(cloneTextureCreateInfo(
+        assets.texture(handle),
+        "GPU replacement texture"));
+    CommandPool commandPool(
+        device,
+        device.graphicsQueueFamily(),
+        VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+    UploadContext uploadContext(device, commandPool);
+    GpuTexture staged = renderAssets.stageTextureReplacement(
+        device,
+        uploadContext,
+        replacementAsset);
+    GpuTexture previousGpu = renderAssets.commitTextureReplacement(
+        device,
+        assets,
+        handle,
+        std::move(staged));
+    TextureAsset previousAsset = assets.replaceTexture(
+        handle,
+        std::move(replacementAsset));
+
+    if (!previousGpu || !previousAsset || !assets.contains(handle) ||
+        renderAssets.tryTexture(handle) == nullptr ||
+        renderAssets.texture(handle).view() == originalView)
+    {
+        throw std::runtime_error(
+            "GPU texture replacement did not preserve the cache handle or replace its image view");
+    }
+}
+
 } // namespace
 
 void AppSmokeTests::runAssetImportTest()
@@ -703,10 +935,22 @@ void AppSmokeTests::runAssetImportTest()
 
     validateAssetId();
     validateTextureFormats();
+    validateStableTextureAssetReplacement();
+    validateKtxFileCookAndImport();
     validateRenderKeys();
     validateRenderItemComparators();
     validateCullingSystem();
-    app.demoContent = DemoContentLoader::load(app.assetManager, app.scene);
+    const App::RunConfig config{};
+    app.demoContent = DemoContentLoader::load(
+        app.assetManager,
+        app.scene,
+        config.demoContent,
+        &app.textureImports);
+    if (app.textureImports.size() != 5)
+    {
+        throw std::runtime_error(
+            "extracted glTF textures did not register reimport provenance");
+    }
     validateOfflineMaterialAssets(app.assetManager, app.demoContent);
 
     const std::vector<RenderCandidate> candidates =
@@ -776,13 +1020,95 @@ void AppSmokeTests::runRenderTest(
         app.guiRenderBridge
     };
     gui.attach(guiContext);
+    TextureAssetHandle editorPreviewTexture =
+        app.demoContent.defaultTexture;
+    if (app.renderAssets.tryTexture(editorPreviewTexture) == nullptr)
+    {
+        const std::vector<RenderCandidate> previewCandidates =
+            SceneRenderExtractor{}.extract(app.scene, app.assetManager);
+        for (const RenderCandidate& candidate : previewCandidates)
+        {
+            const MaterialAsset& material =
+                app.assetManager.material(candidate.material);
+            const auto texture = std::find_if(
+                material.textures().begin(),
+                material.textures().end(),
+                [&](TextureAssetHandle handle)
+                {
+                    return app.renderAssets.tryTexture(handle) != nullptr;
+                });
+            if (texture != material.textures().end())
+            {
+                editorPreviewTexture = *texture;
+                break;
+            }
+        }
+    }
+    validateGpuTextureReplacement(
+        app.vulkanContext.device(),
+        app.assetManager,
+        app.renderAssets,
+        editorPreviewTexture);
+    if (config.outputMode == VulkanRenderer::OutputMode::Editor)
+    {
+        const TextureImportRecord* before =
+            app.textureImports.find(editorPreviewTexture);
+        if (before == nullptr)
+        {
+            throw std::runtime_error(
+                "Editor texture reimport test requires source provenance");
+        }
+        const uint64_t previousRevision = before->revision;
+        TextureImportSettings asynchronousSettings = before->settings;
+        asynchronousSettings.basis.encoding = KtxPayloadEncoding::Uastc;
+        asynchronousSettings.basis.uastcQualityLevel = 0;
+        asynchronousSettings.zstdLevel = 0;
+        asynchronousSettings.transcodeFormat = TextureFormat::BC7UNorm;
+        app.pendingTextureReimport_ = TextureReimportRequest{
+            editorPreviewTexture,
+            std::move(asynchronousSettings)};
+        app.processPendingTextureReimport();
+
+        const TextureImportRecord* started =
+            app.textureImports.find(editorPreviewTexture);
+        if (started == nullptr || !started->reimporting ||
+            started->revision != previousRevision)
+        {
+            throw std::runtime_error(
+                "Editor texture reimport did not enter its asynchronous cooking state");
+        }
+
+        const auto deadline =
+            std::chrono::steady_clock::now() + std::chrono::seconds(30);
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            app.processPendingTextureReimport();
+            const TextureImportRecord* current =
+                app.textureImports.find(editorPreviewTexture);
+            if (current == nullptr || !current->reimporting)
+            {
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        const TextureImportRecord* after =
+            app.textureImports.find(editorPreviewTexture);
+        if (after == nullptr || after->revision != previousRevision + 1 ||
+            !after->lastError.empty() ||
+            !std::filesystem::is_regular_file(after->cookedPath))
+        {
+            throw std::runtime_error(
+                "Editor texture reimport did not commit KTX2, CPU asset, and GPU asset together");
+        }
+    }
     try
     {
         if (config.outputMode == VulkanRenderer::OutputMode::Editor)
         {
             const ApplicationGuiTexture smokeTexturePreview =
                 app.guiRenderBridge.preview(
-                app.demoContent.defaultTexture);
+                editorPreviewTexture);
             if (!smokeTexturePreview)
             {
                 throw std::runtime_error(
@@ -799,7 +1125,7 @@ void AppSmokeTests::runRenderTest(
             {
                 const ApplicationGuiTexture smokeTexturePreview =
                     app.guiRenderBridge.preview(
-                        app.demoContent.defaultTexture);
+                        editorPreviewTexture);
                 ImGui::Begin("Texture Preview Smoke Test");
                 ImGui::Image(
                     ImTextureRef(static_cast<ImTextureID>(

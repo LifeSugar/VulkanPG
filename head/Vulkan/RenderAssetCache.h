@@ -32,6 +32,20 @@ public:
         UploadContext& uploadContext,
         const AssetManager& assets,
         const std::vector<ModelAssetHandle>& models);
+    /// Builds a replacement without changing the live cache. This lets the
+    /// caller finish disk/CPU validation before committing the GPU swap.
+    [[nodiscard]] GpuTexture stageTextureReplacement(
+        const Device& device,
+        UploadContext& uploadContext,
+        const TextureAsset& replacement) const;
+    /// Commits a staged texture under the existing handle and rewrites every
+    /// cached material descriptor that references it. The caller must ensure
+    /// no submitted frame is using the old descriptors/resources.
+    [[nodiscard]] GpuTexture commitTextureReplacement(
+        const Device& device,
+        const AssetManager& assets,
+        TextureAssetHandle handle,
+        GpuTexture replacement);
     void reset() noexcept;
 
     [[nodiscard]] const Mesh& mesh(MeshAssetHandle handle) const;

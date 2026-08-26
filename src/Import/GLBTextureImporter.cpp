@@ -24,11 +24,22 @@ std::vector<TextureAssetHandle> GLBTextureImporter::import(
         throw std::invalid_argument(
             "GLBTextureImporter fallback texture is not owned by its AssetManager");
     }
+    if (createInfo.colorSpaces != nullptr &&
+        createInfo.colorSpaces->size() != source.size())
+    {
+        throw std::invalid_argument(
+            "GLBTextureImporter color-space table does not match its source textures");
+    }
 
     std::vector<TextureAssetHandle> result;
     result.reserve(source.size());
-    for (const GLBTexture& texture : source)
+    for (std::size_t index = 0; index < source.size(); ++index)
     {
+        const GLBTexture& texture = source[index];
+        const TextureColorSpace colorSpace =
+            createInfo.colorSpaces == nullptr
+                ? createInfo.colorSpace
+                : (*createInfo.colorSpaces)[index];
         TextureAsset::CreateInfo textureInfo{};
         if (texture.storage == GLBTextureStorage::Rgba8Payload)
         {
@@ -56,7 +67,7 @@ std::vector<TextureAssetHandle> GLBTextureImporter::import(
             textureInfo.width = texture.width;
             textureInfo.height = texture.height;
             textureInfo.format = TextureFormat::RGBA8UNorm;
-            textureInfo.colorSpace = createInfo.colorSpace;
+            textureInfo.colorSpace = colorSpace;
             textureInfo.sampler = createInfo.sampler;
             textureInfo.payload.resize(texture.data.size());
             std::memcpy(
@@ -73,7 +84,7 @@ std::vector<TextureAssetHandle> GLBTextureImporter::import(
             {
                 textureInfo.name = texture.name;
             }
-            textureInfo.colorSpace = createInfo.colorSpace;
+            textureInfo.colorSpace = colorSpace;
             textureInfo.sampler = createInfo.sampler;
         }
         else if (createInfo.fallbackTexture)

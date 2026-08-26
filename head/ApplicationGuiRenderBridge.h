@@ -35,6 +35,8 @@ public:
     [[nodiscard]] virtual ApplicationGuiRenderFrame currentFrame() = 0;
     [[nodiscard]] virtual ApplicationGuiTexture preview(
         TextureAssetHandle texture) = 0;
+    /// Drops GUI descriptors that reference the texture's previous GPU view.
+    virtual void invalidatePreview(TextureAssetHandle texture) noexcept = 0;
 };
 
 } // namespace VkRenderer

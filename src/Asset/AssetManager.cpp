@@ -115,6 +115,18 @@ TextureAssetHandle AssetManager::createTexture(
     return textures_.emplace(std::move(createInfo));
 }
 
+TextureAsset AssetManager::replaceTexture(
+    TextureAssetHandle handle,
+    TextureAsset replacement)
+{
+    if (!replacement)
+    {
+        throw std::invalid_argument(
+            "cannot replace a texture with an incomplete asset");
+    }
+    return textures_.replace(handle, std::move(replacement));
+}
+
 MaterialTemplateAssetHandle AssetManager::createMaterialTemplate(
     MaterialTemplateAsset::CreateInfo createInfo)
 {

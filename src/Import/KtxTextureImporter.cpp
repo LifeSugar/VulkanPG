@@ -1,13 +1,12 @@
 #include "Import/KtxTextureImporter.h"
 
-#include "Vulkan/TextureVkFormat.h"
+#include "Import/Ktx2Format.h"
 
 #include <ktx.h>
 
 #include <algorithm>
 #include <cstring>
 #include <exception>
-#include <fstream>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -121,7 +120,7 @@ KTX_error_code collectLevel(
     }
 }
 
-std::vector<uint8_t> readFile(const std::filesystem::path& path)
+KtxTexture openFile(const std::filesystem::path& path)
 {
     if (path.empty())
     {
@@ -129,29 +128,17 @@ std::vector<uint8_t> readFile(const std::filesystem::path& path)
             "KtxTextureImporter requires a file path");
     }
 
-    std::ifstream file(path, std::ios::binary | std::ios::ate);
-    if (!file)
+    ktxTexture2* rawTexture = nullptr;
+    const std::string nativePath = path.u8string();
+    const KTX_error_code createResult = ktxTexture2_CreateFromNamedFile(
+        nativePath.c_str(),
+        KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+        &rawTexture);
+    if (createResult != KTX_SUCCESS)
     {
-        throw std::runtime_error(
-            "failed to open KTX2 file: " + path.string());
+        throwKtxError("failed to open KTX2 file", createResult);
     }
-    const std::streamsize fileSize = file.tellg();
-    if (fileSize <= 0 ||
-        static_cast<std::uintmax_t>(fileSize) >
-            std::numeric_limits<std::size_t>::max())
-    {
-        throw std::runtime_error(
-            "KTX2 file has an invalid size: " + path.string());
-    }
-
-    std::vector<uint8_t> bytes(static_cast<std::size_t>(fileSize));
-    file.seekg(0);
-    if (!file.read(reinterpret_cast<char*>(bytes.data()), fileSize))
-    {
-        throw std::runtime_error(
-            "failed to read KTX2 file: " + path.string());
-    }
-    return bytes;
+    return KtxTexture(rawTexture, &ktxTexture2_Destroy);
 }
 
 TextureAsset::CreateInfo buildTextureAsset(
@@ -187,13 +174,12 @@ TextureAsset::CreateInfo buildTextureAsset(
         }
     }
 
-    const VkFormat vkFormat = static_cast<VkFormat>(texture.vkFormat);
-    const std::optional<TextureFormatMapping> mapping =
-        textureFormatFromVk(vkFormat);
+    const std::optional<Ktx2TextureFormatMapping> mapping =
+        textureFormatFromKtx2(texture.vkFormat);
     if (!mapping)
     {
         throw std::invalid_argument(
-            "KTX2 VkFormat is not supported by TextureAsset");
+            "KTX2 format code is not supported by TextureAsset");
     }
 
     CollectedLevels collected{};
@@ -294,13 +280,13 @@ TextureAsset::CreateInfo KtxTextureImporter::importFile(
     const std::filesystem::path& path,
     const CreateInfo& createInfo) const
 {
-    const std::vector<uint8_t> bytes = readFile(path);
+    KtxTexture texture = openFile(path);
     CreateInfo resolvedInfo = createInfo;
     if (resolvedInfo.name.empty())
     {
         resolvedInfo.name = path.filename().string();
     }
-    return importMemory(bytes.data(), bytes.size(), resolvedInfo);
+    return buildTextureAsset(*texture, resolvedInfo);
 }
 
 } // namespace VkRenderer

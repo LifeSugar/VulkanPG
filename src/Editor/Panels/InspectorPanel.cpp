@@ -27,10 +27,11 @@ namespace VkRenderer
 
     } // namespace
 
-    void InspectorPanel::draw(
+    std::optional<TextureReimportRequest> InspectorPanel::draw(
         const Scene &scene,
         const AssetManager &assets,
         ApplicationGuiRenderBridge &texturePreviews,
+        const TextureImportRegistry* textureImports,
         EditorSelection &selection,
         bool *open)
     {
@@ -38,7 +39,7 @@ namespace VkRenderer
         if (!visible)
         {
             ImGui::End();
-            return;
+            return std::nullopt;
         }
 
         if (selection.canNavigateBack() && ImGui::SmallButton("< Back"))
@@ -46,6 +47,7 @@ namespace VkRenderer
             selection.navigateBack();
         }
 
+        std::optional<TextureReimportRequest> textureReimport;
         const std::optional<InspectorTarget> navigation = std::visit(
             Overloaded{
                 [](std::monostate) -> std::optional<InspectorTarget>
@@ -89,7 +91,11 @@ namespace VkRenderer
                 [&](TextureAssetHandle target)
                     -> std::optional<InspectorTarget>
                 {
-                    textureInspector_.draw(assets, texturePreviews, target);
+                    textureReimport = textureInspector_.draw(
+                        assets,
+                        texturePreviews,
+                        textureImports,
+                        target);
                     return std::nullopt;
                 }},
             selection.target());
@@ -99,6 +105,7 @@ namespace VkRenderer
             selection.navigateTo(std::move(*navigation));
         }
         ImGui::End();
+        return textureReimport;
     }
 
 } // namespace VkRenderer

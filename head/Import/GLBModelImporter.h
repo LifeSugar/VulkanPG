@@ -24,6 +24,8 @@ public:
         TextureColorSpace textureColorSpace = TextureColorSpace::Srgb;
         TextureSamplerDesc textureSampler;
         TextureAssetHandle defaultTexture;
+        TextureAssetHandle defaultDataTexture;
+        TextureAssetHandle defaultNormalTexture;
         GLBTextureImporter::Decoder textureDecoder;
 
         GLBMaterialMapping materialMapping;

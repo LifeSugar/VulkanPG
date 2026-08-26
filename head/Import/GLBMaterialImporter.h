@@ -35,6 +35,8 @@ public:
         GLBMaterialMapping mapping;
         const std::vector<TextureAssetHandle>* textures = nullptr;
         TextureAssetHandle defaultTexture;
+        TextureAssetHandle defaultDataTexture;
+        TextureAssetHandle defaultNormalTexture;
     };
 
     [[nodiscard]] std::vector<MaterialAssetHandle> import(

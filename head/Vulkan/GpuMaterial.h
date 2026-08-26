@@ -31,6 +31,12 @@ public:
         const MaterialTemplateAsset& materialTemplate,
         const std::vector<const GpuTexture*>& textures,
         VkDescriptorSet descriptorSet);
+    /// Rewrites only the sampled-image and sampler bindings. Parameter data,
+    /// material identity, and the descriptor-set handle stay unchanged.
+    void updateTextures(
+        const Device& device,
+        const MaterialTemplateAsset& materialTemplate,
+        const std::vector<const GpuTexture*>& textures);
     void reset() noexcept;
 
     [[nodiscard]] VkDescriptorSet descriptorSet() const noexcept

@@ -108,6 +108,27 @@ ApplicationGuiTexture VulkanApplicationGuiRenderBridge::preview(
     return {reinterpret_cast<std::uintptr_t>(descriptor)};
 }
 
+void VulkanApplicationGuiRenderBridge::invalidatePreview(
+    TextureAssetHandle texture) noexcept
+{
+    const auto firstRemoved = std::remove_if(
+        previewTextures_.begin(),
+        previewTextures_.end(),
+        [texture](const TextureEntry& entry)
+        {
+            if (entry.texture != texture)
+            {
+                return false;
+            }
+            if (entry.descriptor != VK_NULL_HANDLE)
+            {
+                ImGui_ImplVulkan_RemoveTexture(entry.descriptor);
+            }
+            return true;
+        });
+    previewTextures_.erase(firstRemoved, previewTextures_.end());
+}
+
 void VulkanApplicationGuiRenderBridge::registerViewportTextures()
 {
     if (renderer_ == nullptr ||

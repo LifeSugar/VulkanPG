@@ -4,6 +4,7 @@
 #include "Camera.h"
 #include "Content/DemoContent.h"
 #include "ImGuiLayer.h"
+#include "Import/TextureImportRegistry.h"
 #include "Vulkan/RenderAssetCache.h"
 #include "Scene/Scene.h"
 #include "Vulkan/VulkanContext.h"
@@ -12,6 +13,9 @@
 #include "Window.h"
 
 #include <cstdint>
+#include <filesystem>
+#include <future>
+#include <optional>
 #include <string>
 
 namespace VkRenderer
@@ -35,6 +39,13 @@ public:
         std::string imguiIniFilename;
         VulkanRenderer::OutputMode outputMode =
             VulkanRenderer::OutputMode::Runtime;
+        DemoContentLoader::CreateInfo demoContent{
+            "DamagedHelmet_extracted/DamagedHelmet.gltf",
+            "shaders/triangle.vert.spv",
+            "shaders/triangle.frag.spv",
+            "shaders/present.vert.spv",
+            "shaders/present.frag.spv",
+            "Assets"};
     };
 
     ~App();
@@ -44,6 +55,15 @@ public:
     void run();
     void run(const RunConfig& config, ApplicationGui& gui);
 private:
+    struct PreparedTextureReimport
+    {
+        TextureReimportRequest request;
+        TextureImportRecord record;
+        std::filesystem::path stagedPath;
+        TextureAsset replacementAsset;
+        std::string error;
+    };
+
 #ifdef NDEBUG
     static constexpr bool kEnableValidationLayers = false;
 #else
@@ -53,6 +73,7 @@ private:
     Window window;
     VulkanContext vulkanContext;
     AssetManager assetManager;
+    TextureImportRegistry textureImports;
     DemoContent demoContent;
     Scene scene;
     RenderAssetCache renderAssets;
@@ -66,6 +87,10 @@ private:
     static constexpr uint32_t kMaxFramesInFlight = 2;
     bool preferIntegratedGpu = false;
     bool swapChainRecreationRequested = false;
+    std::optional<TextureReimportRequest> pendingTextureReimport_;
+    std::future<PreparedTextureReimport> textureReimportFuture_;
+    TextureAssetHandle activeTextureReimport_;
+    std::filesystem::path activeTextureReimportStagedPath_;
     double lastFramebufferResizeTime = 0.0;
     static constexpr double kSwapChainResizeDebounceSeconds = 0.15;
 
@@ -76,6 +101,8 @@ private:
     void mainLoop(ApplicationGui& gui);
     void cleanup();
     void drawGui(ApplicationGui& gui);
+    void processPendingTextureReimport();
+    void discardTextureReimport() noexcept;
 
 private:
     void setupCamera();

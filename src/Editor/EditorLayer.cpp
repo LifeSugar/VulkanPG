@@ -29,10 +29,11 @@ ApplicationGuiFrameOutput EditorLayer::draw(
     }
     if (showInspector_)
     {
-        inspectorPanel_.draw(
+        output.textureReimport = inspectorPanel_.draw(
             context.scene,
             context.assets,
             context.render,
+            context.textureImports,
             selection_,
             &showInspector_);
     }

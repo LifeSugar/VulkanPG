@@ -18,6 +18,10 @@ class AssetManager final
 public:
     [[nodiscard]] TextureAssetHandle createTexture(
         TextureAsset::CreateInfo createInfo);
+    /// Replaces texture content while preserving references held by materials.
+    [[nodiscard]] TextureAsset replaceTexture(
+        TextureAssetHandle handle,
+        TextureAsset replacement);
     [[nodiscard]] MaterialTemplateAssetHandle createMaterialTemplate(
         MaterialTemplateAsset::CreateInfo createInfo);
     [[nodiscard]] MaterialAssetHandle createMaterial(

@@ -14,6 +14,7 @@ namespace VkRenderer
 
 App::~App()
 {
+    discardTextureReimport();
     // Destruction after an exception must not release resources still in use by
     // the GPU. Member destruction then proceeds in reverse dependency order.
     vulkanContext.waitIdle();
@@ -39,7 +40,8 @@ void App::run(const RunConfig& config, ApplicationGui& gui)
     ApplicationGuiContext guiContext{
         assetManager,
         scene,
-        guiRenderBridge};
+        guiRenderBridge,
+        &textureImports};
     gui.attach(guiContext);
     try
     {
@@ -80,7 +82,11 @@ void App::initVulkan(const RunConfig& config)
     contextCreateInfo.preferIntegratedGpu = preferIntegratedGpu;
     vulkanContext.create(window, contextCreateInfo);
 
-    demoContent = DemoContentLoader::load(assetManager, scene);
+    demoContent = DemoContentLoader::load(
+        assetManager,
+        scene,
+        config.demoContent,
+        &textureImports);
 
     const Device& device = vulkanContext.device();
     CommandPool uploadCommandPool(
@@ -113,12 +119,14 @@ void App::initVulkan(const RunConfig& config)
 
 void App::cleanup()
 {
+    discardTextureReimport();
     renderer.waitIdle();
     guiRenderBridge.detach();
     imguiLayer.reset();
     renderer.reset();
     renderAssets.reset();
     scene.reset();
+    textureImports.reset();
     assetManager.reset();
     demoContent = {};
     vulkanContext.reset();
@@ -140,8 +148,8 @@ void App::initImGui(const RunConfig& config)
 
 void App::setupCamera()
 {
-    camera.setPosition(glm::vec3(0.0f, 1.0f, 0.5f));
-    camera.setRotation(glm::vec3(-60.0f, 0.0f, 0.0f));
+    camera.setPosition(glm::vec3(0.0f, 0.0f, 4.0f));
+    camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
     const VkExtent2D extent = renderer.extent();
     camera.setAspect(
         static_cast<float>(extent.width) /
@@ -172,6 +180,8 @@ void App::mainLoop(ApplicationGui& gui)
             recreateSwapChain(gui);
         }
 
+        processPendingTextureReimport();
+
         imguiLayer.beginFrame();
         drawGui(gui);
         ImDrawData* uiDrawData = imguiLayer.endFrame();
@@ -190,8 +200,13 @@ void App::drawGui(ApplicationGui& gui)
     ApplicationGuiContext context{
         assetManager,
         scene,
-        guiRenderBridge};
+        guiRenderBridge,
+        &textureImports};
     const ApplicationGuiFrameOutput output = gui.draw(context);
+    if (output.textureReimport)
+    {
+        pendingTextureReimport_ = output.textureReimport;
+    }
     if (output.sceneAspectRatio)
     {
         const float aspect = *output.sceneAspectRatio;

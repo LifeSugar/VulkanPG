@@ -66,6 +66,20 @@ public:
         return *slots_[handle.index].asset;
     }
 
+    /// Replaces an asset without changing its handle generation. The caller
+    /// constructs and validates the candidate before entering this method.
+    [[nodiscard]] Asset replace(Handle handle, Asset replacement)
+    {
+        if (!contains(handle))
+        {
+            throw std::out_of_range("asset handle is invalid or stale");
+        }
+
+        std::optional<Asset> candidate(std::move(replacement));
+        slots_[handle.index].asset.swap(candidate);
+        return std::move(*candidate);
+    }
+
     bool erase(Handle handle) noexcept
     {
         if (!contains(handle))

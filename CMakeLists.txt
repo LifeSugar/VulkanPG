@@ -188,6 +188,13 @@ add_custom_command(TARGET VulkanApp POST_BUILD
     COMMENT "Copying models to output directory"
 )
 
+add_custom_command(TARGET VulkanApp POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/Assets/DamagedHelmet_extracted"
+            "$<TARGET_FILE_DIR:VulkanApp>/Assets/DamagedHelmet_extracted"
+    COMMENT "Copying DamagedHelmet glTF and associated files"
+)
+
 # 编译期嵌入源码根目录，运行时若相对路径找不到则回退到源码目录
 target_compile_definitions(VulkanApp PRIVATE
     PROJECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"

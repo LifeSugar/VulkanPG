@@ -136,7 +136,20 @@ void GLBLoader::extractMeshes(const void* aiScenePtr)
 
             // Tangent & Bitangent
             if (src->HasTangentsAndBitangents()) {
-                vert.tangent = glm::vec3(src->mTangents[v].x, src->mTangents[v].y, src->mTangents[v].z);
+                const glm::vec3 tangent(
+                    src->mTangents[v].x,
+                    src->mTangents[v].y,
+                    src->mTangents[v].z);
+                const glm::vec3 bitangent(
+                    src->mBitangents[v].x,
+                    src->mBitangents[v].y,
+                    src->mBitangents[v].z);
+                const float handedness = glm::dot(
+                    glm::cross(vert.normal, tangent),
+                    bitangent) < 0.0f
+                    ? -1.0f
+                    : 1.0f;
+                vert.tangent = glm::vec4(tangent, handedness);
             }
 
             // Vertex Color

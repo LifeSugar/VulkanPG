@@ -46,7 +46,8 @@ void App::recreateSwapChain(ApplicationGui& gui)
     ApplicationGuiContext guiContext{
         assetManager,
         scene,
-        guiRenderBridge};
+        guiRenderBridge,
+        &textureImports};
     gui.attach(guiContext);
 
     const VkExtent2D renderExtent = renderer.extent();

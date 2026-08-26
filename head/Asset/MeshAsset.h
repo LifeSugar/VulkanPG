@@ -19,7 +19,8 @@ struct Vertex
     glm::vec3 position = glm::vec3(0.0f);
     glm::vec3 normal = glm::vec3(0.0f);
     glm::vec2 texCoord = glm::vec2(0.0f);
-    glm::vec3 tangent = glm::vec3(0.0f);
+    /// xyz is the tangent direction; w is the bitangent handedness.
+    glm::vec4 tangent = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
     glm::vec2 texCoord2 = glm::vec2(0.0f);
     glm::vec4 color = glm::vec4(1.0f);
     std::array<int32_t, 4> boneIds = { -1, -1, -1, -1 };

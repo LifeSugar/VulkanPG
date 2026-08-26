@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Import/TextureImportRegistry.h"
+
 #include <optional>
 
 namespace VkRenderer
@@ -15,12 +17,14 @@ struct ApplicationGuiContext
     AssetManager& assets;
     Scene& scene;
     ApplicationGuiRenderBridge& render;
+    const TextureImportRegistry* textureImports = nullptr;
 };
 
 /// Per-frame GUI decisions consumed before building the scene RenderFrame.
 struct ApplicationGuiFrameOutput
 {
     std::optional<float> sceneAspectRatio;
+    std::optional<TextureReimportRequest> textureReimport;
 };
 
 /// UI business layer consumed by App without depending on Runtime or Editor UI.

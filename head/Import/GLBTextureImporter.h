@@ -23,6 +23,8 @@ public:
         AssetManager* assets = nullptr;
         std::filesystem::path baseDirectory;
         TextureColorSpace colorSpace = TextureColorSpace::Srgb;
+        /// Optional per-source override derived from material semantics.
+        const std::vector<TextureColorSpace>* colorSpaces = nullptr;
         TextureSamplerDesc sampler;
         TextureAssetHandle fallbackTexture;
         Decoder decoder;

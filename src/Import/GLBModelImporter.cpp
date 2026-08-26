@@ -61,6 +61,82 @@ uint32_t appendNode(
     return nodeIndex;
 }
 
+enum TextureColorUsage : uint8_t
+{
+    TextureColorUsageNone = 0,
+    TextureColorUsageLinear = 1u << 0u,
+    TextureColorUsageSrgb = 1u << 1u
+};
+
+void addTextureColorUsage(
+    std::vector<uint8_t>& usages,
+    int textureIndex,
+    TextureColorUsage usage)
+{
+    if (textureIndex < 0)
+    {
+        return;
+    }
+    if (static_cast<std::size_t>(textureIndex) >= usages.size())
+    {
+        throw std::invalid_argument(
+            "GLB material texture index is outside the texture table");
+    }
+    usages[static_cast<std::size_t>(textureIndex)] |= usage;
+}
+
+std::vector<TextureColorSpace> resolveTextureColorSpaces(
+    const GLBModel& source,
+    TextureColorSpace fallback)
+{
+    std::vector<uint8_t> usages(
+        source.textures.size(),
+        TextureColorUsageNone);
+    for (const GLBMaterial& material : source.materials)
+    {
+        addTextureColorUsage(
+            usages,
+            material.baseColorTextureIndex,
+            TextureColorUsageSrgb);
+        addTextureColorUsage(
+            usages,
+            material.emissiveTextureIndex,
+            TextureColorUsageSrgb);
+        addTextureColorUsage(
+            usages,
+            material.metallicRoughnessTextureIndex,
+            TextureColorUsageLinear);
+        addTextureColorUsage(
+            usages,
+            material.normalTextureIndex,
+            TextureColorUsageLinear);
+        addTextureColorUsage(
+            usages,
+            material.occlusionTextureIndex,
+            TextureColorUsageLinear);
+    }
+
+    std::vector<TextureColorSpace> result(source.textures.size(), fallback);
+    for (std::size_t index = 0; index < usages.size(); ++index)
+    {
+        if (usages[index] ==
+            (TextureColorUsageLinear | TextureColorUsageSrgb))
+        {
+            throw std::invalid_argument(
+                "one GLB texture is used by both linear and sRGB material semantics");
+        }
+        if ((usages[index] & TextureColorUsageLinear) != 0)
+        {
+            result[index] = TextureColorSpace::Linear;
+        }
+        else if ((usages[index] & TextureColorUsageSrgb) != 0)
+        {
+            result[index] = TextureColorSpace::Srgb;
+        }
+    }
+    return result;
+}
+
 } // namespace
 
 GLBModelImporter::Result GLBModelImporter::import(
@@ -75,10 +151,14 @@ GLBModelImporter::Result GLBModelImporter::import(
 
     Result result{};
 
+    const std::vector<TextureColorSpace> textureColorSpaces =
+        resolveTextureColorSpaces(source, createInfo.textureColorSpace);
+
     GLBTextureImporter::CreateInfo textureInfo{};
     textureInfo.assets = createInfo.assets;
     textureInfo.baseDirectory = createInfo.baseDirectory;
     textureInfo.colorSpace = createInfo.textureColorSpace;
+    textureInfo.colorSpaces = &textureColorSpaces;
     textureInfo.sampler = createInfo.textureSampler;
     textureInfo.fallbackTexture = createInfo.defaultTexture;
     textureInfo.decoder = createInfo.textureDecoder;
@@ -93,6 +173,10 @@ GLBModelImporter::Result GLBModelImporter::import(
         materialInfo.mapping = createInfo.materialMapping;
         materialInfo.textures = &result.textures;
         materialInfo.defaultTexture = createInfo.defaultTexture;
+        materialInfo.defaultDataTexture =
+            createInfo.defaultDataTexture;
+        materialInfo.defaultNormalTexture =
+            createInfo.defaultNormalTexture;
         result.materials = GLBMaterialImporter{}.import(
             source.materials,
             materialInfo);

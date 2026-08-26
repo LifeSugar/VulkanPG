@@ -31,6 +31,7 @@ void addTextureAssignment(
     MaterialAsset::CreateInfo& destination,
     const std::string& slotName,
     int sourceIndex,
+    TextureAssetHandle fallbackTexture,
     const GLBMaterialImporter::CreateInfo& createInfo)
 {
     if (slotName.empty())
@@ -41,7 +42,7 @@ void addTextureAssignment(
     const TextureAssetHandle texture = resolveTexture(
         sourceIndex,
         createInfo.textures,
-        createInfo.defaultTexture);
+        fallbackTexture);
     if (texture)
     {
         destination.textures.push_back({slotName, texture});
@@ -69,6 +70,18 @@ std::vector<MaterialAssetHandle> GLBMaterialImporter::import(
     {
         throw std::invalid_argument(
             "GLBMaterialImporter default texture is not owned by its AssetManager");
+    }
+    if (createInfo.defaultNormalTexture &&
+        !createInfo.assets->contains(createInfo.defaultNormalTexture))
+    {
+        throw std::invalid_argument(
+            "GLBMaterialImporter default normal texture is not owned by its AssetManager");
+    }
+    if (createInfo.defaultDataTexture &&
+        !createInfo.assets->contains(createInfo.defaultDataTexture))
+    {
+        throw std::invalid_argument(
+            "GLBMaterialImporter default data texture is not owned by its AssetManager");
     }
 
     std::vector<MaterialAssetHandle> result;
@@ -112,26 +125,37 @@ std::vector<MaterialAssetHandle> GLBMaterialImporter::import(
             materialInfo,
             createInfo.mapping.baseColorTextureSlot,
             material.baseColorTextureIndex,
+            createInfo.defaultTexture,
             createInfo);
         addTextureAssignment(
             materialInfo,
             createInfo.mapping.metallicRoughnessTextureSlot,
             material.metallicRoughnessTextureIndex,
+            createInfo.defaultDataTexture
+                ? createInfo.defaultDataTexture
+                : createInfo.defaultTexture,
             createInfo);
         addTextureAssignment(
             materialInfo,
             createInfo.mapping.normalTextureSlot,
             material.normalTextureIndex,
+            createInfo.defaultNormalTexture
+                ? createInfo.defaultNormalTexture
+                : createInfo.defaultTexture,
             createInfo);
         addTextureAssignment(
             materialInfo,
             createInfo.mapping.occlusionTextureSlot,
             material.occlusionTextureIndex,
+            createInfo.defaultDataTexture
+                ? createInfo.defaultDataTexture
+                : createInfo.defaultTexture,
             createInfo);
         addTextureAssignment(
             materialInfo,
             createInfo.mapping.emissiveTextureSlot,
             material.emissiveTextureIndex,
+            createInfo.defaultTexture,
             createInfo);
 
         result.push_back(

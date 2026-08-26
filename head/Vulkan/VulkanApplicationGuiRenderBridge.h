@@ -28,6 +28,7 @@ public:
     [[nodiscard]] ApplicationGuiRenderFrame currentFrame() override;
     [[nodiscard]] ApplicationGuiTexture preview(
         TextureAssetHandle texture) override;
+    void invalidatePreview(TextureAssetHandle texture) noexcept override;
 
 private:
     struct TextureEntry
