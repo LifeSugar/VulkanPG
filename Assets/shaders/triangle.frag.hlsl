@@ -17,6 +17,9 @@ struct PSInput
 
     [[vk::location(3)]]
     float2 texCoord      : TEXCOORD1;
+
+    [[vk::location(4)]]
+    float4 tangent       : TANGENT;
 };
 
 struct MaterialGpuData
@@ -73,6 +76,30 @@ float3 FresnelSchlick(float cosTheta, float3 f0)
     return f0 + (1.0f - f0) * pow(saturate(1.0f - cosTheta), 5.0f);
 }
 
+float3 SampleWorldNormal(PSInput input)
+{
+    const float3 vertexNormal = normalize(input.normal);
+    const float3 tangent = normalize(
+        input.tangent.xyz -
+        vertexNormal * dot(vertexNormal, input.tangent.xyz));
+    const float3 bitangent =
+        normalize(cross(vertexNormal, tangent)) * input.tangent.w;
+
+    // BC5 stores tangent-space X/Y in unsigned RG. This decode also works for
+    // the current RGBA source texture until it is reimported as BC5.
+    const float2 encodedXY =
+        normalTexture.Sample(normalSampler, input.texCoord).rg;
+    const float2 tangentXY = encodedXY * 2.0f - 1.0f;
+    const float tangentZ = sqrt(saturate(
+        1.0f - dot(tangentXY, tangentXY)));
+    const float3 tangentNormal = float3(tangentXY, tangentZ);
+
+    return normalize(
+        tangentNormal.x * tangent +
+        tangentNormal.y * bitangent +
+        tangentNormal.z * vertexNormal);
+}
+
 float4 main(PSInput input) : SV_Target
 {
     const float4 sampledBaseColor =
@@ -102,7 +129,7 @@ float4 main(PSInput input) : SV_Target
     const float3 lightColor = float3(5.0f, 4.6f, 4.2f);
     const float3 ambientColor = float3(0.12f, 0.11f, 0.10f);
 
-    float3 normal = normalize(input.normal);
+    float3 normal = SampleWorldNormal(input);
     float3 viewDir = normalize(cameraPosition - input.worldPosition);
     float3 lightDir = normalize(lightPosition - input.worldPosition);
     float3 halfVector = normalize(viewDir + lightDir);

@@ -16,6 +16,9 @@ struct VSInput
     [[vk::location(3)]]
     float2 texCoord : TEXCOORD0;
 
+    [[vk::location(4)]]
+    float4 tangent  : TANGENT;
+
 };
 
 struct VSOutput
@@ -33,6 +36,9 @@ struct VSOutput
 
     [[vk::location(3)]]
     float2 texCoord      : TEXCOORD1;
+
+    [[vk::location(4)]]
+    float4 tangent       : TANGENT;
 };
 
 VSOutput main(VSInput input)
@@ -45,7 +51,19 @@ VSOutput main(VSInput input)
     float4 worldPosition = mul(object.world, float4(input.position, 1.0));
     output.position = mul(camera.viewProjection, worldPosition);
     output.worldPosition = worldPosition.xyz;
-    output.normal = normalize(mul((float3x3)object.normalMatrix, input.normal));
+    output.normal = normalize(mul(
+        (float3x3)object.normalMatrix,
+        input.normal));
+    float3 worldTangent = mul(
+        (float3x3)object.world,
+        input.tangent.xyz);
+    worldTangent = normalize(
+        worldTangent - output.normal * dot(output.normal, worldTangent));
+    const float transformHandedness =
+        determinant((float3x3)object.world) < 0.0f ? -1.0f : 1.0f;
+    output.tangent = float4(
+        worldTangent,
+        input.tangent.w * transformHandedness);
     output.color = input.color;
     output.texCoord = input.texCoord;
     return output;

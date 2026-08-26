@@ -19,6 +19,8 @@ compile_commands.json
 *.cmake
 !CMakeLists.txt
 !CMakePresets.json
+!/cmake/
+!/cmake/*.cmake
 
 # Visual Studio
 *.sln
@@ -42,3 +44,6 @@ MinSizeRel/
 
 # Local Dear ImGui editor layout
 /editor_imgui.ini
+
+# Local design notes and generated documentation
+/docs/

@@ -1,0 +1,85 @@
+add_library(lv_vulkan STATIC
+    Buffer.cpp
+    Buffer.hpp
+    CommandPool.cpp
+    CommandPool.hpp
+    DefaultPipelineFactory.cpp
+    DefaultPipelineFactory.hpp
+    DescriptorPool.cpp
+    DescriptorPool.hpp
+    DescriptorSetLayout.cpp
+    DescriptorSetLayout.hpp
+    Device.cpp
+    Device.hpp
+    Fence.cpp
+    Fence.hpp
+    Framebuffer.cpp
+    Framebuffer.hpp
+    FrameContext.cpp
+    FrameContext.hpp
+    FrameDataResources.cpp
+    FrameDataResources.hpp
+    GpuMaterial.cpp
+    GpuMaterial.hpp
+    GpuTexture.cpp
+    GpuTexture.hpp
+    GraphicsPipeline.cpp
+    GraphicsPipeline.hpp
+    Image.cpp
+    Image.hpp
+    ImageView.cpp
+    ImageView.hpp
+    Mesh.cpp
+    Mesh.hpp
+    PerFrameBuffer.cpp
+    PerFrameBuffer.hpp
+    RenderAssetCache.cpp
+    RenderAssetCache.hpp
+    RenderPass.cpp
+    RenderPass.hpp
+    RenderTarget.cpp
+    RenderTarget.hpp
+    Sampler.cpp
+    Sampler.hpp
+    Semaphore.cpp
+    Semaphore.hpp
+    Swapchain.cpp
+    Swapchain.hpp
+    SwapchainResources.cpp
+    SwapchainResources.hpp
+    TextureVkFormat.cpp
+    TextureVkFormat.hpp
+    UploadContext.cpp
+    UploadContext.hpp
+    VmaImplementation.cpp
+    VulkanApplicationGuiRenderBridge.cpp
+    VulkanApplicationGuiRenderBridge.hpp
+    VulkanContext.cpp
+    VulkanContext.hpp
+    VulkanDrawList.hpp
+    VulkanDrawListCompiler.cpp
+    VulkanDrawListCompiler.hpp
+    VulkanMemoryConfig.hpp
+    VulkanRenderer.cpp
+    VulkanRenderer.hpp
+    Window.cpp
+    Window.hpp
+)
+add_library(LearnVulkan::Vulkan ALIAS lv_vulkan)
+
+target_include_directories(lv_vulkan PUBLIC
+    "${PROJECT_SOURCE_DIR}/renderer"
+)
+target_compile_definitions(lv_vulkan PUBLIC
+    VK_RENDERER_USE_VMA=$<BOOL:${VK_RENDERER_USE_VMA}>
+)
+target_link_libraries(lv_vulkan
+    PUBLIC
+        LearnVulkan::Engine
+        Vulkan::Vulkan
+        VulkanMemoryAllocator
+        glfw
+        lv_project_options
+    PRIVATE
+        imgui
+)

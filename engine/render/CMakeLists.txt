@@ -1,0 +1,26 @@
+target_sources(lv_engine PRIVATE
+    ApplicationGuiRenderBridge.hpp
+    Camera.cpp
+    Camera.hpp
+    CullingSettings.hpp
+    CullingSystem.cpp
+    CullingSystem.hpp
+    MaterialKey.hpp
+    PipelineVariantKey.hpp
+    RenderCandidate.hpp
+    RenderData.hpp
+    RenderFrame.hpp
+    RenderFrameBuilder.cpp
+    RenderFrameBuilder.hpp
+    RenderItem.hpp
+    RenderItemComparator.hpp
+    RenderLayer.hpp
+    RenderList.hpp
+    RenderListBuilder.cpp
+    RenderListBuilder.hpp
+    RenderQueue.hpp
+    RenderView.cpp
+    RenderView.hpp
+    SceneRenderExtractor.cpp
+    SceneRenderExtractor.hpp
+)
