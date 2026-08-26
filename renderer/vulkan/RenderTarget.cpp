@@ -1,0 +1,145 @@
+#include "vulkan/RenderTarget.hpp"
+
+#include "vulkan/Device.hpp"
+
+#include <stdexcept>
+#include <utility>
+
+namespace VkRenderer
+{
+
+RenderTarget::RenderTarget(
+    const Device& device,
+    const CreateInfo& createInfo)
+{
+    create(device, createInfo);
+}
+
+RenderTarget::~RenderTarget()
+{
+    reset();
+}
+
+RenderTarget::RenderTarget(RenderTarget&& other) noexcept
+    : attachments_(std::move(other.attachments_)),
+      framebuffer_(std::move(other.framebuffer_)),
+      renderPass_(std::exchange(other.renderPass_, VK_NULL_HANDLE)),
+      extent_(std::exchange(other.extent_, VkExtent2D{}))
+{
+}
+
+RenderTarget& RenderTarget::operator=(RenderTarget&& other) noexcept
+{
+    if (this != &other)
+    {
+        reset();
+        attachments_ = std::move(other.attachments_);
+        framebuffer_ = std::move(other.framebuffer_);
+        renderPass_ = std::exchange(other.renderPass_, VK_NULL_HANDLE);
+        extent_ = std::exchange(other.extent_, VkExtent2D{});
+    }
+    return *this;
+}
+
+void RenderTarget::create(
+    const Device& device,
+    const CreateInfo& createInfo)
+{
+    if (!device ||
+        createInfo.renderPass == VK_NULL_HANDLE ||
+        createInfo.extent.width == 0 ||
+        createInfo.extent.height == 0 ||
+        createInfo.attachments.empty())
+    {
+        throw std::invalid_argument("render target create info is incomplete");
+    }
+
+    std::vector<AttachmentResources> newAttachments;
+    std::vector<VkImageView> newAttachmentViews;
+    newAttachments.reserve(createInfo.attachments.size());
+    newAttachmentViews.reserve(createInfo.attachments.size());
+
+    for (const AttachmentInfo& info : createInfo.attachments)
+    {
+        if (info.format == VK_FORMAT_UNDEFINED ||
+            info.usage == 0 ||
+            info.aspectMask == 0 ||
+            info.samples == 0)
+        {
+            throw std::invalid_argument(
+                "render target attachment description is incomplete");
+        }
+
+        AttachmentResources resources;
+        resources.info = info;
+        Image::CreateInfo imageInfo{};
+        imageInfo.extent = {
+            createInfo.extent.width,
+            createInfo.extent.height,
+            1};
+        imageInfo.format = info.format;
+        imageInfo.tiling = info.tiling;
+        imageInfo.usage = info.usage;
+        imageInfo.memoryProperties = info.memoryProperties;
+        imageInfo.samples = info.samples;
+        resources.image.create(device, imageInfo);
+
+        ImageView::CreateInfo viewInfo{};
+        viewInfo.image = resources.image.get();
+        viewInfo.format = info.format;
+        viewInfo.subresourceRange.aspectMask = info.aspectMask;
+        resources.view.create(device.get(), viewInfo);
+
+        newAttachmentViews.push_back(resources.view.get());
+        newAttachments.push_back(std::move(resources));
+    }
+
+    Framebuffer newFramebuffer(
+        device.get(),
+        createInfo.renderPass,
+        newAttachmentViews,
+        createInfo.extent);
+
+    // Commit only after every attachment and the framebuffer succeeded.
+    reset();
+    attachments_ = std::move(newAttachments);
+    framebuffer_ = std::move(newFramebuffer);
+    renderPass_ = createInfo.renderPass;
+    extent_ = createInfo.extent;
+}
+
+void RenderTarget::reset() noexcept
+{
+    framebuffer_.reset();
+    attachments_.clear();
+    renderPass_ = VK_NULL_HANDLE;
+    extent_ = {};
+}
+
+VkImage RenderTarget::image(std::size_t attachmentIndex) const
+{
+    return attachment(attachmentIndex).image.get();
+}
+
+VkImageView RenderTarget::imageView(std::size_t attachmentIndex) const
+{
+    return attachment(attachmentIndex).view.get();
+}
+
+const RenderTarget::AttachmentInfo& RenderTarget::attachmentInfo(
+    std::size_t attachmentIndex) const
+{
+    return attachment(attachmentIndex).info;
+}
+
+const RenderTarget::AttachmentResources& RenderTarget::attachment(
+    std::size_t attachmentIndex) const
+{
+    if (attachmentIndex >= attachments_.size())
+    {
+        throw std::out_of_range("render target attachment index is out of range");
+    }
+    return attachments_[attachmentIndex];
+}
+
+} // namespace VkRenderer
