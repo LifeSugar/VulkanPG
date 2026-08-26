@@ -21,10 +21,11 @@ public:
     ~VulkanApplicationGuiRenderBridge() override;
 
     void attach(
-        const VulkanRenderer& renderer,
+        VulkanRenderer& renderer,
         const RenderAssetCache& renderAssets);
     void detach() noexcept;
 
+    void resizeSceneViewport(uint32_t width, uint32_t height) override;
     [[nodiscard]] ApplicationGuiRenderFrame currentFrame() override;
     [[nodiscard]] ApplicationGuiTexture preview(
         TextureAssetHandle texture) override;
@@ -42,7 +43,7 @@ private:
     void releaseViewportTextures() noexcept;
     void releasePreviewTextures() noexcept;
 
-    const VulkanRenderer* renderer_ = nullptr;
+    VulkanRenderer* renderer_ = nullptr;
     const RenderAssetCache* renderAssets_ = nullptr;
     std::vector<VkDescriptorSet> viewportTextures_;
     std::vector<TextureEntry> previewTextures_;

@@ -27,6 +27,20 @@ App::RunConfig EditorApp::makeRunConfig()
     config.enableDocking = true;
     config.imguiIniFilename = "editor_imgui.ini";
     config.outputMode = VulkanRenderer::OutputMode::Editor;
+    config.demoContent = DemoContentLoader::CreateInfo{
+        "ABeautifulGame_extracted/ABeautifulGame.gltf",
+        "shaders/triangle.vert.spv",
+        "shaders/triangle.frag.spv",
+        "shaders/present.vert.spv",
+        "shaders/present.frag.spv",
+        "Assets",
+        DemoContentLoader::TextureImportPolicy{
+            KtxPayloadEncoding::Uastc,
+            false,
+            TextureFormat::BC7UNorm,
+            TextureFormat::BC7UNorm,
+            TextureFormat::BC5UNorm,
+            true}};
     return config;
 }
 

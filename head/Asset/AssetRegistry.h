@@ -113,6 +113,23 @@ public:
 
     [[nodiscard]] std::size_t size() const noexcept { return size_; }
 
+    [[nodiscard]] std::vector<Handle> handles() const
+    {
+        std::vector<Handle> result;
+        result.reserve(size_);
+        for (uint32_t index = 0;
+             index < static_cast<uint32_t>(slots_.size());
+             ++index)
+        {
+            const Slot& slot = slots_[index];
+            if (slot.asset.has_value())
+            {
+                result.push_back({index, slot.generation});
+            }
+        }
+        return result;
+    }
+
 private:
     struct Slot
     {

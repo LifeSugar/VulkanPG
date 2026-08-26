@@ -95,6 +95,8 @@ public:
 
     /// Rebuilds resources that depend on the framebuffer size.
     void resize(VkExtent2D framebufferExtent);
+    /// Rebuilds Editor scene outputs at the Scene View's pixel dimensions.
+    void resizeEditorViewport(VkExtent2D extent);
     /// Records, submits, and presents one scene snapshot.
     [[nodiscard]] RenderResult render(
         const RenderFrame& frame,

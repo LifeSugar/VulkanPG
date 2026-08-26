@@ -6,7 +6,10 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <algorithm>
 #include <cstdint>
+#include <iterator>
+#include <utility>
 
 namespace VkRenderer
 {
@@ -29,13 +32,34 @@ ApplicationGuiFrameOutput EditorLayer::draw(
     }
     if (showInspector_)
     {
-        output.textureReimport = inspectorPanel_.draw(
+        output.textureReimports = inspectorPanel_.draw(
             context.scene,
             context.assets,
             context.render,
             context.textureImports,
             selection_,
             &showInspector_);
+    }
+    if (showAssets_)
+    {
+        const ImGuiWindow* inspectorWindow =
+            ImGui::FindWindowByName("Inspector");
+        if (inspectorWindow != nullptr && inspectorWindow->DockId != 0)
+        {
+            ImGui::SetNextWindowDockID(
+                inspectorWindow->DockId,
+                ImGuiCond_FirstUseEver);
+        }
+        std::vector<TextureReimportRequest> assetReimports =
+            assetBrowserPanel_.draw(
+                context.assets,
+                context.textureImports,
+                selection_,
+                &showAssets_);
+        output.textureReimports.insert(
+            output.textureReimports.end(),
+            std::make_move_iterator(assetReimports.begin()),
+            std::make_move_iterator(assetReimports.end()));
     }
     if (showSceneViewport_)
     {
@@ -44,6 +68,18 @@ ApplicationGuiFrameOutput EditorLayer::draw(
     if (showRendererStats_)
     {
         drawRendererStats(context);
+    }
+    if (showConsole_)
+    {
+        const ImGuiWindow* statsWindow =
+            ImGui::FindWindowByName("Renderer Stats");
+        if (statsWindow != nullptr && statsWindow->DockId != 0)
+        {
+            ImGui::SetNextWindowDockID(
+                statsWindow->DockId,
+                ImGuiCond_FirstUseEver);
+        }
+        consolePanel_.draw(&showConsole_);
     }
     return output;
 }
@@ -88,8 +124,10 @@ void EditorLayer::drawDockSpace()
                 nullptr,
                 &showSceneHierarchy_);
             ImGui::MenuItem("Inspector", nullptr, &showInspector_);
+            ImGui::MenuItem("Assets", nullptr, &showAssets_);
             ImGui::MenuItem("Scene Viewport", nullptr, &showSceneViewport_);
             ImGui::MenuItem("Renderer Stats", nullptr, &showRendererStats_);
+            ImGui::MenuItem("Console", nullptr, &showConsole_);
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
@@ -125,7 +163,9 @@ void EditorLayer::drawDockSpace()
 
         ImGui::DockBuilderDockWindow("Scene Hierarchy", left);
         ImGui::DockBuilderDockWindow("Inspector", right);
+        ImGui::DockBuilderDockWindow("Assets", right);
         ImGui::DockBuilderDockWindow("Renderer Stats", bottom);
+        ImGui::DockBuilderDockWindow("Console", bottom);
         ImGui::DockBuilderDockWindow("Scene Viewport", center);
         ImGui::DockBuilderFinish(dockspaceId);
     }
@@ -146,10 +186,23 @@ std::optional<float> EditorLayer::drawSceneViewport(
     }
 
     const ImVec2 available = ImGui::GetContentRegionAvail();
+    uint32_t renderWidth = 0;
+    uint32_t renderHeight = 0;
     if (available.x > 0.0f && available.y > 0.0f)
     {
-        sceneViewportWidth_ = static_cast<uint32_t>(available.x);
-        sceneViewportHeight_ = static_cast<uint32_t>(available.y);
+        const ImVec2 framebufferScale =
+            ImGui::GetWindowViewport()->FramebufferScale;
+        renderWidth = std::max(
+            1u,
+            static_cast<uint32_t>(
+                available.x * framebufferScale.x + 0.5f));
+        renderHeight = std::max(
+            1u,
+            static_cast<uint32_t>(
+                available.y * framebufferScale.y + 0.5f));
+        sceneViewportWidth_ = renderWidth;
+        sceneViewportHeight_ = renderHeight;
+        context.render.resizeSceneViewport(renderWidth, renderHeight);
     }
     const ApplicationGuiRenderFrame renderFrame =
         context.render.currentFrame();
@@ -165,7 +218,8 @@ std::optional<float> EditorLayer::drawSceneViewport(
     {
         return std::nullopt;
     }
-    return available.x / available.y;
+    return static_cast<float>(renderWidth) /
+        static_cast<float>(renderHeight);
 }
 
 void EditorLayer::drawRendererStats(

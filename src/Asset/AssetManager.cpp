@@ -393,6 +393,21 @@ bool AssetManager::isMaterialTemplateCurrent(
         *this) == materialTemplate.shaderInterfaceSignature();
 }
 
+std::vector<TextureAssetHandle> AssetManager::textureHandles() const
+{
+    return textures_.handles();
+}
+
+std::vector<MaterialAssetHandle> AssetManager::materialHandles() const
+{
+    return materials_.handles();
+}
+
+std::vector<ModelAssetHandle> AssetManager::modelHandles() const
+{
+    return models_.handles();
+}
+
 void AssetManager::reset() noexcept
 {
     models_.reset();

@@ -6,6 +6,7 @@
 #include "Render/RenderFrameBuilder.h"
 #include "RuntimeGui.h"
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
@@ -148,8 +149,8 @@ void App::initImGui(const RunConfig& config)
 
 void App::setupCamera()
 {
-    camera.setPosition(glm::vec3(0.0f, 0.0f, 4.0f));
-    camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
+    camera.setPosition(glm::vec3(0.0f, 1.0f, 0.5f));
+    camera.setRotation(glm::vec3(-60.0f, 0.0f, 0.0f));
     const VkExtent2D extent = renderer.extent();
     camera.setAspect(
         static_cast<float>(extent.width) /
@@ -203,9 +204,19 @@ void App::drawGui(ApplicationGui& gui)
         guiRenderBridge,
         &textureImports};
     const ApplicationGuiFrameOutput output = gui.draw(context);
-    if (output.textureReimport)
+    for (const TextureReimportRequest& request : output.textureReimports)
     {
-        pendingTextureReimport_ = output.textureReimport;
+        const bool alreadyQueued = std::any_of(
+            pendingTextureReimports_.begin(),
+            pendingTextureReimports_.end(),
+            [&](const TextureReimportRequest& queued)
+            {
+                return queued.texture == request.texture;
+            });
+        if (!alreadyQueued && activeTextureReimport_ != request.texture)
+        {
+            pendingTextureReimports_.push_back(request);
+        }
     }
     if (output.sceneAspectRatio)
     {

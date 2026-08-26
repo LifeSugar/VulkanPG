@@ -275,14 +275,14 @@ void App::processPendingTextureReimport()
         }
     }
 
-    if (!pendingTextureReimport_)
+    if (pendingTextureReimports_.empty())
     {
         return;
     }
 
     TextureReimportRequest request =
-        std::move(*pendingTextureReimport_);
-    pendingTextureReimport_.reset();
+        std::move(pendingTextureReimports_.front());
+    pendingTextureReimports_.pop_front();
     const TextureAssetHandle requestedTexture = request.texture;
 
     const TextureImportRecord* storedRecord =
@@ -370,7 +370,7 @@ void App::processPendingTextureReimport()
 
 void App::discardTextureReimport() noexcept
 {
-    pendingTextureReimport_.reset();
+    pendingTextureReimports_.clear();
     if (textureReimportFuture_.valid())
     {
         try

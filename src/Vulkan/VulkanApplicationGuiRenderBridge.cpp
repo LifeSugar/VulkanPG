@@ -18,7 +18,7 @@ VulkanApplicationGuiRenderBridge::~VulkanApplicationGuiRenderBridge()
 }
 
 void VulkanApplicationGuiRenderBridge::attach(
-    const VulkanRenderer& renderer,
+    VulkanRenderer& renderer,
     const RenderAssetCache& renderAssets)
 {
     detach();
@@ -39,6 +39,45 @@ void VulkanApplicationGuiRenderBridge::detach() noexcept
     renderer_ = nullptr;
 }
 
+void VulkanApplicationGuiRenderBridge::resizeSceneViewport(
+    uint32_t width,
+    uint32_t height)
+{
+    if (renderer_ == nullptr ||
+        renderer_->outputMode() != VulkanRenderer::OutputMode::Editor ||
+        width == 0 || height == 0)
+    {
+        return;
+    }
+
+    const VkExtent2D requestedExtent{width, height};
+    const VulkanRenderer::EditorViewportOutput current =
+        renderer_->editorViewportOutput(0);
+    if (current.extent.width == requestedExtent.width &&
+        current.extent.height == requestedExtent.height)
+    {
+        return;
+    }
+
+    // ImGui descriptors must stop referring to the old image views before
+    // those views are destroyed. Waiting also makes all old frame commands
+    // and descriptor uses reusable.
+    renderer_->waitIdle();
+    releaseViewportTextures();
+    try
+    {
+        renderer_->resizeEditorViewport(requestedExtent);
+        registerViewportTextures();
+    }
+    catch (...)
+    {
+        // Renderer resizing has strong resource replacement semantics, so the
+        // previous outputs remain available if allocation fails.
+        registerViewportTextures();
+        throw;
+    }
+}
+
 ApplicationGuiRenderFrame
 VulkanApplicationGuiRenderBridge::currentFrame()
 {
@@ -47,13 +86,13 @@ VulkanApplicationGuiRenderBridge::currentFrame()
         return {};
     }
 
-    const VkExtent2D extent = renderer_->extent();
     ApplicationGuiRenderFrame frame{};
-    frame.width = extent.width;
-    frame.height = extent.height;
 
     if (renderer_->outputMode() != VulkanRenderer::OutputMode::Editor)
     {
+        const VkExtent2D extent = renderer_->extent();
+        frame.width = extent.width;
+        frame.height = extent.height;
         return frame;
     }
 
@@ -61,6 +100,10 @@ VulkanApplicationGuiRenderBridge::currentFrame()
     const uint32_t frameIndex = renderer_->currentFrameIndex();
     if (frameIndex < viewportTextures_.size())
     {
+        const VulkanRenderer::EditorViewportOutput output =
+            renderer_->editorViewportOutput(frameIndex);
+        frame.width = output.extent.width;
+        frame.height = output.extent.height;
         frame.sceneViewport.textureId = reinterpret_cast<std::uintptr_t>(
             viewportTextures_[frameIndex]);
     }

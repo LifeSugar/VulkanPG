@@ -8,6 +8,7 @@
 
 #include <imgui.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -193,22 +194,62 @@ void drawMaterialParameterValue(
     }
 }
 
+struct MaterialTextureReimportBatch
+{
+    std::vector<TextureReimportRequest> requests;
+    bool busy = false;
+};
+
+[[nodiscard]] MaterialTextureReimportBatch collectTextureReimports(
+    const MaterialAsset& material,
+    const TextureImportRegistry* textureImports)
+{
+    MaterialTextureReimportBatch result{};
+    if (textureImports == nullptr)
+    {
+        return result;
+    }
+
+    std::vector<TextureAssetHandle> visited;
+    for (TextureAssetHandle texture : material.textures())
+    {
+        if (!texture ||
+            std::find(visited.begin(), visited.end(), texture) !=
+                visited.end())
+        {
+            continue;
+        }
+        visited.push_back(texture);
+
+        const TextureImportRecord* record = textureImports->find(texture);
+        if (record == nullptr)
+        {
+            continue;
+        }
+        result.busy = result.busy || record->reimporting;
+        result.requests.push_back({texture, record->settings});
+    }
+    return result;
+}
+
 } // namespace
 
-std::optional<InspectorTarget> MaterialInspector::drawMaterialAsset(
+MaterialInspectorOutput MaterialInspector::drawMaterialAsset(
     const AssetManager& assets,
     ApplicationGuiRenderBridge& texturePreviews,
+    const TextureImportRegistry* textureImports,
     MaterialAssetHandle target) const
 {
     using namespace InspectorWidgets;
 
+    MaterialInspectorOutput output{};
+    std::optional<InspectorTarget>& navigation = output.navigation;
     if (!assets.contains(target))
     {
         ImGui::TextDisabled("MaterialAsset selection is no longer valid");
-        return std::nullopt;
+        return output;
     }
 
-    std::optional<InspectorTarget> navigation;
     const MaterialAsset& material = assets.material(target);
     ImGui::SeparatorText("Material Asset");
     drawProperty("Name", displayName(material.name(), "Unnamed Material"));
@@ -237,7 +278,7 @@ std::optional<InspectorTarget> MaterialInspector::drawMaterialAsset(
         ImGui::SeparatorText("Properties");
         ImGui::TextDisabled(
             "Properties unavailable because the template is missing");
-        return navigation;
+        return output;
     }
 
     if (ImGui::CollapsingHeader("Shaders", ImGuiTreeNodeFlags_DefaultOpen))
@@ -291,9 +332,59 @@ std::optional<InspectorTarget> MaterialInspector::drawMaterialAsset(
         }
     }
 
-    if (ImGui::CollapsingHeader(
+    const MaterialTextureReimportBatch reimportBatch =
+        collectTextureReimports(material, textureImports);
+    bool pipelineStateOpen = true;
+    constexpr ImGuiTableFlags headerTableFlags =
+        ImGuiTableFlags_SizingStretchProp |
+        ImGuiTableFlags_NoSavedSettings;
+    if (ImGui::BeginTable("##PipelineStateHeader", 2, headerTableFlags))
+    {
+        ImGui::TableSetupColumn(
+            "##State",
+            ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn(
+            "##Reimport",
+            ImGuiTableColumnFlags_WidthFixed,
+            94.0f);
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        pipelineStateOpen = ImGui::CollapsingHeader(
             "Pipeline State",
-            ImGuiTreeNodeFlags_DefaultOpen))
+            ImGuiTreeNodeFlags_DefaultOpen);
+        ImGui::TableSetColumnIndex(1);
+
+        const bool reimportDisabled =
+            reimportBatch.requests.empty() || reimportBatch.busy;
+        ImGui::BeginDisabled(reimportDisabled);
+        if (ImGui::Button("Reimport All", ImVec2(-1.0f, 0.0f)))
+        {
+            output.textureReimports = reimportBatch.requests;
+        }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+            if (reimportBatch.requests.empty())
+            {
+                ImGui::SetTooltip(
+                    "This material has no source-backed textures");
+            }
+            else if (reimportBatch.busy)
+            {
+                ImGui::SetTooltip(
+                    "A material texture is already being reimported");
+            }
+            else
+            {
+                ImGui::SetTooltip(
+                    "Cook and replace %zu textures sequentially",
+                    reimportBatch.requests.size());
+            }
+        }
+        ImGui::EndTable();
+    }
+
+    if (pipelineStateOpen)
     {
         const MaterialRenderState& renderState = material.renderState();
         const PipelineVariantKey pipelineKey = makePipelineVariantKey(
@@ -340,7 +431,7 @@ std::optional<InspectorTarget> MaterialInspector::drawMaterialAsset(
             "Properties",
             ImGuiTreeNodeFlags_DefaultOpen))
     {
-        return navigation;
+        return output;
     }
 
     constexpr ImGuiTableFlags tableFlags =
@@ -349,7 +440,7 @@ std::optional<InspectorTarget> MaterialInspector::drawMaterialAsset(
         ImGuiTableFlags_SizingStretchProp;
     if (!ImGui::BeginTable("##MaterialProperties", 3, tableFlags))
     {
-        return navigation;
+        return output;
     }
 
     ImGui::TableSetupColumn(
@@ -440,7 +531,7 @@ std::optional<InspectorTarget> MaterialInspector::drawMaterialAsset(
     }
 
     ImGui::EndTable();
-    return navigation;
+    return output;
 }
 
 std::optional<InspectorTarget> MaterialInspector::drawMaterialTemplate(

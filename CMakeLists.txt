@@ -190,9 +190,9 @@ add_custom_command(TARGET VulkanApp POST_BUILD
 
 add_custom_command(TARGET VulkanApp POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_SOURCE_DIR}/Assets/DamagedHelmet_extracted"
-            "$<TARGET_FILE_DIR:VulkanApp>/Assets/DamagedHelmet_extracted"
-    COMMENT "Copying DamagedHelmet glTF and associated files"
+            "${CMAKE_SOURCE_DIR}/Assets/ABeautifulGame_extracted"
+            "$<TARGET_FILE_DIR:VulkanApp>/Assets/ABeautifulGame_extracted"
+    COMMENT "Copying ABeautifulGame glTF and associated files"
 )
 
 # 编译期嵌入源码根目录，运行时若相对路径找不到则回退到源码目录

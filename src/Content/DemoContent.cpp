@@ -9,17 +9,108 @@
 #include "Scene/Scene.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace VkRenderer
 {
 namespace
 {
+
+enum DemoTextureUsage : uint8_t
+{
+    DemoTextureUsageNone = 0,
+    DemoTextureUsageColor = 1u << 0u,
+    DemoTextureUsageData = 1u << 1u,
+    DemoTextureUsageNormal = 1u << 2u
+};
+
+void addDemoTextureUsage(
+    std::vector<uint8_t>& usages,
+    int textureIndex,
+    DemoTextureUsage usage)
+{
+    if (textureIndex < 0)
+    {
+        return;
+    }
+    if (static_cast<std::size_t>(textureIndex) >= usages.size())
+    {
+        throw std::invalid_argument(
+            "demo material texture index is outside the texture table");
+    }
+    usages[static_cast<std::size_t>(textureIndex)] |= usage;
+}
+
+std::vector<uint8_t> resolveDemoTextureUsages(const GLBModel& model)
+{
+    std::vector<uint8_t> usages(
+        model.textures.size(),
+        DemoTextureUsageNone);
+    for (const GLBMaterial& material : model.materials)
+    {
+        addDemoTextureUsage(
+            usages,
+            material.baseColorTextureIndex,
+            DemoTextureUsageColor);
+        addDemoTextureUsage(
+            usages,
+            material.emissiveTextureIndex,
+            DemoTextureUsageColor);
+        addDemoTextureUsage(
+            usages,
+            material.metallicRoughnessTextureIndex,
+            DemoTextureUsageData);
+        addDemoTextureUsage(
+            usages,
+            material.occlusionTextureIndex,
+            DemoTextureUsageData);
+        addDemoTextureUsage(
+            usages,
+            material.normalTextureIndex,
+            DemoTextureUsageNormal);
+    }
+    return usages;
+}
+
+TextureImportSettings makeDemoTextureImportSettings(
+    const DemoContentLoader::TextureImportPolicy& policy,
+    TextureColorSpace colorSpace,
+    uint8_t usage)
+{
+    TextureImportSettings settings{};
+    settings.colorSpace = colorSpace;
+    settings.generateMipmaps = policy.generateMipmaps;
+    settings.basis.encoding = policy.payloadEncoding;
+    settings.highQualityTranscode = policy.highQualityTranscode;
+
+    // BC5 is valid only when the image is exclusively a normal map. A shared
+    // normal/data image keeps all channels and uses the conservative data
+    // format instead.
+    if (usage == DemoTextureUsageNormal)
+    {
+        settings.colorSpace = TextureColorSpace::Linear;
+        settings.basis.normalMap = true;
+        settings.transcodeFormat = policy.normalTranscodeFormat;
+    }
+    else if (usage == DemoTextureUsageColor ||
+             (usage == DemoTextureUsageNone &&
+              colorSpace == TextureColorSpace::Srgb))
+    {
+        settings.transcodeFormat = policy.colorTranscodeFormat;
+    }
+    else
+    {
+        settings.transcodeFormat = policy.dataTranscodeFormat;
+    }
+    return settings;
+}
 
 std::filesystem::path resolveAssetPath(
     const std::filesystem::path& cookedAssetDirectory,
@@ -249,6 +340,8 @@ DemoContent DemoContentLoader::load(
             throw std::runtime_error(
                 "imported texture handles do not match the source texture table");
         }
+        const std::vector<uint8_t> textureUsages =
+            resolveDemoTextureUsages(*sourceModel);
         for (std::size_t index = 0;
              index < sourceModel->textures.size();
              ++index)
@@ -271,9 +364,10 @@ DemoContent DemoContentLoader::load(
             record.sourcePath = sourcePath;
             record.cookedPath = resolvedModelPath.parent_path() /
                 "_cooked" / cookedFilename;
-            record.settings.colorSpace =
-                assets.texture(record.texture).colorSpace();
-            record.settings.transcodeFormat = TextureFormat::BC7UNorm;
+            record.settings = makeDemoTextureImportSettings(
+                createInfo.textureImportPolicy,
+                assets.texture(record.texture).colorSpace(),
+                textureUsages[index]);
             textureImports->registerTexture(std::move(record));
         }
     }

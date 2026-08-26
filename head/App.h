@@ -13,6 +13,7 @@
 #include "Window.h"
 
 #include <cstdint>
+#include <deque>
 #include <filesystem>
 #include <future>
 #include <optional>
@@ -40,12 +41,19 @@ public:
         VulkanRenderer::OutputMode outputMode =
             VulkanRenderer::OutputMode::Runtime;
         DemoContentLoader::CreateInfo demoContent{
-            "DamagedHelmet_extracted/DamagedHelmet.gltf",
+            "ABeautifulGame_extracted/ABeautifulGame.gltf",
             "shaders/triangle.vert.spv",
             "shaders/triangle.frag.spv",
             "shaders/present.vert.spv",
             "shaders/present.frag.spv",
-            "Assets"};
+            "Assets",
+            DemoContentLoader::TextureImportPolicy{
+                KtxPayloadEncoding::Uastc,
+                true,
+                TextureFormat::BC7UNorm,
+                TextureFormat::BC7UNorm,
+                TextureFormat::BC5UNorm,
+                true}};
     };
 
     ~App();
@@ -87,7 +95,7 @@ private:
     static constexpr uint32_t kMaxFramesInFlight = 2;
     bool preferIntegratedGpu = false;
     bool swapChainRecreationRequested = false;
-    std::optional<TextureReimportRequest> pendingTextureReimport_;
+    std::deque<TextureReimportRequest> pendingTextureReimports_;
     std::future<PreparedTextureReimport> textureReimportFuture_;
     TextureAssetHandle activeTextureReimport_;
     std::filesystem::path activeTextureReimportStagedPath_;

@@ -454,6 +454,13 @@ void VulkanRenderer::resize(VkExtent2D framebufferExtent)
         frame.resetCommands();
     }
 
+    VkExtent2D renderExtent = framebufferExtent;
+    if (outputMode_ == OutputMode::Editor &&
+        !editorViewportTargets_.empty())
+    {
+        renderExtent = editorViewportTargets_.front().extent();
+    }
+
     SwapchainResources::CreateInfo createInfo{};
     createInfo.surface = context_->surface();
     createInfo.framebufferExtent = framebufferExtent;
@@ -464,7 +471,9 @@ void VulkanRenderer::resize(VkExtent2D framebufferExtent)
         makeSceneRenderTargets(
             device,
             sceneRenderPass_.get(),
-            swapchainResources_.extent(),
+            outputMode_ == OutputMode::Editor
+                ? renderExtent
+                : swapchainResources_.extent(),
             static_cast<uint32_t>(frameContexts_.size()),
             sceneColorFormat_,
             sceneDepthFormat_);
@@ -474,7 +483,7 @@ void VulkanRenderer::resize(VkExtent2D framebufferExtent)
         newEditorViewportTargets = makeEditorViewportTargets(
             device,
             editorViewportRenderPass_.get(),
-            swapchainResources_.extent(),
+            renderExtent,
             static_cast<uint32_t>(frameContexts_.size()),
             editorViewportFormat_);
     }
@@ -496,6 +505,83 @@ void VulkanRenderer::resize(VkExtent2D framebufferExtent)
     {
         presentPipeline_.create(device, makePresentPipelineCreateInfo());
     }
+}
+
+void VulkanRenderer::resizeEditorViewport(VkExtent2D extent)
+{
+    if (!*this)
+    {
+        throw std::logic_error(
+            "cannot resize an uninitialized VulkanRenderer");
+    }
+    if (outputMode_ != OutputMode::Editor)
+    {
+        throw std::logic_error(
+            "cannot resize an Editor viewport in Runtime output mode");
+    }
+    if (extent.width == 0 || extent.height == 0)
+    {
+        throw std::invalid_argument(
+            "cannot resize the Editor viewport to an empty extent");
+    }
+
+    const VkExtent2D currentExtent = editorViewportTargets_.front().extent();
+    if (currentExtent.width == extent.width &&
+        currentExtent.height == extent.height)
+    {
+        return;
+    }
+
+    const Device& device = context_->device();
+    device.waitIdle();
+
+    std::vector<RenderTarget> newSceneRenderTargets =
+        makeSceneRenderTargets(
+            device,
+            sceneRenderPass_.get(),
+            extent,
+            static_cast<uint32_t>(frameContexts_.size()),
+            sceneColorFormat_,
+            sceneDepthFormat_);
+    std::vector<RenderTarget> newEditorViewportTargets =
+        makeEditorViewportTargets(
+            device,
+            editorViewportRenderPass_.get(),
+            extent,
+            static_cast<uint32_t>(frameContexts_.size()),
+            editorViewportFormat_);
+    const uint32_t frameCount =
+        static_cast<uint32_t>(frameContexts_.size());
+    const std::vector<VkDescriptorPoolSize> poolSizes = {
+        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, frameCount},
+        {VK_DESCRIPTOR_TYPE_SAMPLER, frameCount}
+    };
+    DescriptorPool newPresentDescriptorPool(
+        device.get(),
+        poolSizes,
+        frameCount);
+    std::vector<VkDescriptorSet> newPresentDescriptorSets =
+        newPresentDescriptorPool.allocate(
+            presentDescriptorSetLayout_.get(),
+            frameCount);
+    updatePresentDescriptorSets(
+        device.get(),
+        newSceneRenderTargets,
+        presentSampler_.get(),
+        newPresentDescriptorSets);
+
+    // Recorded commands and presentation descriptors reference the previous
+    // scene targets.
+    for (FrameContext& frame : frameContexts_)
+    {
+        frame.resetCommands();
+    }
+    sceneRenderTargets_ = std::move(newSceneRenderTargets);
+    editorViewportTargets_ = std::move(newEditorViewportTargets);
+    presentDescriptorSets_.clear();
+    presentDescriptorPool_ = std::move(newPresentDescriptorPool);
+    presentDescriptorSets_ = std::move(newPresentDescriptorSets);
+    ++editorViewportRevision_;
 }
 
 

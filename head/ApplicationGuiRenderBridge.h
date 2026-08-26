@@ -32,6 +32,13 @@ class ApplicationGuiRenderBridge
 public:
     virtual ~ApplicationGuiRenderBridge() = default;
 
+    /// Ensures the Editor scene image matches the requested drawable size.
+    /// Backends without a dedicated scene target may ignore the request.
+    virtual void resizeSceneViewport(uint32_t width, uint32_t height)
+    {
+        static_cast<void>(width);
+        static_cast<void>(height);
+    }
     [[nodiscard]] virtual ApplicationGuiRenderFrame currentFrame() = 0;
     [[nodiscard]] virtual ApplicationGuiTexture preview(
         TextureAssetHandle texture) = 0;

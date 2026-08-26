@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Asset/AssetFwd.h"
+#include "Import/TextureImportSettings.h"
 
 #include <filesystem>
 
@@ -30,6 +31,19 @@ struct DemoContent
 class DemoContentLoader final
 {
 public:
+    /// Demo-only defaults applied to the editable import record after a glTF
+    /// texture is decoded. The policy chooses settings; it does not cook the
+    /// texture or change the generic glTF importer.
+    struct TextureImportPolicy
+    {
+        KtxPayloadEncoding payloadEncoding = KtxPayloadEncoding::Uastc;
+        bool generateMipmaps = false;
+        TextureFormat colorTranscodeFormat = TextureFormat::BC7UNorm;
+        TextureFormat dataTranscodeFormat = TextureFormat::BC7UNorm;
+        TextureFormat normalTranscodeFormat = TextureFormat::BC5UNorm;
+        bool highQualityTranscode = true;
+    };
+
     struct CreateInfo
     {
         std::filesystem::path modelPath;
@@ -38,6 +52,7 @@ public:
         std::filesystem::path presentVertexShader;
         std::filesystem::path presentFragmentShader;
         std::filesystem::path cookedAssetDirectory;
+        TextureImportPolicy textureImportPolicy;
     };
 
     [[nodiscard]] static DemoContent load(

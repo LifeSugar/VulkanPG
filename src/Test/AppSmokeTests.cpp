@@ -368,7 +368,8 @@ void validateCullingSystem()
 
 void validateOfflineMaterialAssets(
     AssetManager& assets,
-    const DemoContent& content)
+    const DemoContent& content,
+    const TextureImportRegistry& textureImports)
 {
     const TextureAsset& flatNormal = assets.texture(
         content.defaultNormalTexture);
@@ -412,6 +413,67 @@ void validateOfflineMaterialAssets(
                     throw std::runtime_error(
                         "glTF material textures use incorrect semantic color spaces");
                 }
+
+                const auto validateImportSettings =
+                    [&](uint32_t slot,
+                        TextureColorSpace expectedColorSpace,
+                        TextureFormat expectedFormat,
+                        bool expectedNormalMap)
+                    {
+                        const TextureAssetHandle texture =
+                            material.textures()[slot];
+                        const TextureImportRecord* record =
+                            textureImports.find(texture);
+                        if (record == nullptr)
+                        {
+                            if (texture != content.defaultTexture &&
+                                texture != content.defaultDataTexture &&
+                                texture != content.defaultNormalTexture)
+                            {
+                                throw std::runtime_error(
+                                    "imported material texture has no reimport provenance");
+                            }
+                            return;
+                        }
+                        if (
+                            record->settings.colorSpace != expectedColorSpace ||
+                            !record->settings.generateMipmaps ||
+                            record->settings.basis.encoding !=
+                                KtxPayloadEncoding::Uastc ||
+                            record->settings.basis.normalMap !=
+                                expectedNormalMap ||
+                            record->settings.transcodeFormat != expectedFormat ||
+                            !record->settings.highQualityTranscode)
+                        {
+                            throw std::runtime_error(
+                                "DemoContent texture import policy produced incorrect settings");
+                        }
+                    };
+                validateImportSettings(
+                    0,
+                    TextureColorSpace::Srgb,
+                    TextureFormat::BC7UNorm,
+                    false);
+                validateImportSettings(
+                    1,
+                    TextureColorSpace::Linear,
+                    TextureFormat::BC7UNorm,
+                    false);
+                validateImportSettings(
+                    2,
+                    TextureColorSpace::Linear,
+                    TextureFormat::BC5UNorm,
+                    true);
+                validateImportSettings(
+                    3,
+                    TextureColorSpace::Linear,
+                    TextureFormat::BC7UNorm,
+                    false);
+                validateImportSettings(
+                    4,
+                    TextureColorSpace::Srgb,
+                    TextureFormat::BC7UNorm,
+                    false);
             }
         }
     }
@@ -946,12 +1008,15 @@ void AppSmokeTests::runAssetImportTest()
         app.scene,
         config.demoContent,
         &app.textureImports);
-    if (app.textureImports.size() != 5)
+    if (app.textureImports.size() == 0)
     {
         throw std::runtime_error(
-            "extracted glTF textures did not register reimport provenance");
+            "extracted glTF registered no texture reimport provenance");
     }
-    validateOfflineMaterialAssets(app.assetManager, app.demoContent);
+    validateOfflineMaterialAssets(
+        app.assetManager,
+        app.demoContent,
+        app.textureImports);
 
     const std::vector<RenderCandidate> candidates =
         SceneRenderExtractor{}.extract(app.scene, app.assetManager);
@@ -1020,29 +1085,31 @@ void AppSmokeTests::runRenderTest(
         app.guiRenderBridge
     };
     gui.attach(guiContext);
-    TextureAssetHandle editorPreviewTexture =
-        app.demoContent.defaultTexture;
-    if (app.renderAssets.tryTexture(editorPreviewTexture) == nullptr)
+    TextureAssetHandle editorPreviewTexture{};
+    const std::vector<RenderCandidate> previewCandidates =
+        SceneRenderExtractor{}.extract(app.scene, app.assetManager);
+    for (const RenderCandidate& candidate : previewCandidates)
     {
-        const std::vector<RenderCandidate> previewCandidates =
-            SceneRenderExtractor{}.extract(app.scene, app.assetManager);
-        for (const RenderCandidate& candidate : previewCandidates)
-        {
-            const MaterialAsset& material =
-                app.assetManager.material(candidate.material);
-            const auto texture = std::find_if(
-                material.textures().begin(),
-                material.textures().end(),
-                [&](TextureAssetHandle handle)
-                {
-                    return app.renderAssets.tryTexture(handle) != nullptr;
-                });
-            if (texture != material.textures().end())
+        const MaterialAsset& material =
+            app.assetManager.material(candidate.material);
+        const auto texture = std::find_if(
+            material.textures().begin(),
+            material.textures().end(),
+            [&](TextureAssetHandle handle)
             {
-                editorPreviewTexture = *texture;
-                break;
-            }
+                return app.renderAssets.tryTexture(handle) != nullptr &&
+                    app.textureImports.find(handle) != nullptr;
+            });
+        if (texture != material.textures().end())
+        {
+            editorPreviewTexture = *texture;
+            break;
         }
+    }
+    if (!editorPreviewTexture)
+    {
+        throw std::runtime_error(
+            "render test found no uploaded source-backed texture");
     }
     validateGpuTextureReplacement(
         app.vulkanContext.device(),
@@ -1064,9 +1131,9 @@ void AppSmokeTests::runRenderTest(
         asynchronousSettings.basis.uastcQualityLevel = 0;
         asynchronousSettings.zstdLevel = 0;
         asynchronousSettings.transcodeFormat = TextureFormat::BC7UNorm;
-        app.pendingTextureReimport_ = TextureReimportRequest{
+        app.pendingTextureReimports_.push_back(TextureReimportRequest{
             editorPreviewTexture,
-            std::move(asynchronousSettings)};
+            std::move(asynchronousSettings)});
         app.processPendingTextureReimport();
 
         const TextureImportRecord* started =

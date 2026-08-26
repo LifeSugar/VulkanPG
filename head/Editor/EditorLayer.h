@@ -2,6 +2,8 @@
 
 #include "ApplicationGui.h"
 #include "Editor/EditorSelection.h"
+#include "Editor/Panels/AssetBrowserPanel.h"
+#include "Editor/Panels/ConsolePanel.h"
 #include "Editor/Panels/InspectorPanel.h"
 #include "Editor/Panels/SceneHierarchyPanel.h"
 
@@ -26,12 +28,16 @@ private:
     EditorSelection selection_;
     SceneHierarchyPanel sceneHierarchyPanel_;
     InspectorPanel inspectorPanel_;
+    AssetBrowserPanel assetBrowserPanel_;
+    ConsolePanel consolePanel_;
     uint32_t sceneViewportWidth_ = 0;
     uint32_t sceneViewportHeight_ = 0;
     bool showSceneHierarchy_ = true;
     bool showInspector_ = true;
+    bool showAssets_ = true;
     bool showSceneViewport_ = true;
     bool showRendererStats_ = true;
+    bool showConsole_ = true;
 };
 
 } // namespace VkRenderer

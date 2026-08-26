@@ -6,7 +6,7 @@
 #include "Editor/Inspectors/SceneNodeInspector.h"
 #include "Editor/Inspectors/TextureInspector.h"
 
-#include <optional>
+#include <vector>
 
 namespace VkRenderer
 {
@@ -19,7 +19,7 @@ class Scene;
 class InspectorPanel final
 {
 public:
-    [[nodiscard]] std::optional<TextureReimportRequest> draw(
+    [[nodiscard]] std::vector<TextureReimportRequest> draw(
         const Scene& scene,
         const AssetManager& assets,
         ApplicationGuiRenderBridge& texturePreviews,

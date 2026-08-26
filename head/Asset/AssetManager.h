@@ -54,6 +54,10 @@ public:
     [[nodiscard]] bool isMaterialTemplateCurrent(
         MaterialTemplateAssetHandle handle) const noexcept;
 
+    [[nodiscard]] std::vector<TextureAssetHandle> textureHandles() const;
+    [[nodiscard]] std::vector<MaterialAssetHandle> materialHandles() const;
+    [[nodiscard]] std::vector<ModelAssetHandle> modelHandles() const;
+
     void reset() noexcept;
 
 private:

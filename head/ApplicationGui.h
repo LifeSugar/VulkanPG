@@ -3,6 +3,7 @@
 #include "Import/TextureImportRegistry.h"
 
 #include <optional>
+#include <vector>
 
 namespace VkRenderer
 {
@@ -24,7 +25,7 @@ struct ApplicationGuiContext
 struct ApplicationGuiFrameOutput
 {
     std::optional<float> sceneAspectRatio;
-    std::optional<TextureReimportRequest> textureReimport;
+    std::vector<TextureReimportRequest> textureReimports;
 };
 
 /// UI business layer consumed by App without depending on Runtime or Editor UI.
