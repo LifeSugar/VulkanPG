@@ -4,7 +4,7 @@
 #include <mutex>
 #include <stdexcept>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 namespace
 {
@@ -192,4 +192,4 @@ void Window::framebufferResizeCallback(GLFWwindow* window, int, int)
     }
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

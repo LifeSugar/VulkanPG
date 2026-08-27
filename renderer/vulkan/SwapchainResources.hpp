@@ -12,7 +12,7 @@
 #include <cstddef>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 class Device;
@@ -139,4 +139,4 @@ private:
     VkFormat depthFormat_ = VK_FORMAT_UNDEFINED;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

@@ -4,7 +4,7 @@
 #include <limits>
 #include <stdexcept>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 RenderViewId RenderViewId::generate()
@@ -28,4 +28,4 @@ RenderViewId RenderViewId::generate()
     }
 }
 
-} // namespace VkRenderer
+} // namespace rubia::render

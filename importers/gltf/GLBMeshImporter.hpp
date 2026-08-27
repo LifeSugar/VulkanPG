@@ -5,7 +5,7 @@
 
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::importer::gltf
 {
 
 /// Converts GLB geometry into source-independent MeshAssets.
@@ -14,14 +14,14 @@ class GLBMeshImporter final
 public:
     struct CreateInfo
     {
-        AssetManager* assets = nullptr;
-        const std::vector<MaterialAssetHandle>* materials = nullptr;
-        MaterialAssetHandle fallbackMaterial;
+        asset::AssetManager* assets = nullptr;
+        const std::vector<asset::MaterialAssetHandle>* materials = nullptr;
+        asset::MaterialAssetHandle fallbackMaterial;
     };
 
-    [[nodiscard]] std::vector<MeshAssetHandle> import(
+    [[nodiscard]] std::vector<asset::MeshAssetHandle> import(
         const std::vector<GLBMesh>& source,
         const CreateInfo& createInfo) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::importer::gltf

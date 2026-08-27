@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 /// View-specific, ordered draw lists produced from render candidates.
@@ -37,4 +37,4 @@ struct RenderList
     }
 };
 
-} // namespace VkRenderer
+} // namespace rubia::render

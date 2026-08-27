@@ -9,10 +9,10 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::importer::shader
 {
 
-ShaderAssetHandle SpirvShaderImporter::import(
+asset::ShaderAssetHandle SpirvShaderImporter::import(
     const CreateInfo& createInfo) const
 {
     if (createInfo.assets == nullptr)
@@ -48,7 +48,7 @@ ShaderAssetHandle SpirvShaderImporter::import(
             createInfo.path.string());
     }
 
-    ShaderAsset::CreateInfo shaderInfo{};
+    asset::ShaderAsset::CreateInfo shaderInfo{};
     shaderInfo.name = createInfo.name.empty()
         ? createInfo.path.stem().string()
         : createInfo.name;
@@ -75,4 +75,4 @@ ShaderAssetHandle SpirvShaderImporter::import(
     return createInfo.assets->createShader(std::move(shaderInfo));
 }
 
-} // namespace VkRenderer
+} // namespace rubia::importer::shader

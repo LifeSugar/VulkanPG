@@ -11,7 +11,7 @@
 #include <iterator>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 ApplicationGuiFrameOutput EditorLayer::draw(
@@ -50,7 +50,7 @@ ApplicationGuiFrameOutput EditorLayer::draw(
                 inspectorWindow->DockId,
                 ImGuiCond_FirstUseEver);
         }
-        std::vector<TextureReimportRequest> assetReimports =
+        std::vector<importer::texture::TextureReimportRequest> assetReimports =
             assetBrowserPanel_.draw(
                 context.assets,
                 context.textureImports,
@@ -204,7 +204,7 @@ std::optional<float> EditorLayer::drawSceneViewport(
         sceneViewportHeight_ = renderHeight;
         context.render.resizeSceneViewport(renderWidth, renderHeight);
     }
-    const ApplicationGuiRenderFrame renderFrame =
+    const render::ApplicationGuiRenderFrame renderFrame =
         context.render.currentFrame();
     if (available.x > 0.0f && available.y > 0.0f &&
         renderFrame.sceneViewport)
@@ -246,4 +246,4 @@ void EditorLayer::drawRendererStats(
     ImGui::End();
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

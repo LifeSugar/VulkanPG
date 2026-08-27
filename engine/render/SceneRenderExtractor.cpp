@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::render
 {
 namespace
 {
@@ -57,14 +57,16 @@ std::vector<glm::mat4> hierarchyWorldTransforms(
 } // namespace
 
 std::vector<RenderCandidate> SceneRenderExtractor::extract(
-    const Scene& scene,
-    const AssetManager& assets) const
+    const scene::Scene& scene,
+    const asset::AssetManager& assets) const
 {
     std::vector<RenderCandidate> candidates;
 
-    const std::vector<SceneNode>& sceneNodes = scene.nodes();
+    const std::vector<scene::SceneNode>& sceneNodes = scene.nodes();
     const std::vector<glm::mat4> sceneWorld =
-        hierarchyWorldTransforms<SceneNode, kInvalidSceneNodeIndex>(
+        hierarchyWorldTransforms<
+            scene::SceneNode,
+            scene::kInvalidSceneNodeIndex>(
             sceneNodes,
             glm::mat4(1.0f));
 
@@ -72,15 +74,17 @@ std::vector<RenderCandidate> SceneRenderExtractor::extract(
          sceneIndex < sceneNodes.size();
          ++sceneIndex)
     {
-        const SceneNode& sceneNode = sceneNodes[sceneIndex];
+        const scene::SceneNode& sceneNode = sceneNodes[sceneIndex];
         if (!sceneNode.model)
         {
             continue;
         }
 
-        const ModelAsset& model = assets.model(sceneNode.model);
+        const asset::ModelAsset& model = assets.model(sceneNode.model);
         const std::vector<glm::mat4> modelWorld =
-            hierarchyWorldTransforms<ModelNode, kInvalidModelNodeIndex>(
+            hierarchyWorldTransforms<
+                asset::ModelNode,
+                asset::kInvalidModelNodeIndex>(
                 model.nodes(),
                 sceneWorld[sceneIndex]);
 
@@ -88,15 +92,15 @@ std::vector<RenderCandidate> SceneRenderExtractor::extract(
              modelIndex < model.nodes().size();
              ++modelIndex)
         {
-            const ModelNode& modelNode = model.nodes()[modelIndex];
-            for (MeshAssetHandle meshHandle : modelNode.meshes)
+            const asset::ModelNode& modelNode = model.nodes()[modelIndex];
+            for (asset::MeshAssetHandle meshHandle : modelNode.meshes)
             {
-                const MeshAsset& mesh = assets.mesh(meshHandle);
+                const asset::MeshAsset& mesh = assets.mesh(meshHandle);
                 for (uint32_t submeshIndex = 0;
                      submeshIndex < mesh.submeshes().size();
                      ++submeshIndex)
                 {
-                    const SubmeshData& submesh =
+                    const asset::SubmeshData& submesh =
                         mesh.submeshes()[submeshIndex];
                     RenderCandidate candidate{};
                     candidate.mesh = meshHandle;
@@ -108,7 +112,7 @@ std::vector<RenderCandidate> SceneRenderExtractor::extract(
                     candidate.objectData.world = modelWorld[modelIndex];
                     candidate.objectData.normalMatrix = glm::transpose(
                         glm::inverse(candidate.objectData.world));
-                    candidate.worldBounds = transformAabb(
+                    candidate.worldBounds = math::transformAabb(
                         mesh.localBounds(),
                         candidate.objectData.world);
 
@@ -120,4 +124,4 @@ std::vector<RenderCandidate> SceneRenderExtractor::extract(
     return candidates;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::render

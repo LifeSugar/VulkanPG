@@ -2,16 +2,23 @@
 
 #include "render/RenderFrame.hpp"
 
-namespace VkRenderer
+namespace rubia::asset
 {
-
 class AssetManager;
+}
+
+namespace rubia::scene
+{
 class Scene;
+}
+
+namespace rubia::render
+{
 
 /// Builds renderer input from one scene and view snapshot.
 [[nodiscard]] RenderFrame buildRenderFrame(
-    const Scene& scene,
-    const AssetManager& assets,
+    const scene::Scene& scene,
+    const asset::AssetManager& assets,
     RenderView view);
 
-} // namespace VkRenderer
+} // namespace rubia::render

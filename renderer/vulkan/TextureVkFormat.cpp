@@ -2,69 +2,69 @@
 
 #include <stdexcept>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 VkFormat textureVkFormat(
-    TextureFormat format,
-    TextureColorSpace colorSpace)
+    asset::TextureFormat format,
+    asset::TextureColorSpace colorSpace)
 {
-    const bool srgb = colorSpace == TextureColorSpace::Srgb;
+    const bool srgb = colorSpace == asset::TextureColorSpace::Srgb;
     switch (format)
     {
-    case TextureFormat::R8UNorm:
+    case asset::TextureFormat::R8UNorm:
         return srgb ? VK_FORMAT_R8_SRGB : VK_FORMAT_R8_UNORM;
-    case TextureFormat::RG8UNorm:
+    case asset::TextureFormat::RG8UNorm:
         return srgb ? VK_FORMAT_R8G8_SRGB : VK_FORMAT_R8G8_UNORM;
-    case TextureFormat::RGBA8UNorm:
+    case asset::TextureFormat::RGBA8UNorm:
         return srgb
             ? VK_FORMAT_R8G8B8A8_SRGB
             : VK_FORMAT_R8G8B8A8_UNORM;
-    case TextureFormat::RGBA16Float:
+    case asset::TextureFormat::RGBA16Float:
         if (!srgb) return VK_FORMAT_R16G16B16A16_SFLOAT;
         break;
-    case TextureFormat::RGBA32Float:
+    case asset::TextureFormat::RGBA32Float:
         if (!srgb) return VK_FORMAT_R32G32B32A32_SFLOAT;
         break;
-    case TextureFormat::BC1RGBUNorm:
+    case asset::TextureFormat::BC1RGBUNorm:
         return srgb
             ? VK_FORMAT_BC1_RGB_SRGB_BLOCK
             : VK_FORMAT_BC1_RGB_UNORM_BLOCK;
-    case TextureFormat::BC1RGBAUNorm:
+    case asset::TextureFormat::BC1RGBAUNorm:
         return srgb
             ? VK_FORMAT_BC1_RGBA_SRGB_BLOCK
             : VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
-    case TextureFormat::BC2UNorm:
+    case asset::TextureFormat::BC2UNorm:
         return srgb
             ? VK_FORMAT_BC2_SRGB_BLOCK
             : VK_FORMAT_BC2_UNORM_BLOCK;
-    case TextureFormat::BC3UNorm:
+    case asset::TextureFormat::BC3UNorm:
         return srgb
             ? VK_FORMAT_BC3_SRGB_BLOCK
             : VK_FORMAT_BC3_UNORM_BLOCK;
-    case TextureFormat::BC4UNorm:
+    case asset::TextureFormat::BC4UNorm:
         if (!srgb) return VK_FORMAT_BC4_UNORM_BLOCK;
         break;
-    case TextureFormat::BC4SNorm:
+    case asset::TextureFormat::BC4SNorm:
         if (!srgb) return VK_FORMAT_BC4_SNORM_BLOCK;
         break;
-    case TextureFormat::BC5UNorm:
+    case asset::TextureFormat::BC5UNorm:
         if (!srgb) return VK_FORMAT_BC5_UNORM_BLOCK;
         break;
-    case TextureFormat::BC5SNorm:
+    case asset::TextureFormat::BC5SNorm:
         if (!srgb) return VK_FORMAT_BC5_SNORM_BLOCK;
         break;
-    case TextureFormat::BC6HUFloat:
+    case asset::TextureFormat::BC6HUFloat:
         if (!srgb) return VK_FORMAT_BC6H_UFLOAT_BLOCK;
         break;
-    case TextureFormat::BC6HSFloat:
+    case asset::TextureFormat::BC6HSFloat:
         if (!srgb) return VK_FORMAT_BC6H_SFLOAT_BLOCK;
         break;
-    case TextureFormat::BC7UNorm:
+    case asset::TextureFormat::BC7UNorm:
         return srgb
             ? VK_FORMAT_BC7_SRGB_BLOCK
             : VK_FORMAT_BC7_UNORM_BLOCK;
-    case TextureFormat::Undefined:
+    case asset::TextureFormat::Undefined:
         break;
     }
     throw std::invalid_argument(
@@ -77,56 +77,56 @@ textureFormatFromVk(VkFormat format) noexcept
     switch (format)
     {
     case VK_FORMAT_R8_UNORM:
-        return TextureFormatMapping{TextureFormat::R8UNorm, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::R8UNorm, asset::TextureColorSpace::Linear};
     case VK_FORMAT_R8_SRGB:
-        return TextureFormatMapping{TextureFormat::R8UNorm, TextureColorSpace::Srgb};
+        return TextureFormatMapping{asset::TextureFormat::R8UNorm, asset::TextureColorSpace::Srgb};
     case VK_FORMAT_R8G8_UNORM:
-        return TextureFormatMapping{TextureFormat::RG8UNorm, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::RG8UNorm, asset::TextureColorSpace::Linear};
     case VK_FORMAT_R8G8_SRGB:
-        return TextureFormatMapping{TextureFormat::RG8UNorm, TextureColorSpace::Srgb};
+        return TextureFormatMapping{asset::TextureFormat::RG8UNorm, asset::TextureColorSpace::Srgb};
     case VK_FORMAT_R8G8B8A8_UNORM:
-        return TextureFormatMapping{TextureFormat::RGBA8UNorm, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::RGBA8UNorm, asset::TextureColorSpace::Linear};
     case VK_FORMAT_R8G8B8A8_SRGB:
-        return TextureFormatMapping{TextureFormat::RGBA8UNorm, TextureColorSpace::Srgb};
+        return TextureFormatMapping{asset::TextureFormat::RGBA8UNorm, asset::TextureColorSpace::Srgb};
     case VK_FORMAT_R16G16B16A16_SFLOAT:
-        return TextureFormatMapping{TextureFormat::RGBA16Float, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::RGBA16Float, asset::TextureColorSpace::Linear};
     case VK_FORMAT_R32G32B32A32_SFLOAT:
-        return TextureFormatMapping{TextureFormat::RGBA32Float, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::RGBA32Float, asset::TextureColorSpace::Linear};
     case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC1RGBUNorm, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::BC1RGBUNorm, asset::TextureColorSpace::Linear};
     case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC1RGBUNorm, TextureColorSpace::Srgb};
+        return TextureFormatMapping{asset::TextureFormat::BC1RGBUNorm, asset::TextureColorSpace::Srgb};
     case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC1RGBAUNorm, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::BC1RGBAUNorm, asset::TextureColorSpace::Linear};
     case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC1RGBAUNorm, TextureColorSpace::Srgb};
+        return TextureFormatMapping{asset::TextureFormat::BC1RGBAUNorm, asset::TextureColorSpace::Srgb};
     case VK_FORMAT_BC2_UNORM_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC2UNorm, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::BC2UNorm, asset::TextureColorSpace::Linear};
     case VK_FORMAT_BC2_SRGB_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC2UNorm, TextureColorSpace::Srgb};
+        return TextureFormatMapping{asset::TextureFormat::BC2UNorm, asset::TextureColorSpace::Srgb};
     case VK_FORMAT_BC3_UNORM_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC3UNorm, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::BC3UNorm, asset::TextureColorSpace::Linear};
     case VK_FORMAT_BC3_SRGB_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC3UNorm, TextureColorSpace::Srgb};
+        return TextureFormatMapping{asset::TextureFormat::BC3UNorm, asset::TextureColorSpace::Srgb};
     case VK_FORMAT_BC4_UNORM_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC4UNorm, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::BC4UNorm, asset::TextureColorSpace::Linear};
     case VK_FORMAT_BC4_SNORM_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC4SNorm, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::BC4SNorm, asset::TextureColorSpace::Linear};
     case VK_FORMAT_BC5_UNORM_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC5UNorm, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::BC5UNorm, asset::TextureColorSpace::Linear};
     case VK_FORMAT_BC5_SNORM_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC5SNorm, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::BC5SNorm, asset::TextureColorSpace::Linear};
     case VK_FORMAT_BC6H_UFLOAT_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC6HUFloat, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::BC6HUFloat, asset::TextureColorSpace::Linear};
     case VK_FORMAT_BC6H_SFLOAT_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC6HSFloat, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::BC6HSFloat, asset::TextureColorSpace::Linear};
     case VK_FORMAT_BC7_UNORM_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC7UNorm, TextureColorSpace::Linear};
+        return TextureFormatMapping{asset::TextureFormat::BC7UNorm, asset::TextureColorSpace::Linear};
     case VK_FORMAT_BC7_SRGB_BLOCK:
-        return TextureFormatMapping{TextureFormat::BC7UNorm, TextureColorSpace::Srgb};
+        return TextureFormatMapping{asset::TextureFormat::BC7UNorm, asset::TextureColorSpace::Srgb};
     default:
         return std::nullopt;
     }
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

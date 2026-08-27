@@ -10,7 +10,7 @@
 #include <iostream>
 #include <stdexcept>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 namespace
 {
@@ -171,7 +171,7 @@ void ImGuiLayer::initializeRendererBackend(
     }
 
     makeContextCurrent();
-    const Device& device = context_->device();
+    const rhi::vulkan::Device& device = context_->device();
 
     ImGui_ImplVulkan_InitInfo initInfo{};
     initInfo.ApiVersion = VK_API_VERSION_1_3;
@@ -227,4 +227,4 @@ void ImGuiLayer::makeContextCurrent() const noexcept
     }
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

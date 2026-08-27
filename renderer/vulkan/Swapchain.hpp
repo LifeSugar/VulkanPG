@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 /// Owns a presentation swapchain and views of its images.
@@ -111,4 +111,4 @@ private:
     VkExtent2D extent_{};
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

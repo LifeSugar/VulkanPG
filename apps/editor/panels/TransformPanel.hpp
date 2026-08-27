@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 /// Draws a read-only translation/rotation/scale view of one transform.
@@ -18,4 +18,4 @@ public:
     void draw(const glm::mat4& transform, Space space) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

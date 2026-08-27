@@ -9,7 +9,7 @@
 #include <cstddef>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 class Device;
@@ -99,4 +99,4 @@ private:
     VkExtent2D extent_{};
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

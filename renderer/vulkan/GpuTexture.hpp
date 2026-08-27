@@ -7,7 +7,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 /// Vulkan sampling resources created from one source-independent TextureAsset.
@@ -17,7 +17,7 @@ public:
     /// Source asset and sampling view used to create one GPU texture.
     struct CreateInfo
     {
-        const TextureAsset* asset = nullptr;
+        const asset::TextureAsset* asset = nullptr;
         VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D;
         VkComponentMapping components{
             VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -67,4 +67,4 @@ private:
     VkSampler sampler_ = VK_NULL_HANDLE;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

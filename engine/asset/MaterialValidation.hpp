@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 class AssetManager;
@@ -24,4 +24,4 @@ class AssetManager;
     const MaterialAsset::CreateInfo& createInfo,
     const AssetManager& assets);
 
-} // namespace VkRenderer
+} // namespace rubia::asset

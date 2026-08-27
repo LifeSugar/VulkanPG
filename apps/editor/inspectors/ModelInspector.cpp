@@ -8,20 +8,20 @@
 
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 namespace
 {
 
 [[nodiscard]] glm::mat4 sceneNodeWorldTransform(
-    const Scene& scene,
+    const scene::Scene& scene,
     uint32_t nodeIndex)
 {
-    const std::vector<SceneNode>& nodes = scene.nodes();
+    const std::vector<scene::SceneNode>& nodes = scene.nodes();
     std::vector<uint32_t> ancestors;
     uint32_t current = nodeIndex;
-    while (current != kInvalidSceneNodeIndex)
+    while (current != scene::kInvalidSceneNodeIndex)
     {
         ancestors.push_back(current);
         current = nodes[current].parent;
@@ -40,10 +40,10 @@ namespace
 } // namespace
 
 std::optional<InspectorTarget> ModelInspector::drawModelAsset(
-    const AssetManager& assets,
-    ModelAssetHandle target) const
+    const asset::AssetManager& assets,
+    asset::ModelAssetHandle target) const
 {
-    using namespace InspectorWidgets;
+    using namespace widgets;
 
     if (!assets.contains(target))
     {
@@ -51,7 +51,7 @@ std::optional<InspectorTarget> ModelInspector::drawModelAsset(
         return std::nullopt;
     }
 
-    const ModelAsset& model = assets.model(target);
+    const asset::ModelAsset& model = assets.model(target);
     ImGui::SeparatorText("Model Asset");
     drawProperty("Name", displayName(model.name(), "Unnamed Model"));
     drawProperty("Nodes", static_cast<uint32_t>(model.nodes().size()));
@@ -62,7 +62,7 @@ std::optional<InspectorTarget> ModelInspector::drawModelAsset(
          ++index)
     {
         ImGui::PushID(static_cast<int>(index));
-        const ModelNode& node = model.nodes()[index];
+        const asset::ModelNode& node = model.nodes()[index];
         if (ImGui::Selectable(displayName(node.name, "Unnamed ModelNode")))
         {
             ImGui::PopID();
@@ -76,11 +76,11 @@ std::optional<InspectorTarget> ModelInspector::drawModelAsset(
 }
 
 std::optional<InspectorTarget> ModelInspector::drawModelNode(
-    const Scene& scene,
-    const AssetManager& assets,
+    const scene::Scene& scene,
+    const asset::AssetManager& assets,
     ModelNodeTarget target)
 {
-    using namespace InspectorWidgets;
+    using namespace widgets;
 
     if (!assets.contains(target.model) ||
         target.nodeIndex >= assets.model(target.model).nodes().size())
@@ -89,8 +89,8 @@ std::optional<InspectorTarget> ModelInspector::drawModelNode(
         return std::nullopt;
     }
 
-    const ModelAsset& model = assets.model(target.model);
-    const ModelNode& node = model.nodes()[target.nodeIndex];
+    const asset::ModelAsset& model = assets.model(target.model);
+    const asset::ModelNode& node = model.nodes()[target.nodeIndex];
     if (target.sceneNodeIndex &&
         (*target.sceneNodeIndex >= scene.nodes().size() ||
          scene.nodes()[*target.sceneNodeIndex].model != target.model))
@@ -104,7 +104,7 @@ std::optional<InspectorTarget> ModelInspector::drawModelNode(
     drawProperty("Node Index", target.nodeIndex);
     drawProperty(
         "Parent",
-        node.parent == kInvalidModelNodeIndex ? "Model Root" : "ModelNode");
+        node.parent == asset::kInvalidModelNodeIndex ? "Model Root" : "ModelNode");
     drawProperty(
         "Mesh References",
         static_cast<uint32_t>(node.meshes.size()));
@@ -112,7 +112,7 @@ std::optional<InspectorTarget> ModelInspector::drawModelNode(
     glm::mat4 inspectedTransform = node.localTransform;
     TransformPanel::Space transformSpace =
         TransformPanel::Space::LocalToParent;
-    if (node.parent == kInvalidModelNodeIndex)
+    if (node.parent == asset::kInvalidModelNodeIndex)
     {
         transformSpace = TransformPanel::Space::World;
         if (target.sceneNodeIndex)
@@ -127,10 +127,10 @@ std::optional<InspectorTarget> ModelInspector::drawModelNode(
 }
 
 std::optional<InspectorTarget> ModelInspector::drawMeshAsset(
-    const AssetManager& assets,
-    MeshAssetHandle target) const
+    const asset::AssetManager& assets,
+    asset::MeshAssetHandle target) const
 {
-    using namespace InspectorWidgets;
+    using namespace widgets;
 
     if (!assets.contains(target))
     {
@@ -138,7 +138,7 @@ std::optional<InspectorTarget> ModelInspector::drawMeshAsset(
         return std::nullopt;
     }
 
-    const MeshAsset& mesh = assets.mesh(target);
+    const asset::MeshAsset& mesh = assets.mesh(target);
     ImGui::SeparatorText("Mesh Asset");
     drawProperty("Name", displayName(mesh.name(), "Unnamed Mesh"));
     drawProperty("Vertices", static_cast<uint32_t>(mesh.vertices().size()));
@@ -148,10 +148,10 @@ std::optional<InspectorTarget> ModelInspector::drawMeshAsset(
 }
 
 std::optional<InspectorTarget> ModelInspector::drawSubmesh(
-    const AssetManager& assets,
+    const asset::AssetManager& assets,
     SubmeshTarget target) const
 {
-    using namespace InspectorWidgets;
+    using namespace widgets;
 
     if (!assets.contains(target.mesh) ||
         target.submeshIndex >= assets.mesh(target.mesh).submeshes().size())
@@ -160,7 +160,7 @@ std::optional<InspectorTarget> ModelInspector::drawSubmesh(
         return std::nullopt;
     }
 
-    const SubmeshData& submesh =
+    const asset::SubmeshData& submesh =
         assets.mesh(target.mesh).submeshes()[target.submeshIndex];
     ImGui::SeparatorText("Submesh");
     drawProperty("Submesh Index", target.submeshIndex);
@@ -169,7 +169,7 @@ std::optional<InspectorTarget> ModelInspector::drawSubmesh(
 
     if (submesh.material && assets.contains(submesh.material))
     {
-        const MaterialAsset& material = assets.material(submesh.material);
+        const asset::MaterialAsset& material = assets.material(submesh.material);
         if (drawReference(
                 "Material",
                 displayName(material.name(), "Unnamed Material"),
@@ -186,4 +186,4 @@ std::optional<InspectorTarget> ModelInspector::drawSubmesh(
     return std::nullopt;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

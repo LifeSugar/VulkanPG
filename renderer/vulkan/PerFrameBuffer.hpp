@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 class Device;
@@ -78,4 +78,4 @@ private:
     bool hasStagedData_ = false;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

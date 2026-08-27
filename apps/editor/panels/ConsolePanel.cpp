@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 void ConsoleLogBuffer::append(const char* text, std::size_t size)
@@ -155,4 +155,4 @@ void ConsolePanel::draw(bool* open)
     ImGui::End();
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

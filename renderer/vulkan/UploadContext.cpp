@@ -5,7 +5,7 @@
 #include <limits>
 #include <stdexcept>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 namespace
 {
@@ -387,4 +387,4 @@ void UploadContext::copyBuffer(
     commandPool_->free(commandBuffer);
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

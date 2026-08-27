@@ -7,7 +7,7 @@
 #include <variant>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 struct SceneNodeTarget final
@@ -17,7 +17,7 @@ struct SceneNodeTarget final
 
 struct ModelNodeTarget final
 {
-    ModelAssetHandle model;
+    asset::ModelAssetHandle model;
     uint32_t nodeIndex = 0;
     /// Identifies the SceneNode instance when selected from the Hierarchy.
     std::optional<uint32_t> sceneNodeIndex;
@@ -25,20 +25,20 @@ struct ModelNodeTarget final
 
 struct SubmeshTarget final
 {
-    MeshAssetHandle mesh;
+    asset::MeshAssetHandle mesh;
     uint32_t submeshIndex = 0;
 };
 
 using InspectorTarget = std::variant<
     std::monostate,
     SceneNodeTarget,
-    ModelAssetHandle,
+    asset::ModelAssetHandle,
     ModelNodeTarget,
-    MeshAssetHandle,
+    asset::MeshAssetHandle,
     SubmeshTarget,
-    MaterialAssetHandle,
-    MaterialTemplateAssetHandle,
-    TextureAssetHandle>;
+    asset::MaterialAssetHandle,
+    asset::MaterialTemplateAssetHandle,
+    asset::TextureAssetHandle>;
 
 /// Central Editor-only selection state. It never owns Scene or Asset data.
 class EditorSelection final
@@ -60,4 +60,4 @@ private:
     std::vector<InspectorTarget> history_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

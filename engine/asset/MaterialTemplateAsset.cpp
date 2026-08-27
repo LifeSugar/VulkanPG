@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 MaterialTemplateAsset::MaterialTemplateAsset(CreateInfo createInfo)
@@ -148,4 +148,4 @@ uint32_t MaterialTemplateAsset::valueSize(MaterialValueType type) noexcept
     return 0;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::asset

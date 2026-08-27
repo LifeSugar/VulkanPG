@@ -3,6 +3,9 @@
 
 #include <limits>
 
+namespace rubia::render
+{
+
 Camera::Camera()
     : m_position(0.0f, 0.0f, 0.0f)
     , m_rotation(0.0f, 0.0f, 0.0f)
@@ -12,7 +15,7 @@ Camera::Camera()
     , m_viewProjectionMatrix(1.0f)
     , m_isViewDirty(true)
     , m_isProjectionDirty(true)
-    , m_viewId(VkRenderer::RenderViewId::generate())
+    , m_viewId(RenderViewId::generate())
 {
 }
 
@@ -65,23 +68,23 @@ const glm::vec3 &Camera::getRotation() const
 }
 
 void Camera::setCullingMask(
-    VkRenderer::LayerMask cullingMask) noexcept
+    LayerMask cullingMask) noexcept
 {
     m_cullingMask = cullingMask;
 }
 
-VkRenderer::LayerMask Camera::getCullingMask() const noexcept
+LayerMask Camera::getCullingMask() const noexcept
 {
     return m_cullingMask;
 }
 
 void Camera::setCullingFlags(
-    VkRenderer::CullingFlags cullingFlags) noexcept
+    CullingFlags cullingFlags) noexcept
 {
     m_cullingFlags = cullingFlags;
 }
 
-VkRenderer::CullingFlags Camera::getCullingFlags() const noexcept
+CullingFlags Camera::getCullingFlags() const noexcept
 {
     return m_cullingFlags;
 }
@@ -118,17 +121,17 @@ const glm::mat4 &Camera::getViewProjectionMatrix() const
     return m_viewProjectionMatrix;
 }
 
-VkRenderer::CameraGpuData Camera::getGpuData() const
+CameraGpuData Camera::getGpuData() const
 {
-    VkRenderer::CameraGpuData data{};
+    CameraGpuData data{};
     data.viewProjection = getViewProjectionMatrix();
     data.worldPosition = glm::vec4(m_position, 1.0f);
     return data;
 }
 
-VkRenderer::RenderView Camera::makeRenderView() const
+RenderView Camera::makeRenderView() const
 {
-    VkRenderer::RenderView view{};
+    RenderView view{};
     view.id = m_viewId;
     view.gpuDataRevision = m_gpuDataRevision;
     view.viewMatrix = getViewMatrix();
@@ -194,7 +197,7 @@ void Camera::markGpuDataChanged()
     {
         // Rotate the identity as well so a wrapped revision cannot match a
         // snapshot cached for this Camera's previous revision cycle.
-        m_viewId = VkRenderer::RenderViewId::generate();
+        m_viewId = RenderViewId::generate();
         m_gpuDataRevision = 1;
     }
     else
@@ -223,4 +226,6 @@ void Camera::recalculateProjectionMatrix() const
     m_projectionMatrix[1][1] *= -1.0f;
     m_isProjectionDirty = false;
 }
+
+} // namespace rubia::render
 

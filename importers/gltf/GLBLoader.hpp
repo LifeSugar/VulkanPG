@@ -15,6 +15,9 @@
 //   if (model) { /* 使用 model->meshes / materials / rootNode ... */ }
 // ============================================================================
 
+namespace rubia::importer::gltf
+{
+
 class GLBLoader {
 public:
     GLBLoader();
@@ -53,3 +56,5 @@ private:
     std::unique_ptr<GLBModel> m_model;
     std::string               m_lastError;
 };
+
+} // namespace rubia::importer::gltf

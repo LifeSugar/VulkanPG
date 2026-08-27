@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 VulkanApplicationGuiRenderBridge::~VulkanApplicationGuiRenderBridge()
@@ -78,7 +78,7 @@ void VulkanApplicationGuiRenderBridge::resizeSceneViewport(
     }
 }
 
-ApplicationGuiRenderFrame
+render::ApplicationGuiRenderFrame
 VulkanApplicationGuiRenderBridge::currentFrame()
 {
     if (renderer_ == nullptr)
@@ -86,7 +86,7 @@ VulkanApplicationGuiRenderBridge::currentFrame()
         return {};
     }
 
-    ApplicationGuiRenderFrame frame{};
+    render::ApplicationGuiRenderFrame frame{};
 
     if (renderer_->outputMode() != VulkanRenderer::OutputMode::Editor)
     {
@@ -110,8 +110,8 @@ VulkanApplicationGuiRenderBridge::currentFrame()
     return frame;
 }
 
-ApplicationGuiTexture VulkanApplicationGuiRenderBridge::preview(
-    TextureAssetHandle texture)
+render::ApplicationGuiTexture VulkanApplicationGuiRenderBridge::preview(
+    asset::TextureAssetHandle texture)
 {
     if (renderAssets_ == nullptr || !texture)
     {
@@ -152,7 +152,7 @@ ApplicationGuiTexture VulkanApplicationGuiRenderBridge::preview(
 }
 
 void VulkanApplicationGuiRenderBridge::invalidatePreview(
-    TextureAssetHandle texture) noexcept
+    asset::TextureAssetHandle texture) noexcept
 {
     const auto firstRemoved = std::remove_if(
         previewTextures_.begin(),
@@ -251,4 +251,4 @@ void VulkanApplicationGuiRenderBridge::releasePreviewTextures() noexcept
     previewTextures_.clear();
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

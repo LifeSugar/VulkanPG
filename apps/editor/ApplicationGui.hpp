@@ -1,31 +1,28 @@
 #pragma once
 
+#include "EditorFwd.hpp"
 #include "texture/TextureImportRegistry.hpp"
 
 #include <optional>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::editor
 {
-
-class AssetManager;
-class ApplicationGuiRenderBridge;
-class Scene;
 
 /// Non-owning services exposed to one application GUI frame.
 struct ApplicationGuiContext
 {
-    AssetManager& assets;
-    Scene& scene;
-    ApplicationGuiRenderBridge& render;
-    const TextureImportRegistry* textureImports = nullptr;
+    asset::AssetManager& assets;
+    scene::Scene& scene;
+    render::ApplicationGuiRenderBridge& render;
+    const importer::texture::TextureImportRegistry* textureImports = nullptr;
 };
 
 /// Per-frame GUI decisions consumed before building the scene RenderFrame.
 struct ApplicationGuiFrameOutput
 {
     std::optional<float> sceneAspectRatio;
-    std::vector<TextureReimportRequest> textureReimports;
+    std::vector<importer::texture::TextureReimportRequest> textureReimports;
 };
 
 /// UI business layer consumed by App without depending on Runtime or Editor UI.
@@ -40,4 +37,4 @@ public:
         const ApplicationGuiContext& context) = 0;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

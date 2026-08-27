@@ -7,57 +7,57 @@
 
 #include <stdexcept>
 
-namespace VkRenderer
+namespace rubia::importer::texture
 {
 
 Ktx2FormatCode textureKtx2Format(
-    TextureFormat format,
-    TextureColorSpace colorSpace)
+    asset::TextureFormat format,
+    asset::TextureColorSpace colorSpace)
 {
-    const bool srgb = colorSpace == TextureColorSpace::Srgb;
+    const bool srgb = colorSpace == asset::TextureColorSpace::Srgb;
     switch (format)
     {
-    case TextureFormat::R8UNorm:
+    case asset::TextureFormat::R8UNorm:
         return srgb ? Ktx2FormatCode::R8Srgb : Ktx2FormatCode::R8UNorm;
-    case TextureFormat::RG8UNorm:
+    case asset::TextureFormat::RG8UNorm:
         return srgb ? Ktx2FormatCode::RG8Srgb : Ktx2FormatCode::RG8UNorm;
-    case TextureFormat::RGBA8UNorm:
+    case asset::TextureFormat::RGBA8UNorm:
         return srgb ? Ktx2FormatCode::RGBA8Srgb : Ktx2FormatCode::RGBA8UNorm;
-    case TextureFormat::RGBA16Float:
+    case asset::TextureFormat::RGBA16Float:
         if (!srgb) return Ktx2FormatCode::RGBA16Float;
         break;
-    case TextureFormat::RGBA32Float:
+    case asset::TextureFormat::RGBA32Float:
         if (!srgb) return Ktx2FormatCode::RGBA32Float;
         break;
-    case TextureFormat::BC1RGBUNorm:
+    case asset::TextureFormat::BC1RGBUNorm:
         return srgb ? Ktx2FormatCode::BC1RGBSrgb : Ktx2FormatCode::BC1RGBUNorm;
-    case TextureFormat::BC1RGBAUNorm:
+    case asset::TextureFormat::BC1RGBAUNorm:
         return srgb ? Ktx2FormatCode::BC1RGBASrgb : Ktx2FormatCode::BC1RGBAUNorm;
-    case TextureFormat::BC2UNorm:
+    case asset::TextureFormat::BC2UNorm:
         return srgb ? Ktx2FormatCode::BC2Srgb : Ktx2FormatCode::BC2UNorm;
-    case TextureFormat::BC3UNorm:
+    case asset::TextureFormat::BC3UNorm:
         return srgb ? Ktx2FormatCode::BC3Srgb : Ktx2FormatCode::BC3UNorm;
-    case TextureFormat::BC4UNorm:
+    case asset::TextureFormat::BC4UNorm:
         if (!srgb) return Ktx2FormatCode::BC4UNorm;
         break;
-    case TextureFormat::BC4SNorm:
+    case asset::TextureFormat::BC4SNorm:
         if (!srgb) return Ktx2FormatCode::BC4SNorm;
         break;
-    case TextureFormat::BC5UNorm:
+    case asset::TextureFormat::BC5UNorm:
         if (!srgb) return Ktx2FormatCode::BC5UNorm;
         break;
-    case TextureFormat::BC5SNorm:
+    case asset::TextureFormat::BC5SNorm:
         if (!srgb) return Ktx2FormatCode::BC5SNorm;
         break;
-    case TextureFormat::BC6HUFloat:
+    case asset::TextureFormat::BC6HUFloat:
         if (!srgb) return Ktx2FormatCode::BC6HUFloat;
         break;
-    case TextureFormat::BC6HSFloat:
+    case asset::TextureFormat::BC6HSFloat:
         if (!srgb) return Ktx2FormatCode::BC6HSFloat;
         break;
-    case TextureFormat::BC7UNorm:
+    case asset::TextureFormat::BC7UNorm:
         return srgb ? Ktx2FormatCode::BC7Srgb : Ktx2FormatCode::BC7UNorm;
-    case TextureFormat::Undefined:
+    case asset::TextureFormat::Undefined:
         break;
     }
     throw std::invalid_argument(
@@ -70,57 +70,57 @@ textureFormatFromKtx2(uint32_t formatCode) noexcept
     switch (static_cast<Ktx2FormatCode>(formatCode))
     {
     case Ktx2FormatCode::R8UNorm:
-        return Ktx2TextureFormatMapping{TextureFormat::R8UNorm, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::R8UNorm, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::R8Srgb:
-        return Ktx2TextureFormatMapping{TextureFormat::R8UNorm, TextureColorSpace::Srgb};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::R8UNorm, asset::TextureColorSpace::Srgb};
     case Ktx2FormatCode::RG8UNorm:
-        return Ktx2TextureFormatMapping{TextureFormat::RG8UNorm, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::RG8UNorm, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::RG8Srgb:
-        return Ktx2TextureFormatMapping{TextureFormat::RG8UNorm, TextureColorSpace::Srgb};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::RG8UNorm, asset::TextureColorSpace::Srgb};
     case Ktx2FormatCode::RGBA8UNorm:
-        return Ktx2TextureFormatMapping{TextureFormat::RGBA8UNorm, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::RGBA8UNorm, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::RGBA8Srgb:
-        return Ktx2TextureFormatMapping{TextureFormat::RGBA8UNorm, TextureColorSpace::Srgb};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::RGBA8UNorm, asset::TextureColorSpace::Srgb};
     case Ktx2FormatCode::RGBA16Float:
-        return Ktx2TextureFormatMapping{TextureFormat::RGBA16Float, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::RGBA16Float, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::RGBA32Float:
-        return Ktx2TextureFormatMapping{TextureFormat::RGBA32Float, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::RGBA32Float, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::BC1RGBUNorm:
-        return Ktx2TextureFormatMapping{TextureFormat::BC1RGBUNorm, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC1RGBUNorm, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::BC1RGBSrgb:
-        return Ktx2TextureFormatMapping{TextureFormat::BC1RGBUNorm, TextureColorSpace::Srgb};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC1RGBUNorm, asset::TextureColorSpace::Srgb};
     case Ktx2FormatCode::BC1RGBAUNorm:
-        return Ktx2TextureFormatMapping{TextureFormat::BC1RGBAUNorm, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC1RGBAUNorm, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::BC1RGBASrgb:
-        return Ktx2TextureFormatMapping{TextureFormat::BC1RGBAUNorm, TextureColorSpace::Srgb};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC1RGBAUNorm, asset::TextureColorSpace::Srgb};
     case Ktx2FormatCode::BC2UNorm:
-        return Ktx2TextureFormatMapping{TextureFormat::BC2UNorm, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC2UNorm, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::BC2Srgb:
-        return Ktx2TextureFormatMapping{TextureFormat::BC2UNorm, TextureColorSpace::Srgb};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC2UNorm, asset::TextureColorSpace::Srgb};
     case Ktx2FormatCode::BC3UNorm:
-        return Ktx2TextureFormatMapping{TextureFormat::BC3UNorm, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC3UNorm, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::BC3Srgb:
-        return Ktx2TextureFormatMapping{TextureFormat::BC3UNorm, TextureColorSpace::Srgb};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC3UNorm, asset::TextureColorSpace::Srgb};
     case Ktx2FormatCode::BC4UNorm:
-        return Ktx2TextureFormatMapping{TextureFormat::BC4UNorm, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC4UNorm, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::BC4SNorm:
-        return Ktx2TextureFormatMapping{TextureFormat::BC4SNorm, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC4SNorm, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::BC5UNorm:
-        return Ktx2TextureFormatMapping{TextureFormat::BC5UNorm, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC5UNorm, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::BC5SNorm:
-        return Ktx2TextureFormatMapping{TextureFormat::BC5SNorm, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC5SNorm, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::BC6HUFloat:
-        return Ktx2TextureFormatMapping{TextureFormat::BC6HUFloat, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC6HUFloat, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::BC6HSFloat:
-        return Ktx2TextureFormatMapping{TextureFormat::BC6HSFloat, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC6HSFloat, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::BC7UNorm:
-        return Ktx2TextureFormatMapping{TextureFormat::BC7UNorm, TextureColorSpace::Linear};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC7UNorm, asset::TextureColorSpace::Linear};
     case Ktx2FormatCode::BC7Srgb:
-        return Ktx2TextureFormatMapping{TextureFormat::BC7UNorm, TextureColorSpace::Srgb};
+        return Ktx2TextureFormatMapping{asset::TextureFormat::BC7UNorm, asset::TextureColorSpace::Srgb};
     case Ktx2FormatCode::Undefined:
         break;
     }
     return std::nullopt;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::importer::texture

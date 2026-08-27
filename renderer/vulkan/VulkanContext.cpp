@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 VulkanContext::VulkanContext(
@@ -310,4 +310,4 @@ void VulkanContext::destroyDebugMessenger(
     }
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

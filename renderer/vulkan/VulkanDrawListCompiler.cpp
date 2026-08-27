@@ -10,26 +10,26 @@
 #include <stdexcept>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 namespace
 {
 
 std::vector<VulkanDrawItem> compileItems(
-    const std::vector<RenderItem>& source,
+    const std::vector<render::RenderItem>& source,
     std::size_t objectCount,
     bool transparent,
     const RenderAssetCache& resources)
 {
     std::vector<VulkanDrawItem> result;
     result.reserve(source.size());
-    for (const RenderItem& item : source)
+    for (const render::RenderItem& item : source)
     {
         if (!item.mesh || !item.material ||
             !item.materialKey || !item.pipelineKey ||
-            item.materialKey != makeMaterialKey(item.material) ||
+            item.materialKey != render::makeMaterialKey(item.material) ||
             item.objectIndex >= objectCount ||
-            isTransparentQueue(item.queue) != transparent)
+            render::isTransparentQueue(item.queue) != transparent)
         {
             throw std::invalid_argument(
                 "RenderList contains an invalid backend-neutral draw item");
@@ -49,11 +49,11 @@ std::vector<VulkanDrawItem> compileItems(
                 "RenderList references an invalid Vulkan submesh");
         }
 
-        const MaterialRenderState& renderState = material->renderState();
+        const asset::MaterialRenderState& renderState = material->renderState();
         if (material->materialTemplate() !=
                 item.pipelineKey.materialTemplate ||
-            renderQueueFor(renderState) != item.queue ||
-            makePipelineVariantKey(
+            render::renderQueueFor(renderState) != item.queue ||
+            render::makePipelineVariantKey(
                 item.pipelineKey.materialTemplate,
                 renderState) != item.pipelineKey)
         {
@@ -75,7 +75,7 @@ std::vector<VulkanDrawItem> compileItems(
 } // namespace
 
 VulkanDrawList VulkanDrawListCompiler::compile(
-    const RenderList& source,
+    const render::RenderList& source,
     const RenderAssetCache& resources) const
 {
     VulkanDrawList result{};
@@ -92,4 +92,4 @@ VulkanDrawList VulkanDrawListCompiler::compile(
     return result;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

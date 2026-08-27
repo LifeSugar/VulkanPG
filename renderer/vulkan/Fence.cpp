@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 Fence::Fence(VkDevice device, VkFenceCreateFlags flags)
@@ -89,4 +89,4 @@ void Fence::reset() noexcept
     fence_ = VK_NULL_HANDLE;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

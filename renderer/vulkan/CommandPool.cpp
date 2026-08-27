@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 CommandPool::CommandPool(
@@ -131,4 +131,4 @@ void CommandPool::free(const std::vector<VkCommandBuffer>& commandBuffers) const
     }
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

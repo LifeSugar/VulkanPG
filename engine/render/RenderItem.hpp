@@ -7,15 +7,15 @@
 
 #include <cstdint>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 /// One view-specific, backend-neutral draw produced from a visible candidate.
 struct RenderItem
 {
     /// Stable asset identities resolved by the active render backend.
-    MeshAssetHandle mesh;
-    MaterialAssetHandle material;
+    asset::MeshAssetHandle mesh;
+    asset::MaterialAssetHandle material;
 
     /// Stable material binding identity and material-controlled PSO variant.
     MaterialKey materialKey;
@@ -33,4 +33,4 @@ struct RenderItem
     float viewDepth = 0.0f;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::render

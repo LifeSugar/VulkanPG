@@ -10,7 +10,7 @@
 #include <cmath>
 #include <stdexcept>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 App::~App()
@@ -68,7 +68,7 @@ void App::initWindow(const RunConfig& config, bool visible)
         throw std::invalid_argument("App run config contains an invalid window");
     }
 
-    Window::CreateInfo createInfo{};
+    rhi::vulkan::Window::CreateInfo createInfo{};
     createInfo.width = config.windowWidth;
     createInfo.height = config.windowHeight;
     createInfo.title = config.windowTitle;
@@ -78,7 +78,7 @@ void App::initWindow(const RunConfig& config, bool visible)
 
 void App::initVulkan(const RunConfig& config)
 {
-    VulkanContext::CreateInfo contextCreateInfo{};
+    rhi::vulkan::VulkanContext::CreateInfo contextCreateInfo{};
     contextCreateInfo.enableValidationLayers = kEnableValidationLayers;
     contextCreateInfo.preferIntegratedGpu = preferIntegratedGpu;
     vulkanContext.create(window, contextCreateInfo);
@@ -89,28 +89,28 @@ void App::initVulkan(const RunConfig& config)
         config.demoContent,
         &textureImports);
 
-    const Device& device = vulkanContext.device();
-    CommandPool uploadCommandPool(
+    const rhi::vulkan::Device& device = vulkanContext.device();
+    rhi::vulkan::CommandPool uploadCommandPool(
         device,
         device.graphicsQueueFamily(),
         VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
-    UploadContext uploadContext(device, uploadCommandPool);
+    rhi::vulkan::UploadContext uploadContext(device, uploadCommandPool);
     renderAssets.create(
         device,
         uploadContext,
         assetManager,
         {demoContent.model});
 
-    VulkanRenderer::CreateInfo rendererCreateInfo{};
+    rhi::vulkan::VulkanRenderer::CreateInfo rendererCreateInfo{};
     rendererCreateInfo.context = &vulkanContext;
     rendererCreateInfo.framebufferExtent = window.framebufferExtent();
     rendererCreateInfo.framesInFlight = kMaxFramesInFlight;
     rendererCreateInfo.outputMode = config.outputMode;
-    rendererCreateInfo.graphicsPipeline = makeDefaultScenePipeline(
+    rendererCreateInfo.graphicsPipeline = rhi::vulkan::makeDefaultScenePipeline(
         assetManager.shader(demoContent.pbrVertexShader),
         assetManager.shader(demoContent.pbrFragmentShader),
         renderAssets.materialDescriptorSetLayout());
-    rendererCreateInfo.presentPipeline = makeDefaultPresentPipeline(
+    rendererCreateInfo.presentPipeline = rhi::vulkan::makeDefaultPresentPipeline(
         assetManager.shader(demoContent.presentVertexShader),
         assetManager.shader(demoContent.presentFragmentShader));
     renderer.create(rendererCreateInfo);
@@ -187,9 +187,9 @@ void App::mainLoop(ApplicationGui& gui)
         drawGui(gui);
         ImDrawData* uiDrawData = imguiLayer.endFrame();
 
-        const VulkanRenderer::RenderResult renderResult =
+        const rhi::vulkan::VulkanRenderer::RenderResult renderResult =
             renderer.render(makeRenderFrame(), renderAssets, uiDrawData);
-        if (renderResult == VulkanRenderer::RenderResult::NeedsResize)
+        if (renderResult == rhi::vulkan::VulkanRenderer::RenderResult::NeedsResize)
         {
             requestSwapChainRecreation();
         }
@@ -204,12 +204,12 @@ void App::drawGui(ApplicationGui& gui)
         guiRenderBridge,
         &textureImports};
     const ApplicationGuiFrameOutput output = gui.draw(context);
-    for (const TextureReimportRequest& request : output.textureReimports)
+    for (const importer::texture::TextureReimportRequest& request : output.textureReimports)
     {
         const bool alreadyQueued = std::any_of(
             pendingTextureReimports_.begin(),
             pendingTextureReimports_.end(),
-            [&](const TextureReimportRequest& queued)
+            [&](const importer::texture::TextureReimportRequest& queued)
             {
                 return queued.texture == request.texture;
             });
@@ -230,7 +230,7 @@ void App::drawGui(ApplicationGui& gui)
     }
 }
 
-RenderFrame App::makeRenderFrame()
+render::RenderFrame App::makeRenderFrame()
 {
     camera.Update();
     return buildRenderFrame(
@@ -239,4 +239,4 @@ RenderFrame App::makeRenderFrame()
         camera.makeRenderView());
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

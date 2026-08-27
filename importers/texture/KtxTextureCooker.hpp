@@ -8,7 +8,7 @@
 #include <filesystem>
 #include <string>
 
-namespace VkRenderer
+namespace rubia::importer::texture
 {
 
 /// Cross-platform, in-process equivalent of the PNG/JPG -> KTX2 part of
@@ -21,7 +21,7 @@ public:
         std::filesystem::path inputPath;
         /// Persistent local KTX2 output. The cooker never removes this file.
         std::filesystem::path outputPath;
-        TextureColorSpace colorSpace = TextureColorSpace::Linear;
+        asset::TextureColorSpace colorSpace = asset::TextureColorSpace::Linear;
         bool generateMipmaps = false;
         TextureMipFilter mipFilter = TextureMipFilter::Mitchell;
         TextureMipEdgeMode mipEdgeMode = TextureMipEdgeMode::Clamp;
@@ -40,9 +40,9 @@ public:
 
     [[nodiscard]] Result cookToFile(const Request& request) const;
 
-    [[nodiscard]] TextureAsset::CreateInfo cookAndImport(
+    [[nodiscard]] asset::TextureAsset::CreateInfo cookAndImport(
         const Request& request,
         const KtxTextureImporter::CreateInfo& importInfo) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::importer::texture

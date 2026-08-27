@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 /// RAII wrapper for a Vulkan fence.
@@ -49,4 +49,4 @@ private:
     VkFence fence_ = VK_NULL_HANDLE;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

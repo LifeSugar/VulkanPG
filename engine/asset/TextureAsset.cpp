@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 TextureFormatInfo textureFormatInfo(TextureFormat format) noexcept
@@ -148,4 +148,4 @@ void TextureAsset::reset() noexcept
     mipLevels_.clear();
 }
 
-} // namespace VkRenderer
+} // namespace rubia::asset

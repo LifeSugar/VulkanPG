@@ -3,7 +3,7 @@
 #include "App.hpp"
 #include "EditorLayer.hpp"
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 /// Editor composition root. Runtime App remains unaware of Editor classes.
@@ -20,4 +20,4 @@ private:
     EditorLayer editorLayer_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

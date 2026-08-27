@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 #if !VK_RENDERER_USE_VMA
@@ -242,4 +242,4 @@ VkDeviceMemory Image::memory() const noexcept
 #endif
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

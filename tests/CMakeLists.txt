@@ -1,21 +1,21 @@
-add_library(lv_smoke_tests STATIC
+add_library(rubia_smoke_tests STATIC
     AppSmokeTests.cpp
     AppSmokeTests.hpp
 )
-target_include_directories(lv_smoke_tests PUBLIC
+target_include_directories(rubia_smoke_tests PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
-target_link_libraries(lv_smoke_tests
+target_link_libraries(rubia_smoke_tests
     PUBLIC
-        LearnVulkan::Editor
-        lv_project_options
+        Rubia::Editor
+        rubia_project_options
     PRIVATE
         imgui
         KTX::ktx
 )
 
 # The editor keeps its existing command-line smoke-test entry points.
-target_link_libraries(VulkanApp PRIVATE lv_smoke_tests)
+target_link_libraries(VulkanApp PRIVATE rubia_smoke_tests)
 
 if(BUILD_TESTING)
     add_test(NAME asset-smoke-test

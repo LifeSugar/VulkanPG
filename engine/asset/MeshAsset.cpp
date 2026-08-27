@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 namespace
 {
@@ -24,9 +24,9 @@ bool finitePosition(const glm::vec3& position)
         std::isfinite(position.z);
 }
 
-Aabb calculateLocalBounds(const std::vector<Vertex>& vertices)
+math::Aabb calculateLocalBounds(const std::vector<Vertex>& vertices)
 {
-    Aabb bounds{};
+    math::Aabb bounds{};
     bounds.minimum = vertices.front().position;
     bounds.maximum = vertices.front().position;
     for (const Vertex& vertex : vertices)
@@ -102,7 +102,7 @@ MeshAsset::MeshAsset(CreateInfo createInfo)
 void MeshAsset::create(CreateInfo createInfo)
 {
     validate(createInfo);
-    const Aabb localBounds = calculateLocalBounds(createInfo.vertices);
+    const math::Aabb localBounds = calculateLocalBounds(createInfo.vertices);
     name_ = std::move(createInfo.name);
     vertices_ = std::move(createInfo.vertices);
     indices_ = std::move(createInfo.indices);
@@ -119,4 +119,4 @@ void MeshAsset::reset() noexcept
     localBounds_ = {};
 }
 
-} // namespace VkRenderer
+} // namespace rubia::asset

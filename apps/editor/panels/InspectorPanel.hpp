@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EditorFwd.hpp"
 #include "EditorSelection.hpp"
 #include "inspectors/MaterialInspector.hpp"
 #include "inspectors/ModelInspector.hpp"
@@ -8,22 +9,18 @@
 
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::editor
 {
-
-class AssetManager;
-class ApplicationGuiRenderBridge;
-class Scene;
 
 /// Owns the Inspector window and routes selections to type inspectors.
 class InspectorPanel final
 {
 public:
-    [[nodiscard]] std::vector<TextureReimportRequest> draw(
-        const Scene& scene,
-        const AssetManager& assets,
-        ApplicationGuiRenderBridge& texturePreviews,
-        const TextureImportRegistry* textureImports,
+    [[nodiscard]] std::vector<importer::texture::TextureReimportRequest> draw(
+        const scene::Scene& scene,
+        const asset::AssetManager& assets,
+        render::ApplicationGuiRenderBridge& texturePreviews,
+        const importer::texture::TextureImportRegistry* textureImports,
         EditorSelection& selection,
         bool* open = nullptr);
 
@@ -34,4 +31,4 @@ private:
     TextureInspector textureInspector_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

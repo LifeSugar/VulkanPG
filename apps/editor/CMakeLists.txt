@@ -1,4 +1,4 @@
-add_library(lv_editor STATIC
+add_library(rubia_editor STATIC
     App.cpp
     App.hpp
     ApplicationGui.hpp
@@ -6,6 +6,7 @@ add_library(lv_editor STATIC
     AppTextureReimport.cpp
     EditorLayer.cpp
     EditorLayer.hpp
+    EditorFwd.hpp
     EditorSelection.cpp
     EditorSelection.hpp
     ImGuiLayer.cpp
@@ -35,20 +36,20 @@ add_library(lv_editor STATIC
     panels/TransformPanel.cpp
     panels/TransformPanel.hpp
 )
-add_library(LearnVulkan::Editor ALIAS lv_editor)
+add_library(Rubia::Editor ALIAS rubia_editor)
 
-target_include_directories(lv_editor PUBLIC
+target_include_directories(rubia_editor PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
-target_compile_definitions(lv_editor PRIVATE
+target_compile_definitions(rubia_editor PRIVATE
     PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
-target_link_libraries(lv_editor
+target_link_libraries(rubia_editor
     PUBLIC
-        LearnVulkan::Engine
-        LearnVulkan::Importers
-        LearnVulkan::Vulkan
-        lv_project_options
+        Rubia::Engine
+        Rubia::Importers
+        Rubia::RhiVulkan
+        rubia_project_options
     PRIVATE
         imgui
 )
@@ -58,7 +59,7 @@ add_executable(VulkanApp
     EditorApp.hpp
     main.cpp
 )
-target_link_libraries(VulkanApp PRIVATE LearnVulkan::Editor)
+target_link_libraries(VulkanApp PRIVATE Rubia::Editor)
 
 # Runtime content is copied as one coherent tree, matching the source layout.
 add_custom_command(TARGET VulkanApp POST_BUILD

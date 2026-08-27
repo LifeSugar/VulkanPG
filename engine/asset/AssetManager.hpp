@@ -9,7 +9,7 @@
 #include "asset/TextureAsset.hpp"
 #include "asset/ValidationReport.hpp"
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 /// Owns validated CPU assets without knowing how their CreateInfo was produced.
@@ -69,4 +69,4 @@ private:
     AssetRegistry<ModelAsset> models_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::asset

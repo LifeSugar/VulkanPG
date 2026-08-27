@@ -1,10 +1,9 @@
 #pragma once
 
-namespace VkRenderer
-{
+#include "EditorFwd.hpp"
 
-class Scene;
-class AssetManager;
+namespace rubia::editor
+{
 class EditorSelection;
 
 /// Draws the SceneNode hierarchy without depending on Renderer state.
@@ -13,10 +12,10 @@ class SceneHierarchyPanel final
 {
 public:
     void draw(
-        const Scene& scene,
-        const AssetManager& assets,
+        const scene::Scene& scene,
+        const asset::AssetManager& assets,
         EditorSelection& selection,
         bool* open = nullptr);
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

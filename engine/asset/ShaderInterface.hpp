@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 enum class ShaderStage
@@ -91,4 +91,4 @@ struct ShaderInterface
     uint64_t signature = 0;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::asset

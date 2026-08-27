@@ -6,13 +6,13 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::importer::gltf
 {
 
 /// Maps GLB material semantics onto one caller-selected material template.
 struct GLBMaterialMapping
 {
-    MaterialTemplateAssetHandle materialTemplate;
+    asset::MaterialTemplateAssetHandle materialTemplate;
 
     std::string baseColorParameter;
     std::string metallicParameter;
@@ -31,17 +31,17 @@ class GLBMaterialImporter final
 public:
     struct CreateInfo
     {
-        AssetManager* assets = nullptr;
+        asset::AssetManager* assets = nullptr;
         GLBMaterialMapping mapping;
-        const std::vector<TextureAssetHandle>* textures = nullptr;
-        TextureAssetHandle defaultTexture;
-        TextureAssetHandle defaultDataTexture;
-        TextureAssetHandle defaultNormalTexture;
+        const std::vector<asset::TextureAssetHandle>* textures = nullptr;
+        asset::TextureAssetHandle defaultTexture;
+        asset::TextureAssetHandle defaultDataTexture;
+        asset::TextureAssetHandle defaultNormalTexture;
     };
 
-    [[nodiscard]] std::vector<MaterialAssetHandle> import(
+    [[nodiscard]] std::vector<asset::MaterialAssetHandle> import(
         const std::vector<GLBMaterial>& source,
         const CreateInfo& createInfo) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::importer::gltf

@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::scene
 {
 namespace
 {
@@ -74,7 +74,7 @@ void Scene::setLocalTransform(
 
 void Scene::setLayerMask(
     uint32_t nodeIndex,
-    LayerMask layerMask)
+    render::LayerMask layerMask)
 {
     if (nodeIndex >= nodes_.size())
     {
@@ -85,7 +85,7 @@ void Scene::setLayerMask(
 
 void Scene::setBoundsCullingMode(
     uint32_t nodeIndex,
-    BoundsCullingMode mode)
+    render::BoundsCullingMode mode)
 {
     if (nodeIndex >= nodes_.size())
     {
@@ -94,4 +94,4 @@ void Scene::setBoundsCullingMode(
     nodes_[nodeIndex].boundsCullingMode = mode;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::scene

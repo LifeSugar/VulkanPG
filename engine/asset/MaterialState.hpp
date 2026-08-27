@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 /// High-level surface classification used to select a render list.
@@ -74,4 +74,4 @@ static_assert(makeOpaqueMaterialState().depth.writeEnabled);
 static_assert(makeTransparentMaterialState().depth.testEnabled);
 static_assert(!makeTransparentMaterialState().depth.writeEnabled);
 
-} // namespace VkRenderer
+} // namespace rubia::asset

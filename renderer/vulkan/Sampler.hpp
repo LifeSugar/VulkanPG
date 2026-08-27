@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 /// RAII wrapper for a Vulkan sampler.
@@ -32,4 +32,4 @@ private:
     VkSampler sampler_ = VK_NULL_HANDLE;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

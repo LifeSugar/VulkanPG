@@ -1,22 +1,20 @@
 #pragma once
 
+#include "EditorFwd.hpp"
 #include "EditorSelection.hpp"
 
 #include <optional>
 
-namespace VkRenderer
+namespace rubia::editor
 {
-
-class AssetManager;
-class Scene;
 
 class SceneNodeInspector final
 {
 public:
     [[nodiscard]] std::optional<InspectorTarget> draw(
-        const Scene& scene,
-        const AssetManager& assets,
+        const scene::Scene& scene,
+        const asset::AssetManager& assets,
         SceneNodeTarget target) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

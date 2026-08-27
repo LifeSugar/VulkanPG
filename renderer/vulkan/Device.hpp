@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 /// Owns the logical device and caches its physical device and queues.
@@ -129,4 +129,4 @@ private:
     uint32_t presentQueueFamily_ = 0;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 /// Stores one asset type and rejects handles whose slots were recycled.
@@ -149,4 +149,4 @@ private:
     std::size_t size_ = 0;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::asset

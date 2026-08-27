@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 DescriptorPool::DescriptorPool(
@@ -108,4 +108,4 @@ std::vector<VkDescriptorSet> DescriptorPool::allocate(
     return descriptorSets;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

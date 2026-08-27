@@ -7,7 +7,7 @@
 #include <streambuf>
 #include <string>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 /// Thread-safe bounded text storage used by the editor console.
@@ -72,4 +72,4 @@ private:
     bool autoScroll_ = true;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

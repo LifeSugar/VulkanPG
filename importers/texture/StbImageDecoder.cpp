@@ -13,12 +13,12 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::importer::texture
 {
 namespace
 {
 
-TextureAsset::CreateInfo decodeRgba8(
+asset::TextureAsset::CreateInfo decodeRgba8(
     const uint8_t* encodedBytes,
     std::size_t encodedSize,
     std::string name)
@@ -60,11 +60,11 @@ TextureAsset::CreateInfo decodeRgba8(
 
     const std::size_t byteSize =
         static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4;
-    TextureAsset::CreateInfo textureInfo{};
+    asset::TextureAsset::CreateInfo textureInfo{};
     textureInfo.name = std::move(name);
     textureInfo.width = static_cast<uint32_t>(width);
     textureInfo.height = static_cast<uint32_t>(height);
-    textureInfo.format = TextureFormat::RGBA8UNorm;
+    textureInfo.format = asset::TextureFormat::RGBA8UNorm;
     textureInfo.payload.resize(byteSize);
     std::memcpy(
         textureInfo.payload.data(),
@@ -110,14 +110,14 @@ std::vector<uint8_t> readFileBytes(const std::filesystem::path& path)
 
 } // namespace
 
-TextureAsset::CreateInfo StbImageDecoder::decodeMemory(
+asset::TextureAsset::CreateInfo StbImageDecoder::decodeMemory(
     const std::vector<uint8_t>& encodedBytes,
     const std::string& name) const
 {
     return decodeRgba8(encodedBytes.data(), encodedBytes.size(), name);
 }
 
-TextureAsset::CreateInfo StbImageDecoder::decodeFile(
+asset::TextureAsset::CreateInfo StbImageDecoder::decodeFile(
     const std::filesystem::path& path,
     const std::string& name) const
 {
@@ -128,4 +128,4 @@ TextureAsset::CreateInfo StbImageDecoder::decodeFile(
         name.empty() ? path.filename().string() : name);
 }
 
-} // namespace VkRenderer
+} // namespace rubia::importer::texture

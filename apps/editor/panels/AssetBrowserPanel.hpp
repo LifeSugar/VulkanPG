@@ -1,24 +1,23 @@
 #pragma once
 
+#include "EditorFwd.hpp"
 #include "EditorSelection.hpp"
 #include "texture/TextureImportRegistry.hpp"
 
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::editor
 {
-
-class AssetManager;
 
 /// Lists the runtime asset registry and emits editor import operations.
 class AssetBrowserPanel final
 {
 public:
-    [[nodiscard]] std::vector<TextureReimportRequest> draw(
-        const AssetManager& assets,
-        const TextureImportRegistry* textureImports,
+    [[nodiscard]] std::vector<importer::texture::TextureReimportRequest> draw(
+        const asset::AssetManager& assets,
+        const importer::texture::TextureImportRegistry* textureImports,
         EditorSelection& selection,
         bool* open = nullptr) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

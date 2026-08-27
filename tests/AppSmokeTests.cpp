@@ -38,22 +38,22 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia
 {
-namespace Test
+namespace test
 {
 namespace
 {
 
 [[nodiscard]] bool hasValidationIssue(
-    const ValidationReport& report,
+    const asset::ValidationReport& report,
     const std::string& code,
-    ValidationSeverity severity)
+    asset::ValidationSeverity severity)
 {
     return std::any_of(
         report.issues().begin(),
         report.issues().end(),
-        [&](const ValidationIssue& issue)
+        [&](const asset::ValidationIssue& issue)
         {
             return issue.code == code && issue.severity == severity;
         });
@@ -63,7 +63,7 @@ void validateAssetId()
 {
     constexpr std::string_view canonical =
         "00112233-4455-6677-8899-aabbccddeeff";
-    const std::optional<AssetId> parsed = AssetId::parse(canonical);
+    const std::optional<asset::AssetId> parsed = asset::AssetId::parse(canonical);
     if (!parsed ||
         parsed->high != UINT64_C(0x0011223344556677) ||
         parsed->low != UINT64_C(0x8899aabbccddeeff) ||
@@ -73,28 +73,28 @@ void validateAssetId()
             "AssetId canonical serialization round trip failed");
     }
 
-    const std::optional<AssetId> uppercase = AssetId::parse(
+    const std::optional<asset::AssetId> uppercase = asset::AssetId::parse(
         "00112233-4455-6677-8899-AABBCCDDEEFF");
     if (!uppercase || *uppercase != *parsed ||
-        AssetId::parse("00112233445566778899aabbccddeeff") ||
-        AssetId::parse("00112233-4455-6677-8899-aabbccddeefg"))
+        asset::AssetId::parse("00112233445566778899aabbccddeeff") ||
+        asset::AssetId::parse("00112233-4455-6677-8899-aabbccddeefg"))
     {
         throw std::runtime_error("AssetId parsing validation failed");
     }
 
-    const std::optional<AssetId> nil = AssetId::parse(
+    const std::optional<asset::AssetId> nil = asset::AssetId::parse(
         "00000000-0000-0000-0000-000000000000");
     if (!nil || nil->valid())
     {
         throw std::runtime_error("AssetId nil representation is invalid");
     }
 
-    std::unordered_set<AssetId> generatedIds;
+    std::unordered_set<asset::AssetId> generatedIds;
     for (uint32_t index = 0; index < 64; ++index)
     {
-        const AssetId generated = AssetId::generate();
-        const std::optional<AssetId> roundTrip =
-            AssetId::parse(generated.toString());
+        const asset::AssetId generated = asset::AssetId::generate();
+        const std::optional<asset::AssetId> roundTrip =
+            asset::AssetId::parse(generated.toString());
         if (!generated || !roundTrip || *roundTrip != generated ||
             (generated.high & UINT64_C(0x000000000000f000)) !=
                 UINT64_C(0x0000000000004000) ||
@@ -110,31 +110,31 @@ void validateAssetId()
 
 void validateRenderKeys()
 {
-    constexpr MaterialKey olderMaterial =
-        makeMaterialKey(MaterialAssetHandle{4, 1});
-    constexpr MaterialKey newerMaterial =
-        makeMaterialKey(MaterialAssetHandle{4, 2});
-    if (!MaterialKeyLess{}(olderMaterial, newerMaterial) ||
-        MaterialKeyLess{}(newerMaterial, olderMaterial))
+    constexpr render::MaterialKey olderMaterial =
+        render::makeMaterialKey(asset::MaterialAssetHandle{4, 1});
+    constexpr render::MaterialKey newerMaterial =
+        render::makeMaterialKey(asset::MaterialAssetHandle{4, 2});
+    if (!render::MaterialKeyLess{}(olderMaterial, newerMaterial) ||
+        render::MaterialKeyLess{}(newerMaterial, olderMaterial))
     {
         throw std::runtime_error(
             "MaterialKey comparison is not deterministic");
     }
 
-    MaterialRenderState opaqueState = makeOpaqueMaterialState();
-    const PipelineVariantKey opaque = makePipelineVariantKey(
-        MaterialTemplateAssetHandle{1, 1},
+    asset::MaterialRenderState opaqueState = asset::makeOpaqueMaterialState();
+    const render::PipelineVariantKey opaque = render::makePipelineVariantKey(
+        asset::MaterialTemplateAssetHandle{1, 1},
         opaqueState);
 
-    MaterialRenderState alphaClipState = opaqueState;
+    asset::MaterialRenderState alphaClipState = opaqueState;
     alphaClipState.alphaClipEnabled = true;
-    const PipelineVariantKey alphaClip = makePipelineVariantKey(
-        MaterialTemplateAssetHandle{1, 1},
+    const render::PipelineVariantKey alphaClip = render::makePipelineVariantKey(
+        asset::MaterialTemplateAssetHandle{1, 1},
         alphaClipState);
     alphaClipState.alphaClipThreshold = 0.25f;
-    const PipelineVariantKey alphaClipWithDifferentThreshold =
-        makePipelineVariantKey(
-            MaterialTemplateAssetHandle{1, 1},
+    const render::PipelineVariantKey alphaClipWithDifferentThreshold =
+        render::makePipelineVariantKey(
+            asset::MaterialTemplateAssetHandle{1, 1},
             alphaClipState);
     if (alphaClip != alphaClipWithDifferentThreshold)
     {
@@ -142,33 +142,33 @@ void validateRenderKeys()
             "alpha-clip threshold incorrectly changes PipelineVariantKey");
     }
 
-    MaterialRenderState transparentState =
-        makeTransparentMaterialState();
-    const PipelineVariantKey transparent = makePipelineVariantKey(
-        MaterialTemplateAssetHandle{1, 1},
+    asset::MaterialRenderState transparentState =
+        asset::makeTransparentMaterialState();
+    const render::PipelineVariantKey transparent = render::makePipelineVariantKey(
+        asset::MaterialTemplateAssetHandle{1, 1},
         transparentState);
 
     if (opaque == alphaClip || opaque == transparent ||
-        !PipelineVariantKeyLess{}(opaque, alphaClip) ||
-        PipelineVariantKeyLess{}(alphaClip, opaque) ||
-        !PipelineVariantKeyLess{}(alphaClip, transparent) ||
-        PipelineVariantKeyLess{}(transparent, alphaClip))
+        !render::PipelineVariantKeyLess{}(opaque, alphaClip) ||
+        render::PipelineVariantKeyLess{}(alphaClip, opaque) ||
+        !render::PipelineVariantKeyLess{}(alphaClip, transparent) ||
+        render::PipelineVariantKeyLess{}(transparent, alphaClip))
     {
         throw std::runtime_error(
             "PipelineVariantKey comparison produced an invalid order");
     }
 
-    MaterialRenderState depthDisabledA = opaqueState;
+    asset::MaterialRenderState depthDisabledA = opaqueState;
     depthDisabledA.depth.testEnabled = false;
     depthDisabledA.depth.writeEnabled = false;
-    depthDisabledA.depth.compare = DepthCompare::Never;
-    MaterialRenderState depthDisabledB = depthDisabledA;
-    depthDisabledB.depth.compare = DepthCompare::Greater;
-    if (makePipelineVariantKey(
-            MaterialTemplateAssetHandle{1, 1},
+    depthDisabledA.depth.compare = asset::DepthCompare::Never;
+    asset::MaterialRenderState depthDisabledB = depthDisabledA;
+    depthDisabledB.depth.compare = asset::DepthCompare::Greater;
+    if (render::makePipelineVariantKey(
+            asset::MaterialTemplateAssetHandle{1, 1},
             depthDisabledA) !=
-        makePipelineVariantKey(
-            MaterialTemplateAssetHandle{1, 1},
+        render::makePipelineVariantKey(
+            asset::MaterialTemplateAssetHandle{1, 1},
             depthDisabledB))
     {
         throw std::runtime_error(
@@ -178,70 +178,70 @@ void validateRenderKeys()
 
 void validateRenderItemComparators()
 {
-    if (Detail::opaqueDepthSortBucket(0.125f) !=
-            Detail::opaqueDepthSortBucket(0.499f) ||
-        Detail::opaqueDepthSortBucket(0.5f) !=
-            Detail::opaqueDepthSortBucket(1.999f) ||
-        Detail::opaqueDepthSortBucket(2.0f) !=
-            Detail::opaqueDepthSortBucket(7.999f) ||
-        Detail::opaqueDepthSortBucket(8.0f) !=
-            Detail::opaqueDepthSortBucket(31.999f) ||
-        Detail::opaqueDepthSortBucket(0.499f) >=
-            Detail::opaqueDepthSortBucket(0.5f) ||
-        Detail::opaqueDepthSortBucket(1.999f) >=
-            Detail::opaqueDepthSortBucket(2.0f) ||
-        Detail::opaqueDepthSortBucket(7.999f) >=
-            Detail::opaqueDepthSortBucket(8.0f))
+    if (render::detail::opaqueDepthSortBucket(0.125f) !=
+            render::detail::opaqueDepthSortBucket(0.499f) ||
+        render::detail::opaqueDepthSortBucket(0.5f) !=
+            render::detail::opaqueDepthSortBucket(1.999f) ||
+        render::detail::opaqueDepthSortBucket(2.0f) !=
+            render::detail::opaqueDepthSortBucket(7.999f) ||
+        render::detail::opaqueDepthSortBucket(8.0f) !=
+            render::detail::opaqueDepthSortBucket(31.999f) ||
+        render::detail::opaqueDepthSortBucket(0.499f) >=
+            render::detail::opaqueDepthSortBucket(0.5f) ||
+        render::detail::opaqueDepthSortBucket(1.999f) >=
+            render::detail::opaqueDepthSortBucket(2.0f) ||
+        render::detail::opaqueDepthSortBucket(7.999f) >=
+            render::detail::opaqueDepthSortBucket(8.0f))
     {
         throw std::runtime_error(
             "opaque depth bucket quantization produced invalid boundaries");
     }
 
-    RenderItem regularNear{};
-    regularNear.material = MaterialAssetHandle{1, 1};
-    regularNear.materialKey = makeMaterialKey(regularNear.material);
-    regularNear.mesh = MeshAssetHandle{1, 1};
-    regularNear.pipelineKey = makePipelineVariantKey(
-        MaterialTemplateAssetHandle{1, 1},
-        makeOpaqueMaterialState());
-    regularNear.queue = RenderQueue::Opaque;
+    render::RenderItem regularNear{};
+    regularNear.material = asset::MaterialAssetHandle{1, 1};
+    regularNear.materialKey = render::makeMaterialKey(regularNear.material);
+    regularNear.mesh = asset::MeshAssetHandle{1, 1};
+    regularNear.pipelineKey = render::makePipelineVariantKey(
+        asset::MaterialTemplateAssetHandle{1, 1},
+        asset::makeOpaqueMaterialState());
+    regularNear.queue = render::RenderQueue::Opaque;
     regularNear.viewDepth = 2.0f;
     regularNear.candidateIndex = 2;
 
-    RenderItem regularFar = regularNear;
+    render::RenderItem regularFar = regularNear;
     regularFar.viewDepth = 10.0f;
     regularFar.candidateIndex = 3;
 
-    RenderItem lowerMaterial = regularNear;
-    lowerMaterial.material = MaterialAssetHandle{0, 1};
-    lowerMaterial.materialKey = makeMaterialKey(
+    render::RenderItem lowerMaterial = regularNear;
+    lowerMaterial.material = asset::MaterialAssetHandle{0, 1};
+    lowerMaterial.materialKey = render::makeMaterialKey(
         lowerMaterial.material);
     lowerMaterial.viewDepth = 20.0f;
     lowerMaterial.candidateIndex = 1;
 
-    MaterialRenderState doubleSidedState = makeOpaqueMaterialState();
+    asset::MaterialRenderState doubleSidedState = asset::makeOpaqueMaterialState();
     doubleSidedState.doubleSided = true;
-    RenderItem alternatePipeline = regularNear;
-    alternatePipeline.pipelineKey = makePipelineVariantKey(
-        MaterialTemplateAssetHandle{1, 1},
+    render::RenderItem alternatePipeline = regularNear;
+    alternatePipeline.pipelineKey = render::makePipelineVariantKey(
+        asset::MaterialTemplateAssetHandle{1, 1},
         doubleSidedState);
-    alternatePipeline.material = MaterialAssetHandle{9, 1};
-    alternatePipeline.materialKey = makeMaterialKey(
+    alternatePipeline.material = asset::MaterialAssetHandle{9, 1};
+    alternatePipeline.materialKey = render::makeMaterialKey(
         alternatePipeline.material);
     alternatePipeline.viewDepth = 15.0f;
     alternatePipeline.candidateIndex = 5;
 
-    RenderItem alphaClip = regularNear;
-    alphaClip.queue = RenderQueue::AlphaClip;
-    MaterialRenderState alphaClipState = makeOpaqueMaterialState();
+    render::RenderItem alphaClip = regularNear;
+    alphaClip.queue = render::RenderQueue::AlphaClip;
+    asset::MaterialRenderState alphaClipState = asset::makeOpaqueMaterialState();
     alphaClipState.alphaClipEnabled = true;
-    alphaClip.pipelineKey = makePipelineVariantKey(
-        MaterialTemplateAssetHandle{1, 1},
+    alphaClip.pipelineKey = render::makePipelineVariantKey(
+        asset::MaterialTemplateAssetHandle{1, 1},
         alphaClipState);
     alphaClip.viewDepth = 1.0f;
     alphaClip.candidateIndex = 4;
 
-    std::vector<RenderItem> opaque = {
+    std::vector<render::RenderItem> opaque = {
         alphaClip,
         regularFar,
         regularNear,
@@ -251,7 +251,7 @@ void validateRenderItemComparators()
     std::sort(
         opaque.begin(),
         opaque.end(),
-        OpaqueRenderItemComparator{});
+        render::OpaqueRenderItemComparator{});
     if (opaque[0].candidateIndex != 2 ||
         opaque[1].candidateIndex != 5 ||
         opaque[2].candidateIndex != 1 ||
@@ -262,25 +262,25 @@ void validateRenderItemComparators()
             "opaque RenderItem comparator produced an invalid order");
     }
 
-    RenderItem transparentNear = regularNear;
-    transparentNear.queue = RenderQueue::Transparent;
-    transparentNear.pipelineKey = makePipelineVariantKey(
-        MaterialTemplateAssetHandle{1, 1},
-        makeTransparentMaterialState());
+    render::RenderItem transparentNear = regularNear;
+    transparentNear.queue = render::RenderQueue::Transparent;
+    transparentNear.pipelineKey = render::makePipelineVariantKey(
+        asset::MaterialTemplateAssetHandle{1, 1},
+        asset::makeTransparentMaterialState());
     transparentNear.candidateIndex = 7;
 
-    RenderItem transparentFarHighMaterial = transparentNear;
+    render::RenderItem transparentFarHighMaterial = transparentNear;
     transparentFarHighMaterial.viewDepth = 10.0f;
     transparentFarHighMaterial.candidateIndex = 6;
 
-    RenderItem transparentFarLowMaterial =
+    render::RenderItem transparentFarLowMaterial =
         transparentFarHighMaterial;
-    transparentFarLowMaterial.material = MaterialAssetHandle{0, 1};
-    transparentFarLowMaterial.materialKey = makeMaterialKey(
+    transparentFarLowMaterial.material = asset::MaterialAssetHandle{0, 1};
+    transparentFarLowMaterial.materialKey = render::makeMaterialKey(
         transparentFarLowMaterial.material);
     transparentFarLowMaterial.candidateIndex = 5;
 
-    std::vector<RenderItem> transparent = {
+    std::vector<render::RenderItem> transparent = {
         transparentNear,
         transparentFarHighMaterial,
         transparentFarLowMaterial
@@ -288,7 +288,7 @@ void validateRenderItemComparators()
     std::sort(
         transparent.begin(),
         transparent.end(),
-        TransparentRenderItemComparator{});
+        render::TransparentRenderItemComparator{});
     if (transparent[0].candidateIndex != 5 ||
         transparent[1].candidateIndex != 6 ||
         transparent[2].candidateIndex != 7)
@@ -300,19 +300,19 @@ void validateRenderItemComparators()
 
 void validateCullingSystem()
 {
-    Camera testCamera;
-    Camera::Config cameraConfig{};
+    render::Camera testCamera;
+    render::Camera::Config cameraConfig{};
     cameraConfig.fov = 90.0f;
     cameraConfig.aspectRatio = 1.0f;
     cameraConfig.nearPlane = 0.1f;
     cameraConfig.farPlane = 10.0f;
     testCamera.setConfig(cameraConfig);
 
-    RenderView view = testCamera.makeRenderView();
-    view.cullingMask = RenderLayer::World;
-    view.cullingFlags = CullingFlags::All;
+    render::RenderView view = testCamera.makeRenderView();
+    view.cullingMask = render::RenderLayer::World;
+    view.cullingFlags = render::CullingFlags::All;
 
-    std::vector<RenderCandidate> candidates(4);
+    std::vector<render::RenderCandidate> candidates(4);
     candidates[0].worldBounds = {
         {-0.1f, -0.1f, -1.1f},
         { 0.1f,  0.1f, -0.9f}
@@ -322,12 +322,12 @@ void validateCullingSystem()
         { 0.1f,  0.1f, 1.1f}
     };
     candidates[2].worldBounds = candidates[1].worldBounds;
-    candidates[2].boundsCullingMode = BoundsCullingMode::Disabled;
+    candidates[2].boundsCullingMode = render::BoundsCullingMode::Disabled;
     candidates[3].worldBounds = candidates[0].worldBounds;
-    candidates[3].layerMask = RenderLayer::Editor;
+    candidates[3].layerMask = render::RenderLayer::Editor;
 
-    const CullingResults culled =
-        CullingSystem{}.cull(candidates, view);
+    const render::CullingResults culled =
+        render::CullingSystem{}.cull(candidates, view);
     if (culled.inputCount != 4 || culled.visibleCount() != 2 ||
         culled.visibleCandidateIndices[0] != 0 ||
         culled.visibleCandidateIndices[1] != 2 ||
@@ -339,9 +339,9 @@ void validateCullingSystem()
             "culling system produced unexpected visibility results");
     }
 
-    view.cullingFlags = CullingFlags::None;
-    const CullingResults unculled =
-        CullingSystem{}.cull(candidates, view);
+    view.cullingFlags = render::CullingFlags::None;
+    const render::CullingResults unculled =
+        render::CullingSystem{}.cull(candidates, view);
     if (unculled.visibleCount() != candidates.size() ||
         unculled.layerCulledCount != 0 ||
         unculled.frustumCulledCount != 0)
@@ -350,14 +350,14 @@ void validateCullingSystem()
             "disabled culling did not preserve every candidate");
     }
 
-    Camera otherCamera;
+    render::Camera otherCamera;
     if (otherCamera.viewId() == testCamera.viewId())
     {
         throw std::runtime_error("different cameras reused a RenderViewId");
     }
     const uint64_t previousRevision = testCamera.gpuDataRevision();
     testCamera.setPosition(glm::vec3(1.0f, 0.0f, 0.0f));
-    const RenderView changedView = testCamera.makeRenderView();
+    const render::RenderView changedView = testCamera.makeRenderView();
     if (changedView.id != view.id ||
         changedView.gpuDataRevision == previousRevision)
     {
@@ -367,13 +367,13 @@ void validateCullingSystem()
 }
 
 void validateOfflineMaterialAssets(
-    AssetManager& assets,
-    const DemoContent& content,
-    const TextureImportRegistry& textureImports)
+    asset::AssetManager& assets,
+    const editor::DemoContent& content,
+    const importer::texture::TextureImportRegistry& textureImports)
 {
-    const TextureAsset& flatNormal = assets.texture(
+    const asset::TextureAsset& flatNormal = assets.texture(
         content.defaultNormalTexture);
-    if (flatNormal.colorSpace() != TextureColorSpace::Linear ||
+    if (flatNormal.colorSpace() != asset::TextureColorSpace::Linear ||
         flatNormal.payload().size() != 4 ||
         flatNormal.payload()[0] != std::byte{0x80} ||
         flatNormal.payload()[1] != std::byte{0x80} ||
@@ -384,15 +384,15 @@ void validateOfflineMaterialAssets(
     }
 
     bool foundImportedPbrMaterial = false;
-    const ModelAsset& model = assets.model(content.model);
-    for (const ModelNode& node : model.nodes())
+    const asset::ModelAsset& model = assets.model(content.model);
+    for (const asset::ModelNode& node : model.nodes())
     {
-        for (MeshAssetHandle meshHandle : node.meshes)
+        for (asset::MeshAssetHandle meshHandle : node.meshes)
         {
-            for (const SubmeshData& submesh :
+            for (const asset::SubmeshData& submesh :
                  assets.mesh(meshHandle).submeshes())
             {
-                const MaterialAsset& material =
+                const asset::MaterialAsset& material =
                     assets.material(submesh.material);
                 if (material.textures().size() != 5)
                 {
@@ -404,11 +404,11 @@ void validateOfflineMaterialAssets(
                     return assets.texture(
                         material.textures()[slot]).colorSpace();
                 };
-                if (colorSpace(0) != TextureColorSpace::Srgb ||
-                    colorSpace(1) != TextureColorSpace::Linear ||
-                    colorSpace(2) != TextureColorSpace::Linear ||
-                    colorSpace(3) != TextureColorSpace::Linear ||
-                    colorSpace(4) != TextureColorSpace::Srgb)
+                if (colorSpace(0) != asset::TextureColorSpace::Srgb ||
+                    colorSpace(1) != asset::TextureColorSpace::Linear ||
+                    colorSpace(2) != asset::TextureColorSpace::Linear ||
+                    colorSpace(3) != asset::TextureColorSpace::Linear ||
+                    colorSpace(4) != asset::TextureColorSpace::Srgb)
                 {
                     throw std::runtime_error(
                         "glTF material textures use incorrect semantic color spaces");
@@ -416,13 +416,13 @@ void validateOfflineMaterialAssets(
 
                 const auto validateImportSettings =
                     [&](uint32_t slot,
-                        TextureColorSpace expectedColorSpace,
-                        TextureFormat expectedFormat,
+                        asset::TextureColorSpace expectedColorSpace,
+                        asset::TextureFormat expectedFormat,
                         bool expectedNormalMap)
                     {
-                        const TextureAssetHandle texture =
+                        const asset::TextureAssetHandle texture =
                             material.textures()[slot];
-                        const TextureImportRecord* record =
+                        const importer::texture::TextureImportRecord* record =
                             textureImports.find(texture);
                         if (record == nullptr)
                         {
@@ -439,7 +439,7 @@ void validateOfflineMaterialAssets(
                             record->settings.colorSpace != expectedColorSpace ||
                             !record->settings.generateMipmaps ||
                             record->settings.basis.encoding !=
-                                KtxPayloadEncoding::Uastc ||
+                                importer::texture::KtxPayloadEncoding::Uastc ||
                             record->settings.basis.normalMap !=
                                 expectedNormalMap ||
                             record->settings.transcodeFormat != expectedFormat ||
@@ -451,28 +451,28 @@ void validateOfflineMaterialAssets(
                     };
                 validateImportSettings(
                     0,
-                    TextureColorSpace::Srgb,
-                    TextureFormat::BC7UNorm,
+                    asset::TextureColorSpace::Srgb,
+                    asset::TextureFormat::BC7UNorm,
                     false);
                 validateImportSettings(
                     1,
-                    TextureColorSpace::Linear,
-                    TextureFormat::BC7UNorm,
+                    asset::TextureColorSpace::Linear,
+                    asset::TextureFormat::BC7UNorm,
                     false);
                 validateImportSettings(
                     2,
-                    TextureColorSpace::Linear,
-                    TextureFormat::BC5UNorm,
+                    asset::TextureColorSpace::Linear,
+                    asset::TextureFormat::BC5UNorm,
                     true);
                 validateImportSettings(
                     3,
-                    TextureColorSpace::Linear,
-                    TextureFormat::BC7UNorm,
+                    asset::TextureColorSpace::Linear,
+                    asset::TextureFormat::BC7UNorm,
                     false);
                 validateImportSettings(
                     4,
-                    TextureColorSpace::Srgb,
-                    TextureFormat::BC7UNorm,
+                    asset::TextureColorSpace::Srgb,
+                    asset::TextureFormat::BC7UNorm,
                     false);
             }
         }
@@ -483,12 +483,12 @@ void validateOfflineMaterialAssets(
             "demo model contains no imported PBR material to validate");
     }
 
-    const ShaderAsset& fragmentShader = assets.shader(
+    const asset::ShaderAsset& fragmentShader = assets.shader(
         content.pbrFragmentShader);
     const auto materialBlock = std::find_if(
         fragmentShader.interface().parameterBlocks.begin(),
         fragmentShader.interface().parameterBlocks.end(),
-        [](const ShaderParameterBlockDesc& block)
+        [](const asset::ShaderParameterBlockDesc& block)
         {
             return block.set == 1 && block.binding == 0;
         });
@@ -501,9 +501,9 @@ void validateOfflineMaterialAssets(
             "CPU-only SPIR-V reflection produced an invalid material interface");
     }
 
-    const MaterialTemplateAsset& materialTemplate =
+    const asset::MaterialTemplateAsset& materialTemplate =
         assets.materialTemplate(content.materialTemplate);
-    MaterialTemplateAsset::CreateInfo templateInfo{};
+    asset::MaterialTemplateAsset::CreateInfo templateInfo{};
     templateInfo.name = materialTemplate.name();
     templateInfo.shaders = materialTemplate.shaders();
     templateInfo.parameterBlock = materialTemplate.parameterBlock();
@@ -511,34 +511,34 @@ void validateOfflineMaterialAssets(
     templateInfo.parameters = materialTemplate.parameters();
     templateInfo.textureSlots = materialTemplate.textureSlots();
 
-    const ValidationReport currentTemplateReport =
+    const asset::ValidationReport currentTemplateReport =
         assets.validateMaterialTemplate(templateInfo);
     if (!currentTemplateReport.valid() ||
         hasValidationIssue(
             currentTemplateReport,
             "Template.InactiveImageBinding",
-            ValidationSeverity::Warning) ||
+            asset::ValidationSeverity::Warning) ||
         !assets.isMaterialTemplateCurrent(content.materialTemplate))
     {
         throw std::runtime_error(
             "valid material template did not pass offline validation");
     }
 
-    MaterialTemplateAsset::CreateInfo invalidTemplate = templateInfo;
+    asset::MaterialTemplateAsset::CreateInfo invalidTemplate = templateInfo;
     invalidTemplate.parameters.back().byteOffset = 36;
-    const ValidationReport invalidTemplateReport =
+    const asset::ValidationReport invalidTemplateReport =
         assets.validateMaterialTemplate(invalidTemplate);
     if (invalidTemplateReport.valid() ||
         !hasValidationIssue(
             invalidTemplateReport,
             "Template.ParameterOffsetMismatch",
-            ValidationSeverity::Error))
+            asset::ValidationSeverity::Error))
     {
         throw std::runtime_error(
             "invalid material template passed shader-interface validation");
     }
 
-    MaterialAsset::CreateInfo invalidMaterial{};
+    asset::MaterialAsset::CreateInfo invalidMaterial{};
     invalidMaterial.name = "Invalid Offline Material";
     invalidMaterial.materialTemplate = content.materialTemplate;
     invalidMaterial.parameters = {
@@ -554,13 +554,13 @@ void validateOfflineMaterialAssets(
         {"occlusionTexture", content.defaultDataTexture},
         {"emissiveTexture", content.defaultTexture}
     };
-    const ValidationReport invalidMaterialReport =
+    const asset::ValidationReport invalidMaterialReport =
         assets.validateMaterial(invalidMaterial);
     if (invalidMaterialReport.valid() ||
         !hasValidationIssue(
             invalidMaterialReport,
             "Material.ParameterTypeMismatch",
-            ValidationSeverity::Error))
+            asset::ValidationSeverity::Error))
     {
         throw std::runtime_error(
             "invalid material instance passed template validation");
@@ -572,12 +572,12 @@ void validateOfflineMaterialAssets(
         static_cast<void>(assets.createMaterial(
             std::move(invalidMaterial)));
     }
-    catch (const AssetValidationError& error)
+    catch (const asset::AssetValidationError& error)
     {
         creationRejected = hasValidationIssue(
             error.report(),
             "Material.ParameterTypeMismatch",
-            ValidationSeverity::Error);
+            asset::ValidationSeverity::Error);
     }
     if (!creationRejected)
     {
@@ -587,7 +587,7 @@ void validateOfflineMaterialAssets(
 }
 
 
-void validateRenderFrame(const RenderFrame& renderFrame)
+void validateRenderFrame(const render::RenderFrame& renderFrame)
 {
     if (renderFrame.renderList.empty())
     {
@@ -597,7 +597,7 @@ void validateRenderFrame(const RenderFrame& renderFrame)
 
     const auto validateItems = [&](const auto& items)
     {
-        for (const RenderItem& item : items)
+        for (const render::RenderItem& item : items)
         {
             if (item.objectIndex >=
                     renderFrame.renderList.objectData.size() ||
@@ -617,10 +617,10 @@ void validateRenderFrame(const RenderFrame& renderFrame)
 }
 
 void validateVulkanDrawListCompilation(
-    const RenderFrame& renderFrame,
-    const RenderAssetCache& renderAssets)
+    const render::RenderFrame& renderFrame,
+    const rhi::vulkan::RenderAssetCache& renderAssets)
 {
-    const VulkanDrawList resolved = VulkanDrawListCompiler{}.compile(
+    const rhi::vulkan::VulkanDrawList resolved = rhi::vulkan::VulkanDrawListCompiler{}.compile(
         renderFrame.renderList,
         renderAssets);
     if (resolved.size() != renderFrame.renderList.size())
@@ -629,8 +629,8 @@ void validateVulkanDrawListCompilation(
             "Vulkan draw-list compilation changed the draw count");
     }
 
-    RenderList staleList = renderFrame.renderList;
-    RenderItem* staleItem = !staleList.opaque.empty()
+    render::RenderList staleList = renderFrame.renderList;
+    render::RenderItem* staleItem = !staleList.opaque.empty()
         ? &staleList.opaque.front()
         : &staleList.transparent.front();
     ++staleItem->mesh.generation;
@@ -638,7 +638,7 @@ void validateVulkanDrawListCompilation(
     bool staleHandleRejected = false;
     try
     {
-        static_cast<void>(VulkanDrawListCompiler{}.compile(
+        static_cast<void>(rhi::vulkan::VulkanDrawListCompiler{}.compile(
             staleList,
             renderAssets));
     }
@@ -655,12 +655,12 @@ void validateVulkanDrawListCompilation(
 
 void validateTextureFormats()
 {
-    const TextureFormatInfo rgba8 =
-        textureFormatInfo(TextureFormat::RGBA8UNorm);
-    const TextureFormatInfo bc1 =
-        textureFormatInfo(TextureFormat::BC1RGBAUNorm);
-    const TextureFormatInfo bc7 =
-        textureFormatInfo(TextureFormat::BC7UNorm);
+    const asset::TextureFormatInfo rgba8 =
+        asset::textureFormatInfo(asset::TextureFormat::RGBA8UNorm);
+    const asset::TextureFormatInfo bc1 =
+        asset::textureFormatInfo(asset::TextureFormat::BC1RGBAUNorm);
+    const asset::TextureFormatInfo bc7 =
+        asset::textureFormatInfo(asset::TextureFormat::BC7UNorm);
     if (rgba8.compressed || rgba8.bytesPerBlock != 4 ||
         !rgba8.supportsSrgb ||
         !bc1.compressed || bc1.blockWidth != 4 ||
@@ -668,9 +668,9 @@ void validateTextureFormats()
         !bc1.supportsSrgb ||
         !bc7.compressed || bc7.bytesPerBlock != 16 ||
         !bc7.supportsSrgb ||
-        textureMipByteSize(TextureFormat::RGBA8UNorm, 4, 4) != 64 ||
-        textureMipByteSize(TextureFormat::BC1RGBAUNorm, 7, 5) != 32 ||
-        textureMipByteSize(TextureFormat::BC7UNorm, 2, 2) != 16)
+        textureMipByteSize(asset::TextureFormat::RGBA8UNorm, 4, 4) != 64 ||
+        textureMipByteSize(asset::TextureFormat::BC1RGBAUNorm, 7, 5) != 32 ||
+        textureMipByteSize(asset::TextureFormat::BC7UNorm, 2, 2) != 16)
     {
         throw std::runtime_error("texture format layout validation failed");
     }
@@ -730,26 +730,26 @@ void validateKtxFileCookAndImport()
         }
     }
 
-    KtxTextureCooker::Request request{};
+    importer::texture::KtxTextureCooker::Request request{};
     request.inputPath = inputPath;
     request.outputPath = outputPath;
-    request.colorSpace = TextureColorSpace::Srgb;
+    request.colorSpace = asset::TextureColorSpace::Srgb;
     request.generateMipmaps = true;
-    request.mipFilter = TextureMipFilter::Mitchell;
-    request.mipEdgeMode = TextureMipEdgeMode::Clamp;
-    request.basis.encoding = KtxPayloadEncoding::Uastc;
+    request.mipFilter = importer::texture::TextureMipFilter::Mitchell;
+    request.mipEdgeMode = importer::texture::TextureMipEdgeMode::Clamp;
+    request.basis.encoding = importer::texture::KtxPayloadEncoding::Uastc;
     request.basis.uastcQualityLevel = 0;
     request.basis.threadCount = 1;
     request.zstdLevel = 1;
 
-    KtxTextureImporter::CreateInfo importInfo{};
+    importer::texture::KtxTextureImporter::CreateInfo importInfo{};
     importInfo.name = "toktx file pipeline smoke texture";
-    importInfo.transcodeFormat = TextureFormat::BC7UNorm;
-    const TextureAsset::CreateInfo textureInfo =
-        KtxTextureCooker{}.cookAndImport(request, importInfo);
+    importInfo.transcodeFormat = asset::TextureFormat::BC7UNorm;
+    const asset::TextureAsset::CreateInfo textureInfo =
+        importer::texture::KtxTextureCooker{}.cookAndImport(request, importInfo);
     if (!std::filesystem::is_regular_file(outputPath) ||
-        textureInfo.format != TextureFormat::BC7UNorm ||
-        textureInfo.colorSpace != TextureColorSpace::Srgb ||
+        textureInfo.format != asset::TextureFormat::BC7UNorm ||
+        textureInfo.colorSpace != asset::TextureColorSpace::Srgb ||
         textureInfo.mipLevels.size() != 3 ||
         textureInfo.payload.size() != 48)
     {
@@ -797,9 +797,9 @@ std::vector<uint8_t> makeKtx2Fixture(bool basisEncoded)
     {
         const uint32_t width = std::max(1u, createInfo.baseWidth >> mipLevel);
         const uint32_t height = std::max(1u, createInfo.baseHeight >> mipLevel);
-        const TextureFormat format = basisEncoded
-            ? TextureFormat::RGBA8UNorm
-            : TextureFormat::BC7UNorm;
+        const asset::TextureFormat format = basisEncoded
+            ? asset::TextureFormat::RGBA8UNorm
+            : asset::TextureFormat::BC7UNorm;
         std::vector<uint8_t> levelData(
             textureMipByteSize(format, width, height),
             static_cast<uint8_t>(0x40 + mipLevel * 0x20));
@@ -841,19 +841,19 @@ std::vector<uint8_t> makeKtx2Fixture(bool basisEncoded)
     return std::vector<uint8_t>(encoded.get(), encoded.get() + encodedSize);
 }
 
-void validateKtxTextureImportAndUpload(const Device& device)
+void validateKtxTextureImportAndUpload(const rhi::vulkan::Device& device)
 {
-    const KtxTextureImporter importer;
-    KtxTextureImporter::CreateInfo importInfo{};
+    const importer::texture::KtxTextureImporter importer;
+    importer::texture::KtxTextureImporter::CreateInfo importInfo{};
     importInfo.name = "Direct BC7 KTX2 smoke texture";
 
     const std::vector<uint8_t> directBytes = makeKtx2Fixture(false);
-    TextureAsset::CreateInfo directInfo = importer.importMemory(
+    asset::TextureAsset::CreateInfo directInfo = importer.importMemory(
         directBytes.data(),
         directBytes.size(),
         importInfo);
-    if (directInfo.format != TextureFormat::BC7UNorm ||
-        directInfo.colorSpace != TextureColorSpace::Linear ||
+    if (directInfo.format != asset::TextureFormat::BC7UNorm ||
+        directInfo.colorSpace != asset::TextureColorSpace::Linear ||
         directInfo.payload.size() != 48 ||
         directInfo.mipLevels.size() != 3)
     {
@@ -862,14 +862,14 @@ void validateKtxTextureImportAndUpload(const Device& device)
     }
 
     importInfo.name = "Basis-to-BC7 KTX2 smoke texture";
-    importInfo.transcodeFormat = TextureFormat::BC7UNorm;
+    importInfo.transcodeFormat = asset::TextureFormat::BC7UNorm;
     const std::vector<uint8_t> basisBytes = makeKtx2Fixture(true);
-    TextureAsset::CreateInfo textureInfo = importer.importMemory(
+    asset::TextureAsset::CreateInfo textureInfo = importer.importMemory(
         basisBytes.data(),
         basisBytes.size(),
         importInfo);
-    if (textureInfo.format != TextureFormat::BC7UNorm ||
-        textureInfo.colorSpace != TextureColorSpace::Linear ||
+    if (textureInfo.format != asset::TextureFormat::BC7UNorm ||
+        textureInfo.colorSpace != asset::TextureColorSpace::Linear ||
         textureInfo.payload.size() != 48 ||
         textureInfo.mipLevels.size() != 3)
     {
@@ -877,18 +877,18 @@ void validateKtxTextureImportAndUpload(const Device& device)
             "Basis-to-BC7 KTX2 transcode produced invalid asset metadata");
     }
 
-    CommandPool commandPool(
+    rhi::vulkan::CommandPool commandPool(
         device,
         device.graphicsQueueFamily(),
         VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
-    UploadContext uploadContext(device, commandPool);
+    rhi::vulkan::UploadContext uploadContext(device, commandPool);
 
-    const TextureAsset texture(std::move(textureInfo));
-    GpuTexture::CreateInfo gpuTextureInfo{};
+    const asset::TextureAsset texture(std::move(textureInfo));
+    rhi::vulkan::GpuTexture::CreateInfo gpuTextureInfo{};
     gpuTextureInfo.asset = &texture;
     gpuTextureInfo.viewRange.baseMipLevel = 1;
     gpuTextureInfo.viewRange.levelCount = 2;
-    const GpuTexture gpuTexture(device, uploadContext, gpuTextureInfo);
+    const rhi::vulkan::GpuTexture gpuTexture(device, uploadContext, gpuTextureInfo);
     if (!gpuTexture || gpuTexture.format() != VK_FORMAT_BC7_UNORM_BLOCK)
     {
         throw std::runtime_error(
@@ -896,11 +896,11 @@ void validateKtxTextureImportAndUpload(const Device& device)
     }
 }
 
-TextureAsset::CreateInfo cloneTextureCreateInfo(
-    const TextureAsset& source,
+asset::TextureAsset::CreateInfo cloneTextureCreateInfo(
+    const asset::TextureAsset& source,
     std::string name)
 {
-    TextureAsset::CreateInfo result{};
+    asset::TextureAsset::CreateInfo result{};
     result.name = std::move(name);
     result.width = source.width();
     result.height = source.height();
@@ -914,27 +914,27 @@ TextureAsset::CreateInfo cloneTextureCreateInfo(
 
 void validateStableTextureAssetReplacement()
 {
-    AssetManager assets;
-    TextureAsset::CreateInfo original{};
+    asset::AssetManager assets;
+    asset::TextureAsset::CreateInfo original{};
     original.name = "Original";
     original.width = 1;
     original.height = 1;
-    original.format = TextureFormat::RGBA8UNorm;
+    original.format = asset::TextureFormat::RGBA8UNorm;
     original.payload = {
         std::byte{0x10},
         std::byte{0x20},
         std::byte{0x30},
         std::byte{0xff}};
-    const TextureAssetHandle handle =
+    const asset::TextureAssetHandle handle =
         assets.createTexture(std::move(original));
 
-    TextureAsset::CreateInfo replacement = cloneTextureCreateInfo(
+    asset::TextureAsset::CreateInfo replacement = cloneTextureCreateInfo(
         assets.texture(handle),
         "Replacement");
     replacement.payload[0] = std::byte{0x80};
-    TextureAsset previous = assets.replaceTexture(
+    asset::TextureAsset previous = assets.replaceTexture(
         handle,
-        TextureAsset(std::move(replacement)));
+        asset::TextureAsset(std::move(replacement)));
     if (!assets.contains(handle) ||
         assets.texture(handle).name() != "Replacement" ||
         previous.name() != "Original" ||
@@ -946,12 +946,12 @@ void validateStableTextureAssetReplacement()
 }
 
 void validateGpuTextureReplacement(
-    const Device& device,
-    AssetManager& assets,
-    RenderAssetCache& renderAssets,
-    TextureAssetHandle handle)
+    const rhi::vulkan::Device& device,
+    asset::AssetManager& assets,
+    rhi::vulkan::RenderAssetCache& renderAssets,
+    asset::TextureAssetHandle handle)
 {
-    const GpuTexture* originalGpu = renderAssets.tryTexture(handle);
+    const rhi::vulkan::GpuTexture* originalGpu = renderAssets.tryTexture(handle);
     if (originalGpu == nullptr)
     {
         throw std::runtime_error(
@@ -959,24 +959,24 @@ void validateGpuTextureReplacement(
     }
     const VkImageView originalView = originalGpu->view();
 
-    TextureAsset replacementAsset(cloneTextureCreateInfo(
+    asset::TextureAsset replacementAsset(cloneTextureCreateInfo(
         assets.texture(handle),
         "GPU replacement texture"));
-    CommandPool commandPool(
+    rhi::vulkan::CommandPool commandPool(
         device,
         device.graphicsQueueFamily(),
         VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
-    UploadContext uploadContext(device, commandPool);
-    GpuTexture staged = renderAssets.stageTextureReplacement(
+    rhi::vulkan::UploadContext uploadContext(device, commandPool);
+    rhi::vulkan::GpuTexture staged = renderAssets.stageTextureReplacement(
         device,
         uploadContext,
         replacementAsset);
-    GpuTexture previousGpu = renderAssets.commitTextureReplacement(
+    rhi::vulkan::GpuTexture previousGpu = renderAssets.commitTextureReplacement(
         device,
         assets,
         handle,
         std::move(staged));
-    TextureAsset previousAsset = assets.replaceTexture(
+    asset::TextureAsset previousAsset = assets.replaceTexture(
         handle,
         std::move(replacementAsset));
 
@@ -993,7 +993,7 @@ void validateGpuTextureReplacement(
 
 void AppSmokeTests::runAssetImportTest()
 {
-    App app;
+    editor::App app;
 
     validateAssetId();
     validateTextureFormats();
@@ -1002,8 +1002,8 @@ void AppSmokeTests::runAssetImportTest()
     validateRenderKeys();
     validateRenderItemComparators();
     validateCullingSystem();
-    const App::RunConfig config{};
-    app.demoContent = DemoContentLoader::load(
+    const editor::App::RunConfig config{};
+    app.demoContent = editor::DemoContentLoader::load(
         app.assetManager,
         app.scene,
         config.demoContent,
@@ -1018,14 +1018,14 @@ void AppSmokeTests::runAssetImportTest()
         app.demoContent,
         app.textureImports);
 
-    const std::vector<RenderCandidate> candidates =
-        SceneRenderExtractor{}.extract(app.scene, app.assetManager);
+    const std::vector<render::RenderCandidate> candidates =
+        render::SceneRenderExtractor{}.extract(app.scene, app.assetManager);
     if (candidates.empty())
     {
         throw std::runtime_error(
             "CPU-only scene extraction produced no render candidates");
     }
-    for (const RenderCandidate& candidate : candidates)
+    for (const render::RenderCandidate& candidate : candidates)
     {
         if (!app.assetManager.contains(candidate.mesh) ||
             !app.assetManager.contains(candidate.material) ||
@@ -1036,22 +1036,22 @@ void AppSmokeTests::runAssetImportTest()
         }
     }
 
-    Camera frontendCamera;
+    render::Camera frontendCamera;
     frontendCamera.setPosition(glm::vec3(0.0f, 1.0f, 0.5f));
     frontendCamera.setRotation(glm::vec3(-60.0f, 0.0f, 0.0f));
     frontendCamera.setAspect(16.0f / 9.0f);
     frontendCamera.Update();
-    const RenderFrame frontendFrame = buildRenderFrame(
+    const render::RenderFrame frontendFrame = render::buildRenderFrame(
         app.scene,
         app.assetManager,
         frontendCamera.makeRenderView());
     validateRenderFrame(frontendFrame);
 
-    const ModelAsset& model =
+    const asset::ModelAsset& model =
         app.assetManager.model(app.demoContent.model);
-    for (const ModelNode& node : model.nodes())
+    for (const asset::ModelNode& node : model.nodes())
     {
-        for (MeshAssetHandle meshHandle : node.meshes)
+        for (asset::MeshAssetHandle meshHandle : node.meshes)
         {
             if (!app.assetManager.mesh(meshHandle).localBounds().valid())
             {
@@ -1064,38 +1064,38 @@ void AppSmokeTests::runAssetImportTest()
 
 void AppSmokeTests::runRenderTest()
 {
-    App app;
-    RuntimeGui gui;
-    runRenderTest(app, App::RunConfig{}, gui);
+    editor::App app;
+    editor::RuntimeGui gui;
+    runRenderTest(app, editor::App::RunConfig{}, gui);
 }
 
 void AppSmokeTests::runRenderTest(
-    App& app,
-    const App::RunConfig& config,
-    ApplicationGui& gui)
+    editor::App& app,
+    const editor::App::RunConfig& config,
+    editor::ApplicationGui& gui)
 {
     app.initWindow(config, false);
     app.initVulkan(config);
     validateKtxTextureImportAndUpload(app.vulkanContext.device());
     app.initImGui(config);
     app.guiRenderBridge.attach(app.renderer, app.renderAssets);
-    ApplicationGuiContext guiContext{
+    editor::ApplicationGuiContext guiContext{
         app.assetManager,
         app.scene,
         app.guiRenderBridge
     };
     gui.attach(guiContext);
-    TextureAssetHandle editorPreviewTexture{};
-    const std::vector<RenderCandidate> previewCandidates =
-        SceneRenderExtractor{}.extract(app.scene, app.assetManager);
-    for (const RenderCandidate& candidate : previewCandidates)
+    asset::TextureAssetHandle editorPreviewTexture{};
+    const std::vector<render::RenderCandidate> previewCandidates =
+        render::SceneRenderExtractor{}.extract(app.scene, app.assetManager);
+    for (const render::RenderCandidate& candidate : previewCandidates)
     {
-        const MaterialAsset& material =
+        const asset::MaterialAsset& material =
             app.assetManager.material(candidate.material);
         const auto texture = std::find_if(
             material.textures().begin(),
             material.textures().end(),
-            [&](TextureAssetHandle handle)
+            [&](asset::TextureAssetHandle handle)
             {
                 return app.renderAssets.tryTexture(handle) != nullptr &&
                     app.textureImports.find(handle) != nullptr;
@@ -1116,9 +1116,9 @@ void AppSmokeTests::runRenderTest(
         app.assetManager,
         app.renderAssets,
         editorPreviewTexture);
-    if (config.outputMode == VulkanRenderer::OutputMode::Editor)
+    if (config.outputMode == rhi::vulkan::VulkanRenderer::OutputMode::Editor)
     {
-        const TextureImportRecord* before =
+        const importer::texture::TextureImportRecord* before =
             app.textureImports.find(editorPreviewTexture);
         if (before == nullptr)
         {
@@ -1126,17 +1126,17 @@ void AppSmokeTests::runRenderTest(
                 "Editor texture reimport test requires source provenance");
         }
         const uint64_t previousRevision = before->revision;
-        TextureImportSettings asynchronousSettings = before->settings;
-        asynchronousSettings.basis.encoding = KtxPayloadEncoding::Uastc;
+        importer::texture::TextureImportSettings asynchronousSettings = before->settings;
+        asynchronousSettings.basis.encoding = importer::texture::KtxPayloadEncoding::Uastc;
         asynchronousSettings.basis.uastcQualityLevel = 0;
         asynchronousSettings.zstdLevel = 0;
-        asynchronousSettings.transcodeFormat = TextureFormat::BC7UNorm;
-        app.pendingTextureReimports_.push_back(TextureReimportRequest{
+        asynchronousSettings.transcodeFormat = asset::TextureFormat::BC7UNorm;
+        app.pendingTextureReimports_.push_back(importer::texture::TextureReimportRequest{
             editorPreviewTexture,
             std::move(asynchronousSettings)});
         app.processPendingTextureReimport();
 
-        const TextureImportRecord* started =
+        const importer::texture::TextureImportRecord* started =
             app.textureImports.find(editorPreviewTexture);
         if (started == nullptr || !started->reimporting ||
             started->revision != previousRevision)
@@ -1150,7 +1150,7 @@ void AppSmokeTests::runRenderTest(
         while (std::chrono::steady_clock::now() < deadline)
         {
             app.processPendingTextureReimport();
-            const TextureImportRecord* current =
+            const importer::texture::TextureImportRecord* current =
                 app.textureImports.find(editorPreviewTexture);
             if (current == nullptr || !current->reimporting)
             {
@@ -1159,7 +1159,7 @@ void AppSmokeTests::runRenderTest(
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
-        const TextureImportRecord* after =
+        const importer::texture::TextureImportRecord* after =
             app.textureImports.find(editorPreviewTexture);
         if (after == nullptr || after->revision != previousRevision + 1 ||
             !after->lastError.empty() ||
@@ -1171,9 +1171,9 @@ void AppSmokeTests::runRenderTest(
     }
     try
     {
-        if (config.outputMode == VulkanRenderer::OutputMode::Editor)
+        if (config.outputMode == rhi::vulkan::VulkanRenderer::OutputMode::Editor)
         {
-            const ApplicationGuiTexture smokeTexturePreview =
+            const render::ApplicationGuiTexture smokeTexturePreview =
                 app.guiRenderBridge.preview(
                 editorPreviewTexture);
             if (!smokeTexturePreview)
@@ -1188,9 +1188,9 @@ void AppSmokeTests::runRenderTest(
             app.window.pollEvents();
             app.imguiLayer.beginFrame();
             app.drawGui(gui);
-            if (config.outputMode == VulkanRenderer::OutputMode::Editor)
+            if (config.outputMode == rhi::vulkan::VulkanRenderer::OutputMode::Editor)
             {
-                const ApplicationGuiTexture smokeTexturePreview =
+                const render::ApplicationGuiTexture smokeTexturePreview =
                     app.guiRenderBridge.preview(
                         editorPreviewTexture);
                 ImGui::Begin("Texture Preview Smoke Test");
@@ -1202,7 +1202,7 @@ void AppSmokeTests::runRenderTest(
             }
             ImDrawData* uiDrawData = app.imguiLayer.endFrame();
 
-            const RenderFrame renderFrame = app.makeRenderFrame();
+            const render::RenderFrame renderFrame = app.makeRenderFrame();
             validateRenderFrame(renderFrame);
 
             if (frame == 0)
@@ -1219,7 +1219,7 @@ void AppSmokeTests::runRenderTest(
                     renderFrame,
                     app.renderAssets,
                     uiDrawData) ==
-                VulkanRenderer::RenderResult::NeedsResize)
+                rhi::vulkan::VulkanRenderer::RenderResult::NeedsResize)
             {
                 throw std::runtime_error(
                     "hidden render test unexpectedly requires a resize");
@@ -1244,5 +1244,5 @@ void AppSmokeTests::runRenderTest(
     app.cleanup();
 }
 
-} // namespace Test
-} // namespace VkRenderer
+} // namespace test
+} // namespace rubia

@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 namespace
 {
@@ -418,4 +418,4 @@ void AssetManager::reset() noexcept
     textures_.reset();
 }
 
-} // namespace VkRenderer
+} // namespace rubia::asset

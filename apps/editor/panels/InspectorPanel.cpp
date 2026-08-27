@@ -12,7 +12,7 @@
 #include <variant>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
     namespace
@@ -29,11 +29,11 @@ namespace VkRenderer
 
     } // namespace
 
-    std::vector<TextureReimportRequest> InspectorPanel::draw(
-        const Scene &scene,
-        const AssetManager &assets,
-        ApplicationGuiRenderBridge &texturePreviews,
-        const TextureImportRegistry* textureImports,
+    std::vector<importer::texture::TextureReimportRequest> InspectorPanel::draw(
+        const scene::Scene &scene,
+        const asset::AssetManager &assets,
+        render::ApplicationGuiRenderBridge &texturePreviews,
+        const importer::texture::TextureImportRegistry* textureImports,
         EditorSelection &selection,
         bool *open)
     {
@@ -49,7 +49,7 @@ namespace VkRenderer
             selection.navigateBack();
         }
 
-        std::vector<TextureReimportRequest> textureReimports;
+        std::vector<importer::texture::TextureReimportRequest> textureReimports;
         const std::optional<InspectorTarget> navigation = std::visit(
             Overloaded{
                 [](std::monostate) -> std::optional<InspectorTarget>
@@ -61,7 +61,7 @@ namespace VkRenderer
                 {
                     return sceneNodeInspector_.draw(scene, assets, target);
                 },
-                [&](ModelAssetHandle target)
+                [&](asset::ModelAssetHandle target)
                 {
                     return modelInspector_.drawModelAsset(assets, target);
                 },
@@ -69,7 +69,7 @@ namespace VkRenderer
                 {
                     return modelInspector_.drawModelNode(scene, assets, target);
                 },
-                [&](MeshAssetHandle target)
+                [&](asset::MeshAssetHandle target)
                 {
                     return modelInspector_.drawMeshAsset(assets, target);
                 },
@@ -77,7 +77,7 @@ namespace VkRenderer
                 {
                     return modelInspector_.drawSubmesh(assets, target);
                 },
-                [&](MaterialAssetHandle target)
+                [&](asset::MaterialAssetHandle target)
                 {
                     MaterialInspectorOutput output =
                         materialInspector_.drawMaterialAsset(
@@ -93,16 +93,16 @@ namespace VkRenderer
                             output.textureReimports.end()));
                     return output.navigation;
                 },
-                [&](MaterialTemplateAssetHandle target)
+                [&](asset::MaterialTemplateAssetHandle target)
                 {
                     return materialInspector_.drawMaterialTemplate(
                         assets,
                         target);
                 },
-                [&](TextureAssetHandle target)
+                [&](asset::TextureAssetHandle target)
                     -> std::optional<InspectorTarget>
                 {
-                    std::optional<TextureReimportRequest> request =
+                    std::optional<importer::texture::TextureReimportRequest> request =
                         textureInspector_.draw(
                         assets,
                         texturePreviews,
@@ -124,4 +124,4 @@ namespace VkRenderer
         return textureReimports;
     }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

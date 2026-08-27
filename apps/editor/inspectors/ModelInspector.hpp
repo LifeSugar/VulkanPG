@@ -1,35 +1,33 @@
 #pragma once
 
+#include "EditorFwd.hpp"
 #include "EditorSelection.hpp"
 #include "panels/TransformPanel.hpp"
 
 #include <optional>
 
-namespace VkRenderer
+namespace rubia::editor
 {
-
-class AssetManager;
-class Scene;
 
 class ModelInspector final
 {
 public:
     [[nodiscard]] std::optional<InspectorTarget> drawModelAsset(
-        const AssetManager& assets,
-        ModelAssetHandle target) const;
+        const asset::AssetManager& assets,
+        asset::ModelAssetHandle target) const;
     [[nodiscard]] std::optional<InspectorTarget> drawModelNode(
-        const Scene& scene,
-        const AssetManager& assets,
+        const scene::Scene& scene,
+        const asset::AssetManager& assets,
         ModelNodeTarget target);
     [[nodiscard]] std::optional<InspectorTarget> drawMeshAsset(
-        const AssetManager& assets,
-        MeshAssetHandle target) const;
+        const asset::AssetManager& assets,
+        asset::MeshAssetHandle target) const;
     [[nodiscard]] std::optional<InspectorTarget> drawSubmesh(
-        const AssetManager& assets,
+        const asset::AssetManager& assets,
         SubmeshTarget target) const;
 
 private:
     TransformPanel transformPanel_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

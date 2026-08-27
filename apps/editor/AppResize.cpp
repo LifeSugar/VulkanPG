@@ -2,13 +2,13 @@
 
 #include "ApplicationGui.hpp"
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 void App::requestSwapChainRecreation()
 {
     swapChainRecreationRequested = true;
-    lastFramebufferResizeTime = Window::time();
+    lastFramebufferResizeTime = rhi::vulkan::Window::time();
 }
 
 bool App::isSwapChainRecreationDue() const
@@ -16,7 +16,7 @@ bool App::isSwapChainRecreationDue() const
     const VkExtent2D extent = window.framebufferExtent();
     return extent.width > 0 &&
         extent.height > 0 &&
-        Window::time() - lastFramebufferResizeTime >=
+        rhi::vulkan::Window::time() - lastFramebufferResizeTime >=
             kSwapChainResizeDebounceSeconds;
 }
 
@@ -58,4 +58,4 @@ void App::recreateSwapChain(ApplicationGui& gui)
     swapChainRecreationRequested = false;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

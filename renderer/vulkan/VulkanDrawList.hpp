@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 class GpuMaterial;
@@ -17,7 +17,7 @@ struct VulkanDrawItem
 {
     const Mesh* mesh = nullptr;
     const GpuMaterial* material = nullptr;
-    PipelineVariantKey pipelineKey;
+    render::PipelineVariantKey pipelineKey;
     uint32_t submeshIndex = 0;
     uint32_t objectIndex = 0;
 };
@@ -34,4 +34,4 @@ struct VulkanDrawList
     }
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 /// Stable render-layer indices shared by scene objects and render views.
@@ -162,4 +162,4 @@ static_assert(
     !(RenderLayer::World | RenderLayer::UI).intersects(
         LayerMask(RenderLayer::Editor)));
 
-} // namespace VkRenderer
+} // namespace rubia::render

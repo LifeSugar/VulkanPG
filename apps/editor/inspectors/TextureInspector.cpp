@@ -13,33 +13,33 @@
 #include <string>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 namespace
 {
 
-[[nodiscard]] const char* textureFormatName(TextureFormat format) noexcept
+[[nodiscard]] const char* textureFormatName(asset::TextureFormat format) noexcept
 {
     switch (format)
     {
-    case TextureFormat::Undefined: return "Undefined";
-    case TextureFormat::R8UNorm: return "R8 UNorm";
-    case TextureFormat::RG8UNorm: return "RG8 UNorm";
-    case TextureFormat::RGBA8UNorm: return "RGBA8 UNorm";
-    case TextureFormat::RGBA16Float: return "RGBA16 Float";
-    case TextureFormat::RGBA32Float: return "RGBA32 Float";
-    case TextureFormat::BC1RGBUNorm: return "BC1 RGB UNorm";
-    case TextureFormat::BC1RGBAUNorm: return "BC1 RGBA UNorm";
-    case TextureFormat::BC2UNorm: return "BC2 UNorm";
-    case TextureFormat::BC3UNorm: return "BC3 RGBA UNorm";
-    case TextureFormat::BC4UNorm: return "BC4 R UNorm";
-    case TextureFormat::BC4SNorm: return "BC4 R SNorm";
-    case TextureFormat::BC5UNorm: return "BC5 RG UNorm";
-    case TextureFormat::BC5SNorm: return "BC5 RG SNorm";
-    case TextureFormat::BC6HUFloat: return "BC6H UFloat";
-    case TextureFormat::BC6HSFloat: return "BC6H SFloat";
-    case TextureFormat::BC7UNorm: return "BC7 RGBA UNorm";
+    case asset::TextureFormat::Undefined: return "Undefined";
+    case asset::TextureFormat::R8UNorm: return "R8 UNorm";
+    case asset::TextureFormat::RG8UNorm: return "RG8 UNorm";
+    case asset::TextureFormat::RGBA8UNorm: return "RGBA8 UNorm";
+    case asset::TextureFormat::RGBA16Float: return "RGBA16 Float";
+    case asset::TextureFormat::RGBA32Float: return "RGBA32 Float";
+    case asset::TextureFormat::BC1RGBUNorm: return "BC1 RGB UNorm";
+    case asset::TextureFormat::BC1RGBAUNorm: return "BC1 RGBA UNorm";
+    case asset::TextureFormat::BC2UNorm: return "BC2 UNorm";
+    case asset::TextureFormat::BC3UNorm: return "BC3 RGBA UNorm";
+    case asset::TextureFormat::BC4UNorm: return "BC4 R UNorm";
+    case asset::TextureFormat::BC4SNorm: return "BC4 R SNorm";
+    case asset::TextureFormat::BC5UNorm: return "BC5 RG UNorm";
+    case asset::TextureFormat::BC5SNorm: return "BC5 RG SNorm";
+    case asset::TextureFormat::BC6HUFloat: return "BC6H UFloat";
+    case asset::TextureFormat::BC6HSFloat: return "BC6H SFloat";
+    case asset::TextureFormat::BC7UNorm: return "BC7 RGBA UNorm";
     }
     return "Unknown";
 }
@@ -145,41 +145,41 @@ void drawValidationMessage(const char* message)
 }
 
 constexpr std::array transferFunctions{
-    std::pair{TextureColorSpace::Linear, "Linear"},
-    std::pair{TextureColorSpace::Srgb, "sRGB"}};
+    std::pair{asset::TextureColorSpace::Linear, "Linear"},
+    std::pair{asset::TextureColorSpace::Srgb, "sRGB"}};
 
 constexpr std::array payloadEncodings{
-    std::pair{KtxPayloadEncoding::Uncompressed, "Uncompressed"},
-    std::pair{KtxPayloadEncoding::Etc1s, "ETC1S"},
-    std::pair{KtxPayloadEncoding::Uastc, "UASTC"}};
+    std::pair{importer::texture::KtxPayloadEncoding::Uncompressed, "Uncompressed"},
+    std::pair{importer::texture::KtxPayloadEncoding::Etc1s, "ETC1S"},
+    std::pair{importer::texture::KtxPayloadEncoding::Uastc, "UASTC"}};
 
 constexpr std::array mipFilters{
-    std::pair{TextureMipFilter::Box, "Box"},
-    std::pair{TextureMipFilter::Triangle, "Triangle"},
-    std::pair{TextureMipFilter::CubicBSpline, "Cubic B-Spline"},
-    std::pair{TextureMipFilter::CatmullRom, "Catmull-Rom"},
-    std::pair{TextureMipFilter::Mitchell, "Mitchell"},
-    std::pair{TextureMipFilter::Point, "Point"}};
+    std::pair{importer::texture::TextureMipFilter::Box, "Box"},
+    std::pair{importer::texture::TextureMipFilter::Triangle, "Triangle"},
+    std::pair{importer::texture::TextureMipFilter::CubicBSpline, "Cubic B-Spline"},
+    std::pair{importer::texture::TextureMipFilter::CatmullRom, "Catmull-Rom"},
+    std::pair{importer::texture::TextureMipFilter::Mitchell, "Mitchell"},
+    std::pair{importer::texture::TextureMipFilter::Point, "Point"}};
 
 constexpr std::array mipEdgeModes{
-    std::pair{TextureMipEdgeMode::Clamp, "Clamp"},
-    std::pair{TextureMipEdgeMode::Reflect, "Reflect"},
-    std::pair{TextureMipEdgeMode::Wrap, "Wrap"},
-    std::pair{TextureMipEdgeMode::Zero, "Zero"}};
+    std::pair{importer::texture::TextureMipEdgeMode::Clamp, "Clamp"},
+    std::pair{importer::texture::TextureMipEdgeMode::Reflect, "Reflect"},
+    std::pair{importer::texture::TextureMipEdgeMode::Wrap, "Wrap"},
+    std::pair{importer::texture::TextureMipEdgeMode::Zero, "Zero"}};
 
 constexpr std::array transcodeFormats{
-    std::pair{TextureFormat::BC1RGBUNorm, "BC1 RGB"},
-    std::pair{TextureFormat::BC3UNorm, "BC3 RGBA"},
-    std::pair{TextureFormat::BC4UNorm, "BC4 R"},
-    std::pair{TextureFormat::BC5UNorm, "BC5 RG"},
-    std::pair{TextureFormat::BC7UNorm, "BC7 RGBA"}};
+    std::pair{asset::TextureFormat::BC1RGBUNorm, "BC1 RGB"},
+    std::pair{asset::TextureFormat::BC3UNorm, "BC3 RGBA"},
+    std::pair{asset::TextureFormat::BC4UNorm, "BC4 R"},
+    std::pair{asset::TextureFormat::BC5UNorm, "BC5 RG"},
+    std::pair{asset::TextureFormat::BC7UNorm, "BC7 RGBA"}};
 
 } // namespace
 
 TextureInspector::ImportDraft& TextureInspector::draftFor(
-    TextureAssetHandle target,
-    const TextureAsset& texture,
-    const TextureImportRecord* importRecord)
+    asset::TextureAssetHandle target,
+    const asset::TextureAsset& texture,
+    const importer::texture::TextureImportRecord* importRecord)
 {
     const uint64_t key =
         (static_cast<uint64_t>(target.generation) << 32u) |
@@ -190,7 +190,7 @@ TextureInspector::ImportDraft& TextureInspector::draftFor(
         draft.initialized = true;
         if (importRecord != nullptr)
         {
-            const TextureImportSettings& settings = importRecord->settings;
+            const importer::texture::TextureImportSettings& settings = importRecord->settings;
             draft.transferFunction = settings.colorSpace;
             draft.payloadEncoding = settings.basis.encoding;
             draft.generateMipmaps = settings.generateMipmaps;
@@ -234,13 +234,13 @@ TextureInspector::ImportDraft& TextureInspector::draftFor(
     return draft;
 }
 
-std::optional<TextureReimportRequest> TextureInspector::draw(
-    const AssetManager& assets,
-    ApplicationGuiRenderBridge& texturePreviews,
-    const TextureImportRegistry* textureImports,
-    TextureAssetHandle target)
+std::optional<importer::texture::TextureReimportRequest> TextureInspector::draw(
+    const asset::AssetManager& assets,
+    render::ApplicationGuiRenderBridge& texturePreviews,
+    const importer::texture::TextureImportRegistry* textureImports,
+    asset::TextureAssetHandle target)
 {
-    using namespace InspectorWidgets;
+    using namespace widgets;
 
     if (!assets.contains(target))
     {
@@ -248,8 +248,8 @@ std::optional<TextureReimportRequest> TextureInspector::draw(
         return std::nullopt;
     }
 
-    const TextureAsset& texture = assets.texture(target);
-    const TextureImportRecord* importRecord = textureImports == nullptr
+    const asset::TextureAsset& texture = assets.texture(target);
+    const importer::texture::TextureImportRecord* importRecord = textureImports == nullptr
         ? nullptr
         : textureImports->find(target);
     ImportDraft& draft = draftFor(target, texture, importRecord);
@@ -272,7 +272,7 @@ std::optional<TextureReimportRequest> TextureInspector::draw(
     drawProperty("Format", textureFormatName(texture.format()));
     drawProperty(
         "Transfer Function",
-        texture.colorSpace() == TextureColorSpace::Srgb ? "sRGB" : "Linear");
+        texture.colorSpace() == asset::TextureColorSpace::Srgb ? "sRGB" : "Linear");
     drawProperty(
         "Mip Levels",
         static_cast<uint32_t>(texture.mipLevels().size()));
@@ -338,8 +338,8 @@ std::optional<TextureReimportRequest> TextureInspector::draw(
         draft.normalMap);
     if (normalMapChanged && draft.normalMap)
     {
-        draft.transferFunction = TextureColorSpace::Linear;
-        draft.transcodeFormat = TextureFormat::BC5UNorm;
+        draft.transferFunction = asset::TextureColorSpace::Linear;
+        draft.transcodeFormat = asset::TextureFormat::BC5UNorm;
     }
     ImGui::TextDisabled("Input Swizzle");
     ImGui::SameLine(140.0f);
@@ -355,7 +355,7 @@ std::optional<TextureReimportRequest> TextureInspector::draw(
         1,
         64);
 
-    if (draft.payloadEncoding == KtxPayloadEncoding::Etc1s)
+    if (draft.payloadEncoding == importer::texture::KtxPayloadEncoding::Etc1s)
     {
         drawUIntSlider(
             "ETC1S Level",
@@ -370,7 +370,7 @@ std::optional<TextureReimportRequest> TextureInspector::draw(
             1,
             255);
     }
-    else if (draft.payloadEncoding == KtxPayloadEncoding::Uastc)
+    else if (draft.payloadEncoding == importer::texture::KtxPayloadEncoding::Uastc)
     {
         drawUIntSlider(
             "UASTC Quality",
@@ -404,7 +404,7 @@ std::optional<TextureReimportRequest> TextureInspector::draw(
     }
 
     const bool zstdAvailable =
-        draft.payloadEncoding != KtxPayloadEncoding::Etc1s;
+        draft.payloadEncoding != importer::texture::KtxPayloadEncoding::Etc1s;
     ImGui::BeginDisabled(!zstdAvailable);
     drawUIntSlider(
         "Zstd Level",
@@ -420,7 +420,7 @@ std::optional<TextureReimportRequest> TextureInspector::draw(
 
     ImGui::SeparatorText("Runtime Transcode");
     const bool requiresTranscode =
-        draft.payloadEncoding != KtxPayloadEncoding::Uncompressed;
+        draft.payloadEncoding != importer::texture::KtxPayloadEncoding::Uncompressed;
     ImGui::BeginDisabled(!requiresTranscode);
     drawEnumCombo(
         "Texture Format",
@@ -440,15 +440,15 @@ std::optional<TextureReimportRequest> TextureInspector::draw(
 
     bool invalidSettings = false;
     if (draft.normalMap &&
-        draft.transferFunction == TextureColorSpace::Srgb)
+        draft.transferFunction == asset::TextureColorSpace::Srgb)
     {
         invalidSettings = true;
         drawValidationMessage("Normal-map encoding requires Linear data.");
     }
     if (requiresTranscode &&
-        draft.transferFunction == TextureColorSpace::Srgb &&
-        (draft.transcodeFormat == TextureFormat::BC4UNorm ||
-         draft.transcodeFormat == TextureFormat::BC5UNorm))
+        draft.transferFunction == asset::TextureColorSpace::Srgb &&
+        (draft.transcodeFormat == asset::TextureFormat::BC4UNorm ||
+         draft.transcodeFormat == asset::TextureFormat::BC5UNorm))
     {
         invalidSettings = true;
         drawValidationMessage(
@@ -480,7 +480,7 @@ std::optional<TextureReimportRequest> TextureInspector::draw(
         return std::nullopt;
     }
 
-    TextureImportSettings settings{};
+    importer::texture::TextureImportSettings settings{};
     settings.colorSpace = draft.transferFunction;
     settings.generateMipmaps = draft.generateMipmaps;
     settings.mipFilter = draft.mipFilter;
@@ -498,7 +498,7 @@ std::optional<TextureReimportRequest> TextureInspector::draw(
     settings.zstdLevel = draft.zstdLevel;
     settings.transcodeFormat = draft.transcodeFormat;
     settings.highQualityTranscode = draft.highQualityTranscode;
-    return TextureReimportRequest{target, std::move(settings)};
+    return importer::texture::TextureReimportRequest{target, std::move(settings)};
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

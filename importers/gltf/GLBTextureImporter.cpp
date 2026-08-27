@@ -6,10 +6,10 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::importer::gltf
 {
 
-std::vector<TextureAssetHandle> GLBTextureImporter::import(
+std::vector<asset::TextureAssetHandle> GLBTextureImporter::import(
     const std::vector<GLBTexture>& source,
     const CreateInfo& createInfo) const
 {
@@ -31,16 +31,16 @@ std::vector<TextureAssetHandle> GLBTextureImporter::import(
             "GLBTextureImporter color-space table does not match its source textures");
     }
 
-    std::vector<TextureAssetHandle> result;
+    std::vector<asset::TextureAssetHandle> result;
     result.reserve(source.size());
     for (std::size_t index = 0; index < source.size(); ++index)
     {
         const GLBTexture& texture = source[index];
-        const TextureColorSpace colorSpace =
+        const asset::TextureColorSpace colorSpace =
             createInfo.colorSpaces == nullptr
                 ? createInfo.colorSpace
                 : (*createInfo.colorSpaces)[index];
-        TextureAsset::CreateInfo textureInfo{};
+        asset::TextureAsset::CreateInfo textureInfo{};
         if (texture.storage == GLBTextureStorage::Rgba8Payload)
         {
             if (texture.width == 0 || texture.height == 0 ||
@@ -66,7 +66,7 @@ std::vector<TextureAssetHandle> GLBTextureImporter::import(
             textureInfo.name = texture.name;
             textureInfo.width = texture.width;
             textureInfo.height = texture.height;
-            textureInfo.format = TextureFormat::RGBA8UNorm;
+            textureInfo.format = asset::TextureFormat::RGBA8UNorm;
             textureInfo.colorSpace = colorSpace;
             textureInfo.sampler = createInfo.sampler;
             textureInfo.payload.resize(texture.data.size());
@@ -105,4 +105,4 @@ std::vector<TextureAssetHandle> GLBTextureImporter::import(
     return result;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::importer::gltf

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "EditorFwd.hpp"
+
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
@@ -8,11 +10,8 @@
 struct ImDrawData;
 struct ImGuiContext;
 
-namespace VkRenderer
+namespace rubia::editor
 {
-
-class VulkanContext;
-class Window;
 
 /// Owns the Dear ImGui context and its GLFW/Vulkan backends.
 class ImGuiLayer final
@@ -20,8 +19,8 @@ class ImGuiLayer final
 public:
     struct CreateInfo
     {
-        Window* window = nullptr;
-        VulkanContext* context = nullptr;
+        rhi::vulkan::Window* window = nullptr;
+        rhi::vulkan::VulkanContext* context = nullptr;
         VkRenderPass renderPass = VK_NULL_HANDLE;
         uint32_t minImageCount = 2;
         uint32_t imageCount = 0;
@@ -60,7 +59,7 @@ public:
 private:
     void makeContextCurrent() const noexcept;
 
-    VulkanContext* context_ = nullptr;
+    rhi::vulkan::VulkanContext* context_ = nullptr;
     ImGuiContext* imguiContext_ = nullptr;
     std::string iniFilename_;
     uint32_t minImageCount_ = 2;
@@ -68,4 +67,4 @@ private:
     bool rendererBackendInitialized_ = false;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

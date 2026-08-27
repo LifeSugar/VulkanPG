@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 Framebuffer::Framebuffer(
@@ -85,4 +85,4 @@ void Framebuffer::reset() noexcept
     framebuffer_ = VK_NULL_HANDLE;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

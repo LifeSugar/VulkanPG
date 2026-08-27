@@ -1,16 +1,16 @@
-add_library(lv_engine STATIC)
-add_library(LearnVulkan::Engine ALIAS lv_engine)
+add_library(rubia_engine STATIC)
+add_library(Rubia::Engine ALIAS rubia_engine)
 
-target_include_directories(lv_engine PUBLIC
+target_include_directories(rubia_engine PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
-target_compile_definitions(lv_engine PUBLIC
+target_compile_definitions(rubia_engine PUBLIC
     GLM_FORCE_DEPTH_ZERO_TO_ONE
 )
-target_link_libraries(lv_engine
+target_link_libraries(rubia_engine
     PUBLIC
         glm::glm
-        lv_project_options
+        rubia_project_options
 )
 
 add_subdirectory(asset)

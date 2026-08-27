@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 SwapchainResources::SwapchainResources(
@@ -345,4 +345,4 @@ SwapchainResources::image(uint32_t imageIndex)
     return images_[imageIndex];
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

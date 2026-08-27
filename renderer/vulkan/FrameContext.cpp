@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 FrameContext::FrameContext(const Device& device)
@@ -83,4 +83,4 @@ void FrameContext::resetFence()
     inFlight_.resetSignal();
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

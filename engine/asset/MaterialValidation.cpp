@@ -18,7 +18,7 @@
 #include <variant>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 namespace
 {
@@ -827,4 +827,4 @@ ValidationReport validateMaterialCreateInfo(
     return report;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::asset

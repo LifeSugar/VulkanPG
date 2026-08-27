@@ -9,7 +9,7 @@
 
 #include <cstdint>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 /// Editor-owned ImGui business layer. It does not own runtime or Vulkan state.
@@ -40,4 +40,4 @@ private:
     bool showConsole_ = true;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

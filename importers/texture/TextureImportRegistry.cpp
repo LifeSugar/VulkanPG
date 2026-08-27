@@ -3,10 +3,10 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::importer::texture
 {
 
-uint64_t TextureImportRegistry::key(TextureAssetHandle texture) noexcept
+uint64_t TextureImportRegistry::key(asset::TextureAssetHandle texture) noexcept
 {
     return (static_cast<uint64_t>(texture.generation) << 32u) |
         static_cast<uint64_t>(texture.index);
@@ -24,7 +24,7 @@ void TextureImportRegistry::registerTexture(TextureImportRecord record)
 }
 
 const TextureImportRecord* TextureImportRegistry::find(
-    TextureAssetHandle texture) const noexcept
+    asset::TextureAssetHandle texture) const noexcept
 {
     if (!texture)
     {
@@ -34,12 +34,12 @@ const TextureImportRecord* TextureImportRegistry::find(
     return iterator == records_.end() ? nullptr : &iterator->second;
 }
 
-bool TextureImportRegistry::contains(TextureAssetHandle texture) const noexcept
+bool TextureImportRegistry::contains(asset::TextureAssetHandle texture) const noexcept
 {
     return find(texture) != nullptr;
 }
 
-void TextureImportRegistry::markStarted(TextureAssetHandle texture)
+void TextureImportRegistry::markStarted(asset::TextureAssetHandle texture)
 {
     auto iterator = records_.find(key(texture));
     if (iterator == records_.end())
@@ -55,7 +55,7 @@ void TextureImportRegistry::markStarted(TextureAssetHandle texture)
 }
 
 void TextureImportRegistry::markSucceeded(
-    TextureAssetHandle texture,
+    asset::TextureAssetHandle texture,
     TextureImportSettings settings)
 {
     auto iterator = records_.find(key(texture));
@@ -70,7 +70,7 @@ void TextureImportRegistry::markSucceeded(
 }
 
 void TextureImportRegistry::markFailed(
-    TextureAssetHandle texture,
+    asset::TextureAssetHandle texture,
     std::string error)
 {
     auto iterator = records_.find(key(texture));
@@ -87,4 +87,4 @@ void TextureImportRegistry::reset() noexcept
     records_.clear();
 }
 
-} // namespace VkRenderer
+} // namespace rubia::importer::texture

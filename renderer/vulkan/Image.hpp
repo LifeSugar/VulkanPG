@@ -7,7 +7,7 @@
 #include <vk_mem_alloc.h>
 #endif
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 class Device;
@@ -77,4 +77,4 @@ private:
 #endif
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

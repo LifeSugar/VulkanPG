@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 namespace
 {
@@ -66,4 +66,4 @@ void ModelAsset::reset() noexcept
     nodes_.clear();
 }
 
-} // namespace VkRenderer
+} // namespace rubia::asset

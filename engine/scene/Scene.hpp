@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::scene
 {
 
 inline constexpr uint32_t kInvalidSceneNodeIndex =
@@ -22,11 +22,12 @@ struct SceneNode
     std::string name;
     glm::mat4 localTransform{1.0f};
     uint32_t parent = kInvalidSceneNodeIndex;
-    ModelAssetHandle model;
+    asset::ModelAssetHandle model;
     /// Visibility layers applied to every renderable expanded from this instance.
-    LayerMask layerMask = RenderLayer::World;
+    render::LayerMask layerMask = render::RenderLayer::World;
     /// Controls whether renderables from this instance use bounds culling.
-    BoundsCullingMode boundsCullingMode = BoundsCullingMode::Normal;
+    render::BoundsCullingMode boundsCullingMode =
+        render::BoundsCullingMode::Normal;
 };
 
 /// Runtime hierarchy that instances model assets without owning their data.
@@ -45,10 +46,10 @@ public:
     void create(CreateInfo createInfo);
     void reset() noexcept;
     void setLocalTransform(uint32_t nodeIndex, const glm::mat4& transform);
-    void setLayerMask(uint32_t nodeIndex, LayerMask layerMask);
+    void setLayerMask(uint32_t nodeIndex, render::LayerMask layerMask);
     void setBoundsCullingMode(
         uint32_t nodeIndex,
-        BoundsCullingMode mode);
+        render::BoundsCullingMode mode);
 
     [[nodiscard]] const std::string& name() const noexcept { return name_; }
     [[nodiscard]] const std::vector<SceneNode>& nodes() const noexcept { return nodes_; }
@@ -58,4 +59,4 @@ private:
     std::vector<SceneNode> nodes_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::scene

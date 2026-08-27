@@ -7,7 +7,7 @@
 #include <string>
 #include <string_view>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 /// Stable, serializable identity for a logical project asset.
@@ -68,18 +68,18 @@ struct AssetIdHash
     [[nodiscard]] std::size_t operator()(AssetId id) const noexcept;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::asset
 
 namespace std
 {
 
 template <>
-struct hash<VkRenderer::AssetId>
+struct hash<rubia::asset::AssetId>
 {
     [[nodiscard]] size_t operator()(
-        VkRenderer::AssetId id) const noexcept
+        rubia::asset::AssetId id) const noexcept
     {
-        return VkRenderer::AssetIdHash{}(id);
+        return rubia::asset::AssetIdHash{}(id);
     }
 };
 

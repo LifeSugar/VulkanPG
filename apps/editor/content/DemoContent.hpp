@@ -1,30 +1,27 @@
 #pragma once
 
+#include "EditorFwd.hpp"
 #include "asset/AssetFwd.hpp"
 #include "texture/TextureImportSettings.hpp"
 
 #include <filesystem>
 
-namespace VkRenderer
+namespace rubia::editor
 {
-
-class AssetManager;
-class Scene;
-class TextureImportRegistry;
 
 /// Handles produced while loading the fixed demo content used by the runtime.
 struct DemoContent
 {
-    TextureAssetHandle defaultTexture;
-    TextureAssetHandle defaultDataTexture;
-    TextureAssetHandle defaultNormalTexture;
-    ShaderAssetHandle pbrVertexShader;
-    ShaderAssetHandle pbrFragmentShader;
-    ShaderAssetHandle presentVertexShader;
-    ShaderAssetHandle presentFragmentShader;
-    MaterialTemplateAssetHandle materialTemplate;
-    MaterialAssetHandle defaultMaterial;
-    ModelAssetHandle model;
+    asset::TextureAssetHandle defaultTexture;
+    asset::TextureAssetHandle defaultDataTexture;
+    asset::TextureAssetHandle defaultNormalTexture;
+    asset::ShaderAssetHandle pbrVertexShader;
+    asset::ShaderAssetHandle pbrFragmentShader;
+    asset::ShaderAssetHandle presentVertexShader;
+    asset::ShaderAssetHandle presentFragmentShader;
+    asset::MaterialTemplateAssetHandle materialTemplate;
+    asset::MaterialAssetHandle defaultMaterial;
+    asset::ModelAssetHandle model;
 };
 
 /// Loads the existing built-in assets, demo model, and demo scene.
@@ -36,11 +33,11 @@ public:
     /// texture or change the generic glTF importer.
     struct TextureImportPolicy
     {
-        KtxPayloadEncoding payloadEncoding = KtxPayloadEncoding::Uastc;
+        importer::texture::KtxPayloadEncoding payloadEncoding = importer::texture::KtxPayloadEncoding::Uastc;
         bool generateMipmaps = false;
-        TextureFormat colorTranscodeFormat = TextureFormat::BC7UNorm;
-        TextureFormat dataTranscodeFormat = TextureFormat::BC7UNorm;
-        TextureFormat normalTranscodeFormat = TextureFormat::BC5UNorm;
+        asset::TextureFormat colorTranscodeFormat = asset::TextureFormat::BC7UNorm;
+        asset::TextureFormat dataTranscodeFormat = asset::TextureFormat::BC7UNorm;
+        asset::TextureFormat normalTranscodeFormat = asset::TextureFormat::BC5UNorm;
         bool highQualityTranscode = true;
     };
 
@@ -56,10 +53,10 @@ public:
     };
 
     [[nodiscard]] static DemoContent load(
-        AssetManager& assets,
-        Scene& scene,
+        asset::AssetManager& assets,
+        scene::Scene& scene,
         const CreateInfo& createInfo,
-        TextureImportRegistry* textureImports = nullptr);
+        importer::texture::TextureImportRegistry* textureImports = nullptr);
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

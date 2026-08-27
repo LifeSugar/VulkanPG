@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 namespace
@@ -23,9 +23,9 @@ struct ModelHierarchy final
     std::vector<std::vector<uint32_t>> children;
 };
 
-[[nodiscard]] ModelHierarchy buildModelHierarchy(const ModelAsset& model)
+[[nodiscard]] ModelHierarchy buildModelHierarchy(const asset::ModelAsset& model)
 {
-    const std::vector<ModelNode>& nodes = model.nodes();
+    const std::vector<asset::ModelNode>& nodes = model.nodes();
     ModelHierarchy hierarchy{};
     hierarchy.children.resize(nodes.size());
     hierarchy.roots.reserve(nodes.size());
@@ -35,7 +35,7 @@ struct ModelHierarchy final
          ++index)
     {
         const uint32_t parent = nodes[index].parent;
-        if (parent == kInvalidModelNodeIndex)
+        if (parent == asset::kInvalidModelNodeIndex)
         {
             hierarchy.roots.push_back(index);
         }
@@ -48,8 +48,8 @@ struct ModelHierarchy final
 }
 
 void drawMeshHierarchy(
-    const AssetManager& assets,
-    MeshAssetHandle meshHandle,
+    const asset::AssetManager& assets,
+    asset::MeshAssetHandle meshHandle,
     EditorSelection& selection)
 {
     if (!assets.contains(meshHandle))
@@ -58,13 +58,13 @@ void drawMeshHierarchy(
         return;
     }
 
-    const MeshAsset& mesh = assets.mesh(meshHandle);
+    const asset::MeshAsset& mesh = assets.mesh(meshHandle);
     const bool hasSubmeshes = !mesh.submeshes().empty();
     ImGuiTreeNodeFlags flags =
         ImGuiTreeNodeFlags_OpenOnArrow |
         ImGuiTreeNodeFlags_SpanAvailWidth;
-    const MeshAssetHandle* selectedMesh =
-        std::get_if<MeshAssetHandle>(&selection.target());
+    const asset::MeshAssetHandle* selectedMesh =
+        std::get_if<asset::MeshAssetHandle>(&selection.target());
     if (selectedMesh != nullptr && *selectedMesh == meshHandle)
     {
         flags |= ImGuiTreeNodeFlags_Selected;
@@ -130,13 +130,13 @@ void drawMeshHierarchy(
 }
 
 void drawModelHierarchy(
-    const AssetManager& assets,
-    const ModelAsset& model,
-    ModelAssetHandle modelHandle,
+    const asset::AssetManager& assets,
+    const asset::ModelAsset& model,
+    asset::ModelAssetHandle modelHandle,
     uint32_t sceneNodeIndex,
     EditorSelection& selection)
 {
-    const std::vector<ModelNode>& nodes = model.nodes();
+    const std::vector<asset::ModelNode>& nodes = model.nodes();
     if (nodes.empty())
     {
         return;
@@ -152,7 +152,7 @@ void drawModelHierarchy(
     std::function<void(uint32_t)> drawModelNode =
         [&](uint32_t nodeIndex)
         {
-            const ModelNode& node = nodes[nodeIndex];
+            const asset::ModelNode& node = nodes[nodeIndex];
             const bool hasChildren =
                 !hierarchy.children[nodeIndex].empty() ||
                 !node.meshes.empty();
@@ -229,8 +229,8 @@ void drawModelHierarchy(
 } // namespace
 
 void SceneHierarchyPanel::draw(
-    const Scene& scene,
-    const AssetManager& assets,
+    const scene::Scene& scene,
+    const asset::AssetManager& assets,
     EditorSelection& selection,
     bool* open)
 {
@@ -241,7 +241,7 @@ void SceneHierarchyPanel::draw(
         return;
     }
 
-    const std::vector<SceneNode>& nodes = scene.nodes();
+    const std::vector<scene::SceneNode>& nodes = scene.nodes();
     if (const SceneNodeTarget* target =
             std::get_if<SceneNodeTarget>(&selection.target());
         target != nullptr && target->nodeIndex >= nodes.size())
@@ -259,8 +259,8 @@ void SceneHierarchyPanel::draw(
     {
         selection.clear();
     }
-    else if (const MeshAssetHandle* target =
-                 std::get_if<MeshAssetHandle>(&selection.target());
+    else if (const asset::MeshAssetHandle* target =
+                 std::get_if<asset::MeshAssetHandle>(&selection.target());
              target != nullptr && !assets.contains(*target))
     {
         selection.clear();
@@ -283,7 +283,7 @@ void SceneHierarchyPanel::draw(
          ++index)
     {
         const uint32_t parent = nodes[index].parent;
-        if (parent == kInvalidSceneNodeIndex)
+        if (parent == scene::kInvalidSceneNodeIndex)
         {
             roots.push_back(index);
         }
@@ -311,8 +311,8 @@ void SceneHierarchyPanel::draw(
         std::function<void(uint32_t)> drawNode =
             [&](uint32_t nodeIndex)
             {
-                const SceneNode& node = nodes[nodeIndex];
-                const ModelAsset* model = nullptr;
+                const scene::SceneNode& node = nodes[nodeIndex];
+                const asset::ModelAsset* model = nullptr;
                 if (node.model && assets.contains(node.model))
                 {
                     model = &assets.model(node.model);
@@ -389,4 +389,4 @@ void SceneHierarchyPanel::draw(
     ImGui::End();
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

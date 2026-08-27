@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <limits>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 inline constexpr uint32_t kInvalidAssetIndex =
@@ -43,4 +43,4 @@ template <typename Asset>
     return !(lhs == rhs);
 }
 
-} // namespace VkRenderer
+} // namespace rubia::asset

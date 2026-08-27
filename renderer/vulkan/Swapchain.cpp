@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 Swapchain::Swapchain(
@@ -288,4 +288,4 @@ VkExtent2D Swapchain::chooseExtent(
     return framebufferExtent;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

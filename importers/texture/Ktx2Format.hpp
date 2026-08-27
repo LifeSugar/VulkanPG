@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <optional>
 
-namespace VkRenderer
+namespace rubia::importer::texture
 {
 
 /// KTX2 header format identifiers. KTX2 defines these numeric codes using the
@@ -42,15 +42,15 @@ enum class Ktx2FormatCode : uint32_t
 
 struct Ktx2TextureFormatMapping
 {
-    TextureFormat format = TextureFormat::Undefined;
-    TextureColorSpace colorSpace = TextureColorSpace::Linear;
+    asset::TextureFormat format = asset::TextureFormat::Undefined;
+    asset::TextureColorSpace colorSpace = asset::TextureColorSpace::Linear;
 };
 
 [[nodiscard]] Ktx2FormatCode textureKtx2Format(
-    TextureFormat format,
-    TextureColorSpace colorSpace);
+    asset::TextureFormat format,
+    asset::TextureColorSpace colorSpace);
 
 [[nodiscard]] std::optional<Ktx2TextureFormatMapping>
 textureFormatFromKtx2(uint32_t formatCode) noexcept;
 
-} // namespace VkRenderer
+} // namespace rubia::importer::texture

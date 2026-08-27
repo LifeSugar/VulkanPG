@@ -8,7 +8,7 @@
 
 #include <cstdint>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 /// Stable identity of the persistent source that produced a RenderView.
@@ -59,4 +59,4 @@ struct RenderView
     CullingFlags cullingFlags = CullingFlags::All;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::render

@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 enum class ValidationSeverity
@@ -54,4 +54,4 @@ private:
     ValidationReport report_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::asset

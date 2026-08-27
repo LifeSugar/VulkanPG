@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::importer::texture
 {
 
 /// Decodes common encoded image formats into a tightly packed RGBA8 payload.
@@ -15,13 +15,13 @@ namespace VkRenderer
 class StbImageDecoder final
 {
 public:
-    [[nodiscard]] TextureAsset::CreateInfo decodeMemory(
+    [[nodiscard]] asset::TextureAsset::CreateInfo decodeMemory(
         const std::vector<uint8_t>& encodedBytes,
         const std::string& name) const;
 
-    [[nodiscard]] TextureAsset::CreateInfo decodeFile(
+    [[nodiscard]] asset::TextureAsset::CreateInfo decodeFile(
         const std::filesystem::path& path,
         const std::string& name = {}) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::importer::texture

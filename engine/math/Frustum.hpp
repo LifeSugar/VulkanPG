@@ -7,7 +7,7 @@
 #include <array>
 #include <cstddef>
 
-namespace VkRenderer
+namespace rubia::math
 {
 
 /// Normalized plane whose non-negative half-space is inside the frustum.
@@ -39,4 +39,4 @@ private:
     std::array<Plane, PlaneCount> planes_{};
 };
 
-} // namespace VkRenderer
+} // namespace rubia::math

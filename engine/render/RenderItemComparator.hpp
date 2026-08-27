@@ -6,15 +6,15 @@
 #include <cstring>
 #include <limits>
 
-namespace VkRenderer
+namespace rubia::render
 {
-namespace Detail
+namespace detail
 {
 
 template <typename Asset>
 [[nodiscard]] constexpr bool assetHandleLess(
-    AssetHandle<Asset> left,
-    AssetHandle<Asset> right) noexcept
+    asset::AssetHandle<Asset> left,
+    asset::AssetHandle<Asset> right) noexcept
 {
     if (left.index != right.index)
     {
@@ -40,7 +40,7 @@ template <typename Asset>
     return depthBits >> 24;
 }
 
-} // namespace Detail
+} // namespace detail
 
 /// Orders opaque geometry by coarse front-to-back buckets, then groups state.
 struct OpaqueRenderItemComparator
@@ -55,9 +55,9 @@ struct OpaqueRenderItemComparator
                 renderQueueValue(right.queue);
         }
         const uint32_t leftDepthBucket =
-            Detail::opaqueDepthSortBucket(left.viewDepth);
+            detail::opaqueDepthSortBucket(left.viewDepth);
         const uint32_t rightDepthBucket =
-            Detail::opaqueDepthSortBucket(right.viewDepth);
+            detail::opaqueDepthSortBucket(right.viewDepth);
         if (leftDepthBucket != rightDepthBucket)
         {
             return leftDepthBucket < rightDepthBucket;
@@ -76,7 +76,7 @@ struct OpaqueRenderItemComparator
         }
         if (left.mesh != right.mesh)
         {
-            return Detail::assetHandleLess(
+            return detail::assetHandleLess(
                 left.mesh,
                 right.mesh);
         }
@@ -114,7 +114,7 @@ struct TransparentRenderItemComparator
         }
         if (left.mesh != right.mesh)
         {
-            return Detail::assetHandleLess(
+            return detail::assetHandleLess(
                 left.mesh,
                 right.mesh);
         }
@@ -122,4 +122,4 @@ struct TransparentRenderItemComparator
     }
 };
 
-} // namespace VkRenderer
+} // namespace rubia::render

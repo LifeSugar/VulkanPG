@@ -15,94 +15,94 @@
 #include <cstring>
 #include <string>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 namespace
 {
 
 [[nodiscard]] const char* materialValueTypeName(
-    MaterialValueType type) noexcept
+    asset::MaterialValueType type) noexcept
 {
     switch (type)
     {
-    case MaterialValueType::Float: return "Float";
-    case MaterialValueType::Float2: return "Float2";
-    case MaterialValueType::Float3: return "Float3";
-    case MaterialValueType::Float4: return "Float4";
-    case MaterialValueType::Matrix4: return "Matrix4";
-    case MaterialValueType::Int: return "Int";
-    case MaterialValueType::UInt: return "UInt";
-    case MaterialValueType::Bool: return "Bool";
+    case asset::MaterialValueType::Float: return "Float";
+    case asset::MaterialValueType::Float2: return "Float2";
+    case asset::MaterialValueType::Float3: return "Float3";
+    case asset::MaterialValueType::Float4: return "Float4";
+    case asset::MaterialValueType::Matrix4: return "Matrix4";
+    case asset::MaterialValueType::Int: return "Int";
+    case asset::MaterialValueType::UInt: return "UInt";
+    case asset::MaterialValueType::Bool: return "Bool";
     }
     return "Unknown";
 }
 
-[[nodiscard]] const char* shaderStageName(ShaderStage stage) noexcept
+[[nodiscard]] const char* shaderStageName(asset::ShaderStage stage) noexcept
 {
     switch (stage)
     {
-    case ShaderStage::Vertex: return "Vertex";
-    case ShaderStage::Fragment: return "Fragment";
-    case ShaderStage::Compute: return "Compute";
+    case asset::ShaderStage::Vertex: return "Vertex";
+    case asset::ShaderStage::Fragment: return "Fragment";
+    case asset::ShaderStage::Compute: return "Compute";
     }
     return "Unknown";
 }
 
-[[nodiscard]] const char* renderQueueName(RenderQueue queue) noexcept
+[[nodiscard]] const char* renderQueueName(render::RenderQueue queue) noexcept
 {
     switch (queue)
     {
-    case RenderQueue::Opaque: return "Opaque";
-    case RenderQueue::AlphaClip: return "Alpha Clip";
-    case RenderQueue::Transparent: return "Transparent";
+    case render::RenderQueue::Opaque: return "Opaque";
+    case render::RenderQueue::AlphaClip: return "Alpha Clip";
+    case render::RenderQueue::Transparent: return "Transparent";
     }
     return "Unknown";
 }
 
-[[nodiscard]] const char* depthCompareName(DepthCompare compare) noexcept
+[[nodiscard]] const char* depthCompareName(asset::DepthCompare compare) noexcept
 {
     switch (compare)
     {
-    case DepthCompare::Never: return "Never";
-    case DepthCompare::Less: return "Less";
-    case DepthCompare::Equal: return "Equal";
-    case DepthCompare::LessEqual: return "Less Equal";
-    case DepthCompare::Greater: return "Greater";
-    case DepthCompare::NotEqual: return "Not Equal";
-    case DepthCompare::GreaterEqual: return "Greater Equal";
-    case DepthCompare::Always: return "Always";
+    case asset::DepthCompare::Never: return "Never";
+    case asset::DepthCompare::Less: return "Less";
+    case asset::DepthCompare::Equal: return "Equal";
+    case asset::DepthCompare::LessEqual: return "Less Equal";
+    case asset::DepthCompare::Greater: return "Greater";
+    case asset::DepthCompare::NotEqual: return "Not Equal";
+    case asset::DepthCompare::GreaterEqual: return "Greater Equal";
+    case asset::DepthCompare::Always: return "Always";
     }
     return "Unknown";
 }
 
-[[nodiscard]] const char* blendModeName(PipelineBlendMode mode) noexcept
+[[nodiscard]] const char* blendModeName(render::PipelineBlendMode mode) noexcept
 {
     switch (mode)
     {
-    case PipelineBlendMode::Disabled: return "Disabled";
-    case PipelineBlendMode::Alpha: return "Alpha";
+    case render::PipelineBlendMode::Disabled: return "Disabled";
+    case render::PipelineBlendMode::Alpha: return "Alpha";
     }
     return "Unknown";
 }
 
-[[nodiscard]] const char* cullModeName(PipelineCullMode mode) noexcept
+[[nodiscard]] const char* cullModeName(render::PipelineCullMode mode) noexcept
 {
     switch (mode)
     {
-    case PipelineCullMode::None: return "None";
-    case PipelineCullMode::Front: return "Front";
-    case PipelineCullMode::Back: return "Back";
+    case render::PipelineCullMode::None: return "None";
+    case render::PipelineCullMode::Front: return "Front";
+    case render::PipelineCullMode::Back: return "Back";
     }
     return "Unknown";
 }
 
 void drawMaterialParameterValue(
-    const MaterialParameterDesc& parameter,
+    const asset::MaterialParameterDesc& parameter,
     const std::vector<std::byte>& parameterData)
 {
     const uint32_t valueSize =
-        MaterialTemplateAsset::valueSize(parameter.type);
+        asset::MaterialTemplateAsset::valueSize(parameter.type);
     if (parameter.byteOffset > parameterData.size() ||
         valueSize > parameterData.size() - parameter.byteOffset)
     {
@@ -113,20 +113,20 @@ void drawMaterialParameterValue(
     const std::byte* source = parameterData.data() + parameter.byteOffset;
     switch (parameter.type)
     {
-    case MaterialValueType::Float:
+    case asset::MaterialValueType::Float:
     {
         float value = 0.0f;
         std::memcpy(&value, source, sizeof(value));
         ImGui::Text("%.3f", value);
         break;
     }
-    case MaterialValueType::Float2:
-    case MaterialValueType::Float3:
-    case MaterialValueType::Float4:
+    case asset::MaterialValueType::Float2:
+    case asset::MaterialValueType::Float3:
+    case asset::MaterialValueType::Float4:
     {
         const uint32_t componentCount =
             static_cast<uint32_t>(parameter.type) -
-            static_cast<uint32_t>(MaterialValueType::Float2) + 2;
+            static_cast<uint32_t>(asset::MaterialValueType::Float2) + 2;
         std::array<float, 4> values{};
         std::memcpy(
             values.data(),
@@ -155,7 +155,7 @@ void drawMaterialParameterValue(
         }
         break;
     }
-    case MaterialValueType::Matrix4:
+    case asset::MaterialValueType::Matrix4:
     {
         std::array<float, 16> values{};
         std::memcpy(values.data(), source, sizeof(values));
@@ -170,21 +170,21 @@ void drawMaterialParameterValue(
         }
         break;
     }
-    case MaterialValueType::Int:
+    case asset::MaterialValueType::Int:
     {
         int32_t value = 0;
         std::memcpy(&value, source, sizeof(value));
         ImGui::Text("%d", value);
         break;
     }
-    case MaterialValueType::UInt:
+    case asset::MaterialValueType::UInt:
     {
         uint32_t value = 0;
         std::memcpy(&value, source, sizeof(value));
         ImGui::Text("%u", value);
         break;
     }
-    case MaterialValueType::Bool:
+    case asset::MaterialValueType::Bool:
     {
         uint32_t value = 0;
         std::memcpy(&value, source, sizeof(value));
@@ -196,13 +196,13 @@ void drawMaterialParameterValue(
 
 struct MaterialTextureReimportBatch
 {
-    std::vector<TextureReimportRequest> requests;
+    std::vector<importer::texture::TextureReimportRequest> requests;
     bool busy = false;
 };
 
 [[nodiscard]] MaterialTextureReimportBatch collectTextureReimports(
-    const MaterialAsset& material,
-    const TextureImportRegistry* textureImports)
+    const asset::MaterialAsset& material,
+    const importer::texture::TextureImportRegistry* textureImports)
 {
     MaterialTextureReimportBatch result{};
     if (textureImports == nullptr)
@@ -210,8 +210,8 @@ struct MaterialTextureReimportBatch
         return result;
     }
 
-    std::vector<TextureAssetHandle> visited;
-    for (TextureAssetHandle texture : material.textures())
+    std::vector<asset::TextureAssetHandle> visited;
+    for (asset::TextureAssetHandle texture : material.textures())
     {
         if (!texture ||
             std::find(visited.begin(), visited.end(), texture) !=
@@ -221,7 +221,7 @@ struct MaterialTextureReimportBatch
         }
         visited.push_back(texture);
 
-        const TextureImportRecord* record = textureImports->find(texture);
+        const importer::texture::TextureImportRecord* record = textureImports->find(texture);
         if (record == nullptr)
         {
             continue;
@@ -235,12 +235,12 @@ struct MaterialTextureReimportBatch
 } // namespace
 
 MaterialInspectorOutput MaterialInspector::drawMaterialAsset(
-    const AssetManager& assets,
-    ApplicationGuiRenderBridge& texturePreviews,
-    const TextureImportRegistry* textureImports,
-    MaterialAssetHandle target) const
+    const asset::AssetManager& assets,
+    render::ApplicationGuiRenderBridge& texturePreviews,
+    const importer::texture::TextureImportRegistry* textureImports,
+    asset::MaterialAssetHandle target) const
 {
-    using namespace InspectorWidgets;
+    using namespace widgets;
 
     MaterialInspectorOutput output{};
     std::optional<InspectorTarget>& navigation = output.navigation;
@@ -250,13 +250,13 @@ MaterialInspectorOutput MaterialInspector::drawMaterialAsset(
         return output;
     }
 
-    const MaterialAsset& material = assets.material(target);
+    const asset::MaterialAsset& material = assets.material(target);
     ImGui::SeparatorText("Material Asset");
     drawProperty("Name", displayName(material.name(), "Unnamed Material"));
 
-    const MaterialTemplateAssetHandle templateHandle =
+    const asset::MaterialTemplateAssetHandle templateHandle =
         material.materialTemplate();
-    const MaterialTemplateAsset* materialTemplate = nullptr;
+    const asset::MaterialTemplateAsset* materialTemplate = nullptr;
     if (templateHandle && assets.contains(templateHandle))
     {
         materialTemplate = &assets.materialTemplate(templateHandle);
@@ -304,13 +304,13 @@ MaterialInspectorOutput MaterialInspector::drawMaterialAsset(
                 0.32f);
             ImGui::TableHeadersRow();
 
-            for (ShaderAssetHandle shaderHandle : materialTemplate->shaders())
+            for (asset::ShaderAssetHandle shaderHandle : materialTemplate->shaders())
             {
                 ImGui::PushID(static_cast<int>(shaderHandle.index));
                 ImGui::TableNextRow();
                 if (shaderHandle && assets.contains(shaderHandle))
                 {
-                    const ShaderAsset& shader = assets.shader(shaderHandle);
+                    const asset::ShaderAsset& shader = assets.shader(shaderHandle);
                     ImGui::TableSetColumnIndex(0);
                     ImGui::TextUnformatted(shaderStageName(shader.stage()));
                     ImGui::TableSetColumnIndex(1);
@@ -386,14 +386,14 @@ MaterialInspectorOutput MaterialInspector::drawMaterialAsset(
 
     if (pipelineStateOpen)
     {
-        const MaterialRenderState& renderState = material.renderState();
-        const PipelineVariantKey pipelineKey = makePipelineVariantKey(
+        const asset::MaterialRenderState& renderState = material.renderState();
+        const render::PipelineVariantKey pipelineKey = render::makePipelineVariantKey(
             templateHandle,
             renderState);
-        const RenderQueue queue = renderQueueFor(renderState);
+        const render::RenderQueue queue = render::renderQueueFor(renderState);
         const std::string queueLabel =
             std::string(renderQueueName(queue)) + " (" +
-            std::to_string(renderQueueValue(queue)) + ")";
+            std::to_string(render::renderQueueValue(queue)) + ")";
 
         drawProperty(
             "Surface",
@@ -415,7 +415,7 @@ MaterialInspectorOutput MaterialInspector::drawMaterialAsset(
             depthCompareName(pipelineKey.depthCompare));
         drawProperty(
             "Shader Feature",
-            pipelineKey.shaderFeatures == ShaderFeatureFlags::AlphaClip
+            pipelineKey.shaderFeatures == render::ShaderFeatureFlags::AlphaClip
                 ? "Alpha Clip"
                 : "None");
         drawProperty(
@@ -457,7 +457,7 @@ MaterialInspectorOutput MaterialInspector::drawMaterialAsset(
         54.0f);
     ImGui::TableHeadersRow();
 
-    for (const MaterialParameterDesc& parameter :
+    for (const asset::MaterialParameterDesc& parameter :
          materialTemplate->parameters())
     {
         ImGui::PushID(parameter.name.c_str());
@@ -477,8 +477,8 @@ MaterialInspectorOutput MaterialInspector::drawMaterialAsset(
         ImGui::PopID();
     }
 
-    const std::vector<TextureAssetHandle>& textures = material.textures();
-    for (const MaterialTextureSlotDesc& slot :
+    const std::vector<asset::TextureAssetHandle>& textures = material.textures();
+    for (const asset::MaterialTextureSlotDesc& slot :
          materialTemplate->textureSlots())
     {
         ImGui::PushID(slot.name.c_str());
@@ -499,14 +499,14 @@ MaterialInspectorOutput MaterialInspector::drawMaterialAsset(
                 slot.samplerBinding.binding);
         }
 
-        const TextureAssetHandle textureHandle =
+        const asset::TextureAssetHandle textureHandle =
             slot.slot < textures.size()
             ? textures[slot.slot]
-            : TextureAssetHandle{};
+            : asset::TextureAssetHandle{};
         ImGui::TableSetColumnIndex(1);
         if (textureHandle && assets.contains(textureHandle))
         {
-            const TextureAsset& texture = assets.texture(textureHandle);
+            const asset::TextureAsset& texture = assets.texture(textureHandle);
             constexpr float thumbnailExtent = 36.0f;
             drawTextureImage(
                 texturePreviews,
@@ -535,10 +535,10 @@ MaterialInspectorOutput MaterialInspector::drawMaterialAsset(
 }
 
 std::optional<InspectorTarget> MaterialInspector::drawMaterialTemplate(
-    const AssetManager& assets,
-    MaterialTemplateAssetHandle target) const
+    const asset::AssetManager& assets,
+    asset::MaterialTemplateAssetHandle target) const
 {
-    using namespace InspectorWidgets;
+    using namespace widgets;
 
     if (!assets.contains(target))
     {
@@ -547,7 +547,7 @@ std::optional<InspectorTarget> MaterialInspector::drawMaterialTemplate(
         return std::nullopt;
     }
 
-    const MaterialTemplateAsset& materialTemplate =
+    const asset::MaterialTemplateAsset& materialTemplate =
         assets.materialTemplate(target);
     ImGui::SeparatorText("Material Template");
     drawProperty(
@@ -565,4 +565,4 @@ std::optional<InspectorTarget> MaterialInspector::drawMaterialTemplate(
     return std::nullopt;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

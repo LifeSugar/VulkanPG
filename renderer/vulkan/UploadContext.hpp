@@ -6,7 +6,7 @@
 
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
     /// Performs synchronous staging uploads to device-local buffers.
@@ -67,4 +67,4 @@ namespace VkRenderer
         CommandPool *commandPool_ = nullptr;
     };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

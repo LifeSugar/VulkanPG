@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <type_traits>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 /// Shader variants selected while compiling a material pipeline.
@@ -52,17 +52,17 @@ enum class PipelineCullMode : uint8_t
 /// renderer-owned inputs and are combined with this key by the pipeline cache.
 struct PipelineVariantKey
 {
-    MaterialTemplateAssetHandle materialTemplate;
+    asset::MaterialTemplateAssetHandle materialTemplate;
     ShaderFeatureFlags shaderFeatures = ShaderFeatureFlags::None;
     PipelineBlendMode blendMode = PipelineBlendMode::Disabled;
     PipelineCullMode cullMode = PipelineCullMode::Back;
     bool depthTestEnabled = true;
     bool depthWriteEnabled = true;
-    DepthCompare depthCompare = DepthCompare::LessEqual;
+    asset::DepthCompare depthCompare = asset::DepthCompare::LessEqual;
 
     [[nodiscard]] constexpr bool valid() const noexcept
     {
-        return materialTemplate.index != kInvalidAssetIndex;
+        return materialTemplate.index != asset::kInvalidAssetIndex;
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept
@@ -75,8 +75,8 @@ struct PipelineVariantKey
 /// Alpha-clip threshold is deliberately excluded: it is material data, not PSO
 /// state. A disabled depth test also canonicalizes its ignored compare op.
 [[nodiscard]] constexpr PipelineVariantKey makePipelineVariantKey(
-    MaterialTemplateAssetHandle materialTemplate,
-    const MaterialRenderState& state) noexcept
+    asset::MaterialTemplateAssetHandle materialTemplate,
+    const asset::MaterialRenderState& state) noexcept
 {
     PipelineVariantKey key{};
     key.materialTemplate = materialTemplate;
@@ -93,7 +93,7 @@ struct PipelineVariantKey
     key.depthWriteEnabled = state.depth.writeEnabled;
     key.depthCompare = state.depth.testEnabled
         ? state.depth.compare
-        : DepthCompare::Always;
+        : asset::DepthCompare::Always;
     return key;
 }
 
@@ -165,13 +165,13 @@ struct PipelineVariantKeyLess
     }
 };
 
-constexpr MaterialRenderState kPipelineKeyOpaqueState =
-    makeOpaqueMaterialState();
+constexpr asset::MaterialRenderState kPipelineKeyOpaqueState =
+    asset::makeOpaqueMaterialState();
 constexpr PipelineVariantKey kPipelineKeyOpaque = makePipelineVariantKey(
-    MaterialTemplateAssetHandle{1, 1},
+    asset::MaterialTemplateAssetHandle{1, 1},
     kPipelineKeyOpaqueState);
 static_assert(kPipelineKeyOpaque.blendMode == PipelineBlendMode::Disabled);
 static_assert(kPipelineKeyOpaque.cullMode == PipelineCullMode::Back);
 static_assert(kPipelineKeyOpaque.depthWriteEnabled);
 
-} // namespace VkRenderer
+} // namespace rubia::render

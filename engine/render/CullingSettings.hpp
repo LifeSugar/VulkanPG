@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 /// Visibility tests enabled for one Camera/RenderView.
@@ -49,4 +49,4 @@ enum class BoundsCullingMode : uint8_t
 static_assert(hasCullingFlag(CullingFlags::All, CullingFlags::LayerMask));
 static_assert(hasCullingFlag(CullingFlags::All, CullingFlags::Frustum));
 
-} // namespace VkRenderer
+} // namespace rubia::render

@@ -2,7 +2,7 @@
 
 #include "asset/AssetHandle.hpp"
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 class MaterialAsset;
@@ -19,4 +19,4 @@ using ModelAssetHandle = AssetHandle<ModelAsset>;
 using ShaderAssetHandle = AssetHandle<ShaderAsset>;
 using TextureAssetHandle = AssetHandle<TextureAsset>;
 
-} // namespace VkRenderer
+} // namespace rubia::asset

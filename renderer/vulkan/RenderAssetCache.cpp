@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 namespace
 {
@@ -64,8 +64,8 @@ RenderAssetCache::~RenderAssetCache()
 void RenderAssetCache::create(
     const Device& device,
     UploadContext& uploadContext,
-    const AssetManager& assets,
-    const std::vector<ModelAssetHandle>& models)
+    const asset::AssetManager& assets,
+    const std::vector<asset::ModelAssetHandle>& models)
 {
     if (!device || models.empty())
     {
@@ -73,34 +73,34 @@ void RenderAssetCache::create(
             "RenderAssetCache requires a device and at least one model");
     }
 
-    std::vector<MeshAssetHandle> meshHandles;
-    std::vector<MaterialAssetHandle> materialHandles;
-    std::vector<TextureAssetHandle> textureHandles;
-    for (ModelAssetHandle modelHandle : models)
+    std::vector<asset::MeshAssetHandle> meshHandles;
+    std::vector<asset::MaterialAssetHandle> materialHandles;
+    std::vector<asset::TextureAssetHandle> textureHandles;
+    for (asset::ModelAssetHandle modelHandle : models)
     {
-        const ModelAsset& model = assets.model(modelHandle);
-        for (const ModelNode& node : model.nodes())
+        const asset::ModelAsset& model = assets.model(modelHandle);
+        for (const asset::ModelNode& node : model.nodes())
         {
-            for (MeshAssetHandle meshHandle : node.meshes)
+            for (asset::MeshAssetHandle meshHandle : node.meshes)
             {
                 appendUnique(meshHandles, meshHandle);
             }
         }
     }
-    for (MeshAssetHandle meshHandle : meshHandles)
+    for (asset::MeshAssetHandle meshHandle : meshHandles)
     {
-        const MeshAsset& meshAsset = assets.mesh(meshHandle);
-        for (const SubmeshData& submesh : meshAsset.submeshes())
+        const asset::MeshAsset& meshAsset = assets.mesh(meshHandle);
+        for (const asset::SubmeshData& submesh : meshAsset.submeshes())
         {
             appendUnique(materialHandles, submesh.material);
         }
     }
 
-    MaterialTemplateAssetHandle materialTemplateHandle;
+    asset::MaterialTemplateAssetHandle materialTemplateHandle;
     uint32_t textureCount = 0;
-    for (MaterialAssetHandle materialHandle : materialHandles)
+    for (asset::MaterialAssetHandle materialHandle : materialHandles)
     {
-        const MaterialAsset& materialAsset = assets.material(materialHandle);
+        const asset::MaterialAsset& materialAsset = assets.material(materialHandle);
         if (!materialTemplateHandle)
         {
             materialTemplateHandle = materialAsset.materialTemplate();
@@ -113,7 +113,7 @@ void RenderAssetCache::create(
             throw std::invalid_argument(
                 "one RenderAssetCache currently requires a shared material template");
         }
-        for (TextureAssetHandle textureHandle : materialAsset.textures())
+        for (asset::TextureAssetHandle textureHandle : materialAsset.textures())
         {
             appendUnique(textureHandles, textureHandle);
         }
@@ -123,7 +123,7 @@ void RenderAssetCache::create(
         throw std::invalid_argument(
             "render model contains no textured materials");
     }
-    const MaterialTemplateAsset& materialTemplate =
+    const asset::MaterialTemplateAsset& materialTemplate =
         assets.materialTemplate(materialTemplateHandle);
     const uint32_t textureSlotCount = static_cast<uint32_t>(
         materialTemplate.textureSlots().size());
@@ -140,7 +140,7 @@ void RenderAssetCache::create(
         bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         for (uint32_t index = 0; index < textureSlotCount; ++index)
         {
-            const MaterialTextureSlotDesc& slot =
+            const asset::MaterialTextureSlotDesc& slot =
                 materialTemplate.textureSlots()[index];
             VkDescriptorSetLayoutBinding& imageBinding =
                 bindings[1 + index];
@@ -178,7 +178,7 @@ void RenderAssetCache::create(
                 materialCount);
 
         textures_.resize(requiredSlotCount(textureHandles));
-        for (TextureAssetHandle handle : textureHandles)
+        for (asset::TextureAssetHandle handle : textureHandles)
         {
             TextureEntry& entry = textures_[handle.index];
             entry.generation = handle.generation;
@@ -193,11 +193,11 @@ void RenderAssetCache::create(
         materials_.resize(requiredSlotCount(materialHandles));
         for (uint32_t index = 0; index < materialCount; ++index)
         {
-            const MaterialAssetHandle handle = materialHandles[index];
-            const MaterialAsset& materialAsset = assets.material(handle);
+            const asset::MaterialAssetHandle handle = materialHandles[index];
+            const asset::MaterialAsset& materialAsset = assets.material(handle);
             std::vector<const GpuTexture*> materialTextures;
             materialTextures.reserve(textureCount);
-            for (TextureAssetHandle textureHandle : materialAsset.textures())
+            for (asset::TextureAssetHandle textureHandle : materialAsset.textures())
             {
                 materialTextures.push_back(&texture(textureHandle));
             }
@@ -213,7 +213,7 @@ void RenderAssetCache::create(
         }
 
         meshes_.resize(requiredSlotCount(meshHandles));
-        for (MeshAssetHandle handle : meshHandles)
+        for (asset::MeshAssetHandle handle : meshHandles)
         {
             MeshEntry& entry = meshes_[handle.index];
             entry.generation = handle.generation;
@@ -230,7 +230,7 @@ void RenderAssetCache::create(
 GpuTexture RenderAssetCache::stageTextureReplacement(
     const Device& device,
     UploadContext& uploadContext,
-    const TextureAsset& replacement) const
+    const asset::TextureAsset& replacement) const
 {
     GpuTexture::CreateInfo createInfo{};
     createInfo.asset = &replacement;
@@ -239,8 +239,8 @@ GpuTexture RenderAssetCache::stageTextureReplacement(
 
 GpuTexture RenderAssetCache::commitTextureReplacement(
     const Device& device,
-    const AssetManager& assets,
-    TextureAssetHandle handle,
+    const asset::AssetManager& assets,
+    asset::TextureAssetHandle handle,
     GpuTexture replacement)
 {
     if (!device || !replacement || tryTexture(handle) == nullptr)
@@ -252,7 +252,7 @@ GpuTexture RenderAssetCache::commitTextureReplacement(
     struct MaterialTextureUpdate
     {
         GpuMaterial* material = nullptr;
-        const MaterialTemplateAsset* materialTemplate = nullptr;
+        const asset::MaterialTemplateAsset* materialTemplate = nullptr;
         std::vector<const GpuTexture*> textures;
     };
     std::vector<MaterialTextureUpdate> updates;
@@ -267,8 +267,8 @@ GpuTexture RenderAssetCache::commitTextureReplacement(
             continue;
         }
 
-        const MaterialAssetHandle materialHandle{index, entry.generation};
-        const MaterialAsset& materialAsset = assets.material(materialHandle);
+        const asset::MaterialAssetHandle materialHandle{index, entry.generation};
+        const asset::MaterialAsset& materialAsset = assets.material(materialHandle);
         if (std::find(
                 materialAsset.textures().begin(),
                 materialAsset.textures().end(),
@@ -282,7 +282,7 @@ GpuTexture RenderAssetCache::commitTextureReplacement(
         update.materialTemplate = &assets.materialTemplate(
             materialAsset.materialTemplate());
         update.textures.reserve(materialAsset.textures().size());
-        for (TextureAssetHandle textureHandle : materialAsset.textures())
+        for (asset::TextureAssetHandle textureHandle : materialAsset.textures())
         {
             update.textures.push_back(
                 textureHandle == handle
@@ -315,7 +315,7 @@ void RenderAssetCache::reset() noexcept
     materialDescriptorSetLayout_.reset();
 }
 
-const Mesh& RenderAssetCache::mesh(MeshAssetHandle handle) const
+const Mesh& RenderAssetCache::mesh(asset::MeshAssetHandle handle) const
 {
     const Mesh* result = tryMesh(handle);
     if (result == nullptr)
@@ -326,7 +326,7 @@ const Mesh& RenderAssetCache::mesh(MeshAssetHandle handle) const
 }
 
 const Mesh* RenderAssetCache::tryMesh(
-    MeshAssetHandle handle) const noexcept
+    asset::MeshAssetHandle handle) const noexcept
 {
     if (!handle || handle.index >= meshes_.size())
     {
@@ -339,7 +339,7 @@ const Mesh* RenderAssetCache::tryMesh(
 }
 
 const GpuMaterial& RenderAssetCache::material(
-    MaterialAssetHandle handle) const
+    asset::MaterialAssetHandle handle) const
 {
     const GpuMaterial* result = tryMaterial(handle);
     if (result == nullptr)
@@ -351,7 +351,7 @@ const GpuMaterial& RenderAssetCache::material(
 }
 
 const GpuMaterial* RenderAssetCache::tryMaterial(
-    MaterialAssetHandle handle) const noexcept
+    asset::MaterialAssetHandle handle) const noexcept
 {
     if (!handle || handle.index >= materials_.size())
     {
@@ -364,7 +364,7 @@ const GpuMaterial* RenderAssetCache::tryMaterial(
 }
 
 const GpuTexture& RenderAssetCache::texture(
-    TextureAssetHandle handle) const
+    asset::TextureAssetHandle handle) const
 {
     const GpuTexture* result = tryTexture(handle);
     if (result == nullptr)
@@ -376,7 +376,7 @@ const GpuTexture& RenderAssetCache::texture(
 }
 
 const GpuTexture* RenderAssetCache::tryTexture(
-    TextureAssetHandle handle) const noexcept
+    asset::TextureAssetHandle handle) const noexcept
 {
     if (!handle || handle.index >= textures_.size())
     {
@@ -388,4 +388,4 @@ const GpuTexture* RenderAssetCache::tryTexture(
         : nullptr;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

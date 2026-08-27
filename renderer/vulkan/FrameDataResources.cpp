@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 FrameDataResources::FrameDataResources(
@@ -55,12 +55,12 @@ void FrameDataResources::create(
         cameraBuffers_.create(
             device,
             frameCount,
-            sizeof(CameraGpuData) * static_cast<VkDeviceSize>(MaxCameraCount),
+            sizeof(render::CameraGpuData) * static_cast<VkDeviceSize>(render::MaxCameraCount),
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         const VkDeviceSize objectBufferSize =
-            sizeof(ObjectGpuData) * static_cast<VkDeviceSize>(objectCapacity);
+            sizeof(render::ObjectGpuData) * static_cast<VkDeviceSize>(objectCapacity);
         objectBuffers_.create(
             device,
             frameCount,
@@ -90,8 +90,8 @@ void FrameDataResources::create(
             cameraBufferInfo.buffer = cameraBuffers_.get(i);
             cameraBufferInfo.offset = 0;
             cameraBufferInfo.range =
-                sizeof(CameraGpuData) *
-                static_cast<VkDeviceSize>(MaxCameraCount);
+                sizeof(render::CameraGpuData) *
+                static_cast<VkDeviceSize>(render::MaxCameraCount);
 
             VkDescriptorBufferInfo objectBufferInfo{};
             objectBufferInfo.buffer = objectBuffers_.get(i);
@@ -139,28 +139,28 @@ void FrameDataResources::reset() noexcept
     objectCapacity_ = 0;
 }
 
-void FrameDataResources::setCameraData(const CameraGpuData& cameraData)
+void FrameDataResources::setCameraData(const render::CameraGpuData& cameraData)
 {
     setCameraData(&cameraData, 1);
 }
 
 void FrameDataResources::setCameraData(
-    const CameraGpuData* cameraData,
+    const render::CameraGpuData* cameraData,
     uint32_t cameraCount)
 {
     if (cameraData == nullptr || cameraCount == 0 ||
-        cameraCount > MaxCameraCount)
+        cameraCount > render::MaxCameraCount)
     {
         throw std::invalid_argument(
             "camera data exceeds the frame buffer capacity");
     }
     cameraBuffers_.setData(
         cameraData,
-        sizeof(CameraGpuData) * static_cast<VkDeviceSize>(cameraCount));
+        sizeof(render::CameraGpuData) * static_cast<VkDeviceSize>(cameraCount));
 }
 
 void FrameDataResources::setObjectData(
-    const ObjectGpuData* objectData,
+    const render::ObjectGpuData* objectData,
     uint32_t objectCount)
 {
     if (objectData == nullptr || objectCount == 0 ||
@@ -170,7 +170,7 @@ void FrameDataResources::setObjectData(
     }
     objectBuffers_.setData(
         objectData,
-        sizeof(ObjectGpuData) * static_cast<VkDeviceSize>(objectCount));
+        sizeof(render::ObjectGpuData) * static_cast<VkDeviceSize>(objectCount));
 }
 
 void FrameDataResources::sync(uint32_t frameIndex)
@@ -194,4 +194,4 @@ VkDescriptorSet FrameDataResources::descriptorSet(uint32_t frameIndex) const
     return descriptorSets_[frameIndex];
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan
