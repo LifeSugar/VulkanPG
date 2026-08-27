@@ -19,11 +19,11 @@ public:
     struct CreateInfo
     {
         /// Application name reported to the Vulkan driver.
-        std::string applicationName = "Hello Vulkan";
+        std::string applicationName = "RubiaEngine";
         /// Application version reported to the Vulkan driver.
         uint32_t applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         /// Engine name reported to the Vulkan driver.
-        std::string engineName = "No Engine";
+        std::string engineName = "Rubia";
         /// Engine version reported to the Vulkan driver.
         uint32_t engineVersion = VK_MAKE_VERSION(1, 0, 0);
         /// Highest Vulkan API version requested by the application.

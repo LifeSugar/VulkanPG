@@ -36,7 +36,7 @@ public:
     {
         uint32_t windowWidth = 1280;
         uint32_t windowHeight = 720;
-        std::string windowTitle = "Vulkan";
+        std::string windowTitle = "RubiaEngine";
         bool enableDocking = true;
         std::string imguiIniFilename;
         rhi::vulkan::VulkanRenderer::OutputMode outputMode =
