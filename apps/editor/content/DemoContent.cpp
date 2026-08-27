@@ -18,7 +18,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 namespace
 {
@@ -48,12 +48,12 @@ void addDemoTextureUsage(
     usages[static_cast<std::size_t>(textureIndex)] |= usage;
 }
 
-std::vector<uint8_t> resolveDemoTextureUsages(const GLBModel& model)
+std::vector<uint8_t> resolveDemoTextureUsages(const importer::gltf::GLBModel& model)
 {
     std::vector<uint8_t> usages(
         model.textures.size(),
         DemoTextureUsageNone);
-    for (const GLBMaterial& material : model.materials)
+    for (const importer::gltf::GLBMaterial& material : model.materials)
     {
         addDemoTextureUsage(
             usages,
@@ -79,12 +79,12 @@ std::vector<uint8_t> resolveDemoTextureUsages(const GLBModel& model)
     return usages;
 }
 
-TextureImportSettings makeDemoTextureImportSettings(
+importer::texture::TextureImportSettings makeDemoTextureImportSettings(
     const DemoContentLoader::TextureImportPolicy& policy,
-    TextureColorSpace colorSpace,
+    asset::TextureColorSpace colorSpace,
     uint8_t usage)
 {
-    TextureImportSettings settings{};
+    importer::texture::TextureImportSettings settings{};
     settings.colorSpace = colorSpace;
     settings.generateMipmaps = policy.generateMipmaps;
     settings.basis.encoding = policy.payloadEncoding;
@@ -95,13 +95,13 @@ TextureImportSettings makeDemoTextureImportSettings(
     // format instead.
     if (usage == DemoTextureUsageNormal)
     {
-        settings.colorSpace = TextureColorSpace::Linear;
+        settings.colorSpace = asset::TextureColorSpace::Linear;
         settings.basis.normalMap = true;
         settings.transcodeFormat = policy.normalTranscodeFormat;
     }
     else if (usage == DemoTextureUsageColor ||
              (usage == DemoTextureUsageNone &&
-              colorSpace == TextureColorSpace::Srgb))
+              colorSpace == asset::TextureColorSpace::Srgb))
     {
         settings.transcodeFormat = policy.colorTranscodeFormat;
     }
@@ -151,20 +151,20 @@ void validateCreateInfo(const DemoContentLoader::CreateInfo& createInfo)
 } // namespace
 
 DemoContent DemoContentLoader::load(
-    AssetManager& assets,
-    Scene& scene,
+    asset::AssetManager& assets,
+    scene::Scene& scene,
     const CreateInfo& createInfo,
-    TextureImportRegistry* textureImports)
+    importer::texture::TextureImportRegistry* textureImports)
 {
     validateCreateInfo(createInfo);
     DemoContent content{};
 
-    TextureAsset::CreateInfo textureInfo{};
+    asset::TextureAsset::CreateInfo textureInfo{};
     textureInfo.name = "Default White";
     textureInfo.width = 1;
     textureInfo.height = 1;
-    textureInfo.format = TextureFormat::RGBA8UNorm;
-    textureInfo.colorSpace = TextureColorSpace::Srgb;
+    textureInfo.format = asset::TextureFormat::RGBA8UNorm;
+    textureInfo.colorSpace = asset::TextureColorSpace::Srgb;
     textureInfo.payload = {
         std::byte{0xff},
         std::byte{0xff},
@@ -173,12 +173,12 @@ DemoContent DemoContentLoader::load(
     };
     content.defaultTexture = assets.createTexture(std::move(textureInfo));
 
-    TextureAsset::CreateInfo dataTextureInfo{};
+    asset::TextureAsset::CreateInfo dataTextureInfo{};
     dataTextureInfo.name = "Default Linear White";
     dataTextureInfo.width = 1;
     dataTextureInfo.height = 1;
-    dataTextureInfo.format = TextureFormat::RGBA8UNorm;
-    dataTextureInfo.colorSpace = TextureColorSpace::Linear;
+    dataTextureInfo.format = asset::TextureFormat::RGBA8UNorm;
+    dataTextureInfo.colorSpace = asset::TextureColorSpace::Linear;
     dataTextureInfo.payload = {
         std::byte{0xff},
         std::byte{0xff},
@@ -188,12 +188,12 @@ DemoContent DemoContentLoader::load(
     content.defaultDataTexture =
         assets.createTexture(std::move(dataTextureInfo));
 
-    TextureAsset::CreateInfo normalTextureInfo{};
+    asset::TextureAsset::CreateInfo normalTextureInfo{};
     normalTextureInfo.name = "Default Flat Normal";
     normalTextureInfo.width = 1;
     normalTextureInfo.height = 1;
-    normalTextureInfo.format = TextureFormat::RGBA8UNorm;
-    normalTextureInfo.colorSpace = TextureColorSpace::Linear;
+    normalTextureInfo.format = asset::TextureFormat::RGBA8UNorm;
+    normalTextureInfo.colorSpace = asset::TextureColorSpace::Linear;
     normalTextureInfo.payload = {
         std::byte{0x80},
         std::byte{0x80},
@@ -203,48 +203,48 @@ DemoContent DemoContentLoader::load(
     content.defaultNormalTexture =
         assets.createTexture(std::move(normalTextureInfo));
 
-    SpirvShaderImporter shaderImporter;
-    SpirvShaderImporter::CreateInfo shaderInfo{};
+    importer::shader::SpirvShaderImporter shaderImporter;
+    importer::shader::SpirvShaderImporter::CreateInfo shaderInfo{};
     shaderInfo.assets = &assets;
     shaderInfo.path = resolveAssetPath(
         createInfo.cookedAssetDirectory,
         createInfo.pbrVertexShader);
     shaderInfo.name = "PBR Vertex";
-    shaderInfo.stage = ShaderStage::Vertex;
+    shaderInfo.stage = asset::ShaderStage::Vertex;
     content.pbrVertexShader = shaderImporter.import(shaderInfo);
 
     shaderInfo.path = resolveAssetPath(
         createInfo.cookedAssetDirectory,
         createInfo.pbrFragmentShader);
     shaderInfo.name = "PBR Fragment";
-    shaderInfo.stage = ShaderStage::Fragment;
+    shaderInfo.stage = asset::ShaderStage::Fragment;
     content.pbrFragmentShader = shaderImporter.import(shaderInfo);
 
     shaderInfo.path = resolveAssetPath(
         createInfo.cookedAssetDirectory,
         createInfo.presentVertexShader);
     shaderInfo.name = "Present Vertex";
-    shaderInfo.stage = ShaderStage::Vertex;
+    shaderInfo.stage = asset::ShaderStage::Vertex;
     content.presentVertexShader = shaderImporter.import(shaderInfo);
 
     shaderInfo.path = resolveAssetPath(
         createInfo.cookedAssetDirectory,
         createInfo.presentFragmentShader);
     shaderInfo.name = "Present Fragment";
-    shaderInfo.stage = ShaderStage::Fragment;
+    shaderInfo.stage = asset::ShaderStage::Fragment;
     content.presentFragmentShader = shaderImporter.import(shaderInfo);
 
-    MaterialTemplateAsset::CreateInfo templateInfo{};
+    asset::MaterialTemplateAsset::CreateInfo templateInfo{};
     templateInfo.name = "glTF Metallic-Roughness PBR";
     templateInfo.shaders = {
         content.pbrVertexShader,
         content.pbrFragmentShader
     };
     templateInfo.parameters = {
-        {"baseColorFactor", MaterialValueType::Float4, 0, true},
-        {"emissiveFactor", MaterialValueType::Float3, 16, true},
-        {"metallicFactor", MaterialValueType::Float, 28, true},
-        {"roughnessFactor", MaterialValueType::Float, 32, true}
+        {"baseColorFactor", asset::MaterialValueType::Float4, 0, true},
+        {"emissiveFactor", asset::MaterialValueType::Float3, 16, true},
+        {"metallicFactor", asset::MaterialValueType::Float, 28, true},
+        {"roughnessFactor", asset::MaterialValueType::Float, 32, true}
     };
     templateInfo.textureSlots = {
         {"baseColorTexture", 0, true, {1, 1}, {1, 6}},
@@ -256,7 +256,7 @@ DemoContent DemoContentLoader::load(
     content.materialTemplate =
         assets.createMaterialTemplate(std::move(templateInfo));
 
-    MaterialAsset::CreateInfo materialInfo{};
+    asset::MaterialAsset::CreateInfo materialInfo{};
     materialInfo.name = "Default PBR Material";
     materialInfo.materialTemplate = content.materialTemplate;
     materialInfo.parameters = {
@@ -278,8 +278,8 @@ DemoContent DemoContentLoader::load(
     const std::filesystem::path resolvedModelPath = resolveAssetPath(
         createInfo.cookedAssetDirectory,
         createInfo.modelPath);
-    GLBLoader loader;
-    std::unique_ptr<GLBModel> sourceModel =
+    importer::gltf::GLBLoader loader;
+    std::unique_ptr<importer::gltf::GLBModel> sourceModel =
         loader.load(resolvedModelPath.string());
     if (!sourceModel)
     {
@@ -288,26 +288,26 @@ DemoContent DemoContentLoader::load(
             loader.getLastError());
     }
 
-    GLBModelImporter::CreateInfo importerInfo{};
+    importer::gltf::GLBModelImporter::CreateInfo importerInfo{};
     importerInfo.assets = &assets;
     importerInfo.baseDirectory =
         resolvedModelPath.parent_path();
     importerInfo.defaultTexture = content.defaultTexture;
     importerInfo.defaultDataTexture = content.defaultDataTexture;
     importerInfo.defaultNormalTexture = content.defaultNormalTexture;
-    StbImageDecoder imageDecoder;
+    importer::texture::StbImageDecoder imageDecoder;
     importerInfo.textureDecoder =
         [&imageDecoder](
-            const GLBTexture& texture,
+            const importer::gltf::GLBTexture& texture,
             const std::filesystem::path& baseDirectory)
         {
-            if (texture.storage == GLBTextureStorage::EncodedBytes)
+            if (texture.storage == importer::gltf::GLBTextureStorage::EncodedBytes)
             {
                 return imageDecoder.decodeMemory(
                     texture.data,
                     texture.name);
             }
-            if (texture.storage == GLBTextureStorage::ExternalUri)
+            if (texture.storage == importer::gltf::GLBTextureStorage::ExternalUri)
             {
                 return imageDecoder.decodeFile(
                     baseDirectory / texture.uri,
@@ -329,8 +329,8 @@ DemoContent DemoContentLoader::load(
     importerInfo.materialMapping.emissiveTextureSlot = "emissiveTexture";
     importerInfo.fallbackMaterial = content.defaultMaterial;
 
-    GLBModelImporter importer;
-    GLBModelImporter::Result importedModel =
+    importer::gltf::GLBModelImporter importer;
+    importer::gltf::GLBModelImporter::Result importedModel =
         importer.import(*sourceModel, importerInfo);
 
     if (textureImports != nullptr)
@@ -346,8 +346,8 @@ DemoContent DemoContentLoader::load(
              index < sourceModel->textures.size();
              ++index)
         {
-            const GLBTexture& sourceTexture = sourceModel->textures[index];
-            if (sourceTexture.storage != GLBTextureStorage::ExternalUri)
+            const importer::gltf::GLBTexture& sourceTexture = sourceModel->textures[index];
+            if (sourceTexture.storage != importer::gltf::GLBTextureStorage::ExternalUri)
             {
                 continue;
             }
@@ -359,7 +359,7 @@ DemoContent DemoContentLoader::load(
                 std::filesystem::path(sourceTexture.uri).filename();
             cookedFilename.replace_extension(".ktx2");
 
-            TextureImportRecord record{};
+            importer::texture::TextureImportRecord record{};
             record.texture = importedModel.textures[index];
             record.sourcePath = sourcePath;
             record.cookedPath = resolvedModelPath.parent_path() /
@@ -378,7 +378,7 @@ DemoContent DemoContentLoader::load(
             createInfo.modelPath.string());
     }
     content.model = importedModel.model;
-    const ModelAsset& demoModel = assets.model(content.model);
+    const asset::ModelAsset& demoModel = assets.model(content.model);
 
     std::clog
         << "[Assets] Imported " << createInfo.modelPath.string()
@@ -388,9 +388,9 @@ DemoContent DemoContentLoader::load(
         << ", nodes=" << demoModel.nodes().size()
         << '\n';
 
-    Scene::CreateInfo sceneInfo{};
+    scene::Scene::CreateInfo sceneInfo{};
     sceneInfo.name = "Demo Scene";
-    SceneNode sceneRoot{};
+    scene::SceneNode sceneRoot{};
     sceneRoot.name = demoModel.name();
     sceneRoot.model = content.model;
     sceneInfo.nodes.push_back(std::move(sceneRoot));
@@ -399,4 +399,4 @@ DemoContent DemoContentLoader::load(
     return content;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

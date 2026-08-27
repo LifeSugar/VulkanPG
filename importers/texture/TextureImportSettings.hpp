@@ -7,7 +7,7 @@
 #include <string>
 #include <thread>
 
-namespace VkRenderer
+namespace rubia::importer::texture
 {
 
 [[nodiscard]] inline uint32_t defaultTextureImportThreadCount() noexcept
@@ -63,7 +63,7 @@ struct KtxBasisEncodeSettings
 /// texture. The Vulkan backend only sees the resulting TextureAsset.
 struct TextureImportSettings
 {
-    TextureColorSpace colorSpace = TextureColorSpace::Linear;
+    asset::TextureColorSpace colorSpace = asset::TextureColorSpace::Linear;
     bool generateMipmaps = false;
     TextureMipFilter mipFilter = TextureMipFilter::Mitchell;
     TextureMipEdgeMode mipEdgeMode = TextureMipEdgeMode::Clamp;
@@ -71,8 +71,8 @@ struct TextureImportSettings
     uint32_t zstdLevel = 0;
 
     /// Used only when a Basis payload is imported for the runtime.
-    TextureFormat transcodeFormat = TextureFormat::BC7UNorm;
+    asset::TextureFormat transcodeFormat = asset::TextureFormat::BC7UNorm;
     bool highQualityTranscode = true;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::importer::texture

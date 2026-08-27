@@ -14,6 +14,9 @@
 #include <functional>
 #include <stdexcept>
 
+namespace rubia::importer::gltf
+{
+
 // ============================================================================
 // pimpl 实现体
 // ============================================================================
@@ -506,3 +509,5 @@ void GLBLoader::extractAnimations(const void* aiScenePtr)
         m_model->animations.push_back(std::move(anim));
     }
 }
+
+} // namespace rubia::importer::gltf

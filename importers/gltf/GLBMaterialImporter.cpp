@@ -4,15 +4,15 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::importer::gltf
 {
 namespace
 {
 
-TextureAssetHandle resolveTexture(
+asset::TextureAssetHandle resolveTexture(
     int sourceIndex,
-    const std::vector<TextureAssetHandle>* textures,
-    TextureAssetHandle defaultTexture)
+    const std::vector<asset::TextureAssetHandle>* textures,
+    asset::TextureAssetHandle defaultTexture)
 {
     if (sourceIndex < 0)
     {
@@ -28,10 +28,10 @@ TextureAssetHandle resolveTexture(
 }
 
 void addTextureAssignment(
-    MaterialAsset::CreateInfo& destination,
+    asset::MaterialAsset::CreateInfo& destination,
     const std::string& slotName,
     int sourceIndex,
-    TextureAssetHandle fallbackTexture,
+    asset::TextureAssetHandle fallbackTexture,
     const GLBMaterialImporter::CreateInfo& createInfo)
 {
     if (slotName.empty())
@@ -39,7 +39,7 @@ void addTextureAssignment(
         return;
     }
 
-    const TextureAssetHandle texture = resolveTexture(
+    const asset::TextureAssetHandle texture = resolveTexture(
         sourceIndex,
         createInfo.textures,
         fallbackTexture);
@@ -51,7 +51,7 @@ void addTextureAssignment(
 
 } // namespace
 
-std::vector<MaterialAssetHandle> GLBMaterialImporter::import(
+std::vector<asset::MaterialAssetHandle> GLBMaterialImporter::import(
     const std::vector<GLBMaterial>& source,
     const CreateInfo& createInfo) const
 {
@@ -84,11 +84,11 @@ std::vector<MaterialAssetHandle> GLBMaterialImporter::import(
             "GLBMaterialImporter default data texture is not owned by its AssetManager");
     }
 
-    std::vector<MaterialAssetHandle> result;
+    std::vector<asset::MaterialAssetHandle> result;
     result.reserve(source.size());
     for (const GLBMaterial& material : source)
     {
-        MaterialAsset::CreateInfo materialInfo{};
+        asset::MaterialAsset::CreateInfo materialInfo{};
         materialInfo.name = material.name;
         materialInfo.materialTemplate = createInfo.mapping.materialTemplate;
 
@@ -164,4 +164,4 @@ std::vector<MaterialAssetHandle> GLBMaterialImporter::import(
     return result;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::importer::gltf

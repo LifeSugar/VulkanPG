@@ -11,7 +11,7 @@
 #include <variant>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 using MaterialValue = std::variant<
@@ -88,4 +88,4 @@ private:
     std::vector<TextureAssetHandle> textures_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::asset

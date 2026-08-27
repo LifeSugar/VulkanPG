@@ -3,7 +3,7 @@
 #include <sstream>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 void ValidationReport::addWarning(
@@ -96,4 +96,4 @@ const ValidationReport& AssetValidationError::report() const noexcept
     return report_;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::asset

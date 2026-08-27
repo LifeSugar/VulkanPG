@@ -7,7 +7,7 @@
 #include <vk_mem_alloc.h>
 #endif
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 class Device;
@@ -81,4 +81,4 @@ private:
     void* mappedData_ = nullptr;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

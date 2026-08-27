@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 namespace
 {
@@ -424,4 +424,4 @@ std::string Device::queueFlagsName(VkQueueFlags flags)
     return result;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

@@ -1,6 +1,6 @@
 #include "asset/ProceduralMesh.hpp"
 
-namespace VkRenderer
+namespace rubia::asset
 {
 namespace
 {
@@ -78,4 +78,4 @@ MeshAsset::CreateInfo makeCubeMeshCreateInfo()
     return createInfo;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::asset

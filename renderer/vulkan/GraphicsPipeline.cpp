@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 namespace
@@ -277,4 +277,4 @@ void GraphicsPipeline::reset() noexcept
     pipeline_ = VK_NULL_HANDLE;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

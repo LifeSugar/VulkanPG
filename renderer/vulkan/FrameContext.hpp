@@ -6,7 +6,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 class Device;
@@ -69,4 +69,4 @@ private:
     Fence inFlight_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 class RenderAssetCache;
@@ -15,7 +15,7 @@ class VulkanRenderer;
 
 /// Adapts Vulkan render outputs and cached textures to opaque GUI tokens.
 class VulkanApplicationGuiRenderBridge final
-    : public ApplicationGuiRenderBridge
+    : public render::ApplicationGuiRenderBridge
 {
 public:
     ~VulkanApplicationGuiRenderBridge() override;
@@ -26,15 +26,15 @@ public:
     void detach() noexcept;
 
     void resizeSceneViewport(uint32_t width, uint32_t height) override;
-    [[nodiscard]] ApplicationGuiRenderFrame currentFrame() override;
-    [[nodiscard]] ApplicationGuiTexture preview(
-        TextureAssetHandle texture) override;
-    void invalidatePreview(TextureAssetHandle texture) noexcept override;
+    [[nodiscard]] render::ApplicationGuiRenderFrame currentFrame() override;
+    [[nodiscard]] render::ApplicationGuiTexture preview(
+        asset::TextureAssetHandle texture) override;
+    void invalidatePreview(asset::TextureAssetHandle texture) noexcept override;
 
 private:
     struct TextureEntry
     {
-        TextureAssetHandle texture;
+        asset::TextureAssetHandle texture;
         VkDescriptorSet descriptor = VK_NULL_HANDLE;
     };
 
@@ -50,4 +50,4 @@ private:
     uint64_t viewportTextureRevision_ = 0;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

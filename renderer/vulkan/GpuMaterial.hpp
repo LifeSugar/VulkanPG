@@ -7,12 +7,16 @@
 
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::asset
+{
+class MaterialTemplateAsset;
+}
+
+namespace rubia::rhi::vulkan
 {
 
 class Device;
 class GpuTexture;
-class MaterialTemplateAsset;
 
 /// Parameter buffer and texture descriptors compiled for one MaterialAsset.
 class GpuMaterial final
@@ -27,15 +31,15 @@ public:
 
     void create(
         const Device& device,
-        const MaterialAsset& asset,
-        const MaterialTemplateAsset& materialTemplate,
+        const asset::MaterialAsset& asset,
+        const asset::MaterialTemplateAsset& materialTemplate,
         const std::vector<const GpuTexture*>& textures,
         VkDescriptorSet descriptorSet);
     /// Rewrites only the sampled-image and sampler bindings. Parameter data,
     /// material identity, and the descriptor-set handle stay unchanged.
     void updateTextures(
         const Device& device,
-        const MaterialTemplateAsset& materialTemplate,
+        const asset::MaterialTemplateAsset& materialTemplate,
         const std::vector<const GpuTexture*>& textures);
     void reset() noexcept;
 
@@ -43,11 +47,11 @@ public:
     {
         return descriptorSet_;
     }
-    [[nodiscard]] const MaterialRenderState& renderState() const noexcept
+    [[nodiscard]] const asset::MaterialRenderState& renderState() const noexcept
     {
         return renderState_;
     }
-    [[nodiscard]] MaterialTemplateAssetHandle materialTemplate() const
+    [[nodiscard]] asset::MaterialTemplateAssetHandle materialTemplate() const
         noexcept
     {
         return materialTemplate_;
@@ -60,9 +64,9 @@ public:
 
 private:
     Buffer parameterBuffer_;
-    MaterialTemplateAssetHandle materialTemplate_;
-    MaterialRenderState renderState_;
+    asset::MaterialTemplateAssetHandle materialTemplate_;
+    asset::MaterialRenderState renderState_;
     VkDescriptorSet descriptorSet_ = VK_NULL_HANDLE;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

@@ -1,4 +1,4 @@
-add_library(lv_vulkan STATIC
+add_library(rubia_rhi_vulkan STATIC
     Buffer.cpp
     Buffer.hpp
     CommandPool.cpp
@@ -65,21 +65,21 @@ add_library(lv_vulkan STATIC
     Window.cpp
     Window.hpp
 )
-add_library(LearnVulkan::Vulkan ALIAS lv_vulkan)
+add_library(Rubia::RhiVulkan ALIAS rubia_rhi_vulkan)
 
-target_include_directories(lv_vulkan PUBLIC
+target_include_directories(rubia_rhi_vulkan PUBLIC
     "${PROJECT_SOURCE_DIR}/renderer"
 )
-target_compile_definitions(lv_vulkan PUBLIC
+target_compile_definitions(rubia_rhi_vulkan PUBLIC
     VK_RENDERER_USE_VMA=$<BOOL:${VK_RENDERER_USE_VMA}>
 )
-target_link_libraries(lv_vulkan
+target_link_libraries(rubia_rhi_vulkan
     PUBLIC
-        LearnVulkan::Engine
+        Rubia::Engine
         Vulkan::Vulkan
         VulkanMemoryAllocator
         glfw
-        lv_project_options
+        rubia_project_options
     PRIVATE
         imgui
 )

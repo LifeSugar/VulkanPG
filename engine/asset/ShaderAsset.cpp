@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 ShaderAsset::ShaderAsset(CreateInfo createInfo)
@@ -46,4 +46,4 @@ void ShaderAsset::reset() noexcept
     interface_ = {};
 }
 
-} // namespace VkRenderer
+} // namespace rubia::asset

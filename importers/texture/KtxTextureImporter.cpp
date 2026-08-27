@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::importer::texture
 {
 namespace
 {
@@ -30,19 +30,19 @@ using KtxTexture =
         std::string(operation) + ": " + ktxErrorString(error));
 }
 
-ktx_transcode_fmt_e transcodeTarget(TextureFormat format)
+ktx_transcode_fmt_e transcodeTarget(asset::TextureFormat format)
 {
     switch (format)
     {
-    case TextureFormat::BC1RGBUNorm:
+    case asset::TextureFormat::BC1RGBUNorm:
         return KTX_TTF_BC1_RGB;
-    case TextureFormat::BC3UNorm:
+    case asset::TextureFormat::BC3UNorm:
         return KTX_TTF_BC3_RGBA;
-    case TextureFormat::BC4UNorm:
+    case asset::TextureFormat::BC4UNorm:
         return KTX_TTF_BC4_R;
-    case TextureFormat::BC5UNorm:
+    case asset::TextureFormat::BC5UNorm:
         return KTX_TTF_BC5_RG;
-    case TextureFormat::BC7UNorm:
+    case asset::TextureFormat::BC7UNorm:
         return KTX_TTF_BC7_RGBA;
     default:
         throw std::invalid_argument(
@@ -141,7 +141,7 @@ KtxTexture openFile(const std::filesystem::path& path)
     return KtxTexture(rawTexture, &ktxTexture2_Destroy);
 }
 
-TextureAsset::CreateInfo buildTextureAsset(
+asset::TextureAsset::CreateInfo buildTextureAsset(
     ktxTexture2& texture,
     const KtxTextureImporter::CreateInfo& createInfo)
 {
@@ -151,7 +151,7 @@ TextureAsset::CreateInfo buildTextureAsset(
     {
         const ktx_transcode_fmt_e target =
             transcodeTarget(createInfo.transcodeFormat);
-        const TextureFormatInfo targetInfo =
+        const asset::TextureFormatInfo targetInfo =
             textureFormatInfo(createInfo.transcodeFormat);
         if (ktxTexture2_GetTransferFunction_e(&texture) ==
                 KHR_DF_TRANSFER_SRGB &&
@@ -197,7 +197,7 @@ TextureAsset::CreateInfo buildTextureAsset(
         throwKtxError("failed to iterate KTX2 mip levels", iterateResult);
     }
 
-    TextureAsset::CreateInfo result{};
+    asset::TextureAsset::CreateInfo result{};
     result.name = createInfo.name;
     result.width = texture.baseWidth;
     result.height = texture.baseHeight;
@@ -249,7 +249,7 @@ TextureAsset::CreateInfo buildTextureAsset(
 
 } // namespace
 
-TextureAsset::CreateInfo KtxTextureImporter::importMemory(
+asset::TextureAsset::CreateInfo KtxTextureImporter::importMemory(
     const void* data,
     std::size_t size,
     const CreateInfo& createInfo) const
@@ -276,7 +276,7 @@ TextureAsset::CreateInfo KtxTextureImporter::importMemory(
     return buildTextureAsset(*texture, createInfo);
 }
 
-TextureAsset::CreateInfo KtxTextureImporter::importFile(
+asset::TextureAsset::CreateInfo KtxTextureImporter::importFile(
     const std::filesystem::path& path,
     const CreateInfo& createInfo) const
 {
@@ -289,4 +289,4 @@ TextureAsset::CreateInfo KtxTextureImporter::importFile(
     return buildTextureAsset(*texture, resolvedInfo);
 }
 
-} // namespace VkRenderer
+} // namespace rubia::importer::texture

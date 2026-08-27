@@ -4,13 +4,13 @@
 
 #include <imgui.h>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 ApplicationGuiFrameOutput RuntimeGui::draw(
     const ApplicationGuiContext& context)
 {
-    const ApplicationGuiRenderFrame renderFrame =
+    const render::ApplicationGuiRenderFrame renderFrame =
         context.render.currentFrame();
     const ImGuiIO& io = ImGui::GetIO();
 
@@ -29,4 +29,4 @@ ApplicationGuiFrameOutput RuntimeGui::draw(
     return {};
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

@@ -1,4 +1,4 @@
-target_sources(lv_importers PRIVATE
+target_sources(rubia_importers PRIVATE
     SpirvReflection.cpp
     SpirvReflection.hpp
     SpirvShaderImporter.cpp

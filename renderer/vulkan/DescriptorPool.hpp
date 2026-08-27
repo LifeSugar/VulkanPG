@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 /// RAII wrapper for a Vulkan descriptor pool.
@@ -56,4 +56,4 @@ private:
     VkDescriptorPool pool_ = VK_NULL_HANDLE;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

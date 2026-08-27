@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 enum class TextureFormat
@@ -133,4 +133,4 @@ private:
     std::vector<TextureMipLevel> mipLevels_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::asset

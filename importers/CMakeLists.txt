@@ -1,14 +1,14 @@
-add_library(lv_importers STATIC)
-add_library(LearnVulkan::Importers ALIAS lv_importers)
+add_library(rubia_importers STATIC)
+add_library(Rubia::Importers ALIAS rubia_importers)
 
-target_include_directories(lv_importers
+target_include_directories(rubia_importers
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}"
     PRIVATE "${Stb_INCLUDE_DIR}"
 )
-target_link_libraries(lv_importers
+target_link_libraries(rubia_importers
     PUBLIC
-        LearnVulkan::Engine
-        lv_project_options
+        Rubia::Engine
+        rubia_project_options
     PRIVATE
         assimp::assimp
         KTX::ktx

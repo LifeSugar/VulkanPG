@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::importer::gltf
 {
 namespace
 {
@@ -29,15 +29,15 @@ uint32_t checkedSize(std::size_t size, const char* description)
 uint32_t appendNode(
     const GLBNode& source,
     uint32_t parent,
-    const std::vector<MeshAssetHandle>& meshHandles,
-    std::vector<ModelNode>& destination)
+    const std::vector<asset::MeshAssetHandle>& meshHandles,
+    std::vector<asset::ModelNode>& destination)
 {
     const uint32_t nodeIndex = checkedSize(
         destination.size(),
         "imported model node index");
     destination.push_back({});
 
-    ModelNode& node = destination[nodeIndex];
+    asset::ModelNode& node = destination[nodeIndex];
     node.name = source.name;
     node.localTransform = source.localTransform;
     node.parent = parent;
@@ -85,9 +85,9 @@ void addTextureColorUsage(
     usages[static_cast<std::size_t>(textureIndex)] |= usage;
 }
 
-std::vector<TextureColorSpace> resolveTextureColorSpaces(
+std::vector<asset::TextureColorSpace> resolveTextureColorSpaces(
     const GLBModel& source,
-    TextureColorSpace fallback)
+    asset::TextureColorSpace fallback)
 {
     std::vector<uint8_t> usages(
         source.textures.size(),
@@ -116,7 +116,7 @@ std::vector<TextureColorSpace> resolveTextureColorSpaces(
             TextureColorUsageLinear);
     }
 
-    std::vector<TextureColorSpace> result(source.textures.size(), fallback);
+    std::vector<asset::TextureColorSpace> result(source.textures.size(), fallback);
     for (std::size_t index = 0; index < usages.size(); ++index)
     {
         if (usages[index] ==
@@ -127,11 +127,11 @@ std::vector<TextureColorSpace> resolveTextureColorSpaces(
         }
         if ((usages[index] & TextureColorUsageLinear) != 0)
         {
-            result[index] = TextureColorSpace::Linear;
+            result[index] = asset::TextureColorSpace::Linear;
         }
         else if ((usages[index] & TextureColorUsageSrgb) != 0)
         {
-            result[index] = TextureColorSpace::Srgb;
+            result[index] = asset::TextureColorSpace::Srgb;
         }
     }
     return result;
@@ -151,7 +151,7 @@ GLBModelImporter::Result GLBModelImporter::import(
 
     Result result{};
 
-    const std::vector<TextureColorSpace> textureColorSpaces =
+    const std::vector<asset::TextureColorSpace> textureColorSpaces =
         resolveTextureColorSpaces(source, createInfo.textureColorSpace);
 
     GLBTextureImporter::CreateInfo textureInfo{};
@@ -188,15 +188,15 @@ GLBModelImporter::Result GLBModelImporter::import(
     meshInfo.fallbackMaterial = createInfo.fallbackMaterial;
     result.meshes = GLBMeshImporter{}.import(source.meshes, meshInfo);
 
-    ModelAsset::CreateInfo modelInfo{};
+    asset::ModelAsset::CreateInfo modelInfo{};
     modelInfo.name = source.name;
     appendNode(
         source.rootNode,
-        kInvalidModelNodeIndex,
+        asset::kInvalidModelNodeIndex,
         result.meshes,
         modelInfo.nodes);
     result.model = createInfo.assets->createModel(std::move(modelInfo));
     return result;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::importer::gltf

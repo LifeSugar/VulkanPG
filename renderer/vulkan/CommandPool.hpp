@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 /// RAII wrapper for a Vulkan command pool.
@@ -60,4 +60,4 @@ private:
     VkCommandPool commandPool_ = VK_NULL_HANDLE;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

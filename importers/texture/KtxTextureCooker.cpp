@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::importer::texture
 {
 namespace
 {
@@ -82,7 +82,7 @@ void validateRequest(const KtxTextureCooker::Request& request)
             "Basis input swizzle components must be r, g, b, a, 0, or 1");
     }
     if (request.basis.normalMap &&
-        request.colorSpace != TextureColorSpace::Linear)
+        request.colorSpace != asset::TextureColorSpace::Linear)
     {
         throw std::invalid_argument("normal-map encoding requires linear data");
     }
@@ -108,13 +108,13 @@ void validateRequest(const KtxTextureCooker::Request& request)
 }
 
 [[nodiscard]] std::vector<Ktx2ImageLevel> buildMipChain(
-    TextureAsset::CreateInfo decoded,
+    asset::TextureAsset::CreateInfo decoded,
     const KtxTextureCooker::Request& request)
 {
-    if (decoded.format != TextureFormat::RGBA8UNorm ||
+    if (decoded.format != asset::TextureFormat::RGBA8UNorm ||
         decoded.width == 0 || decoded.height == 0 ||
         decoded.payload.size() != textureMipByteSize(
-            TextureFormat::RGBA8UNorm,
+            asset::TextureFormat::RGBA8UNorm,
             decoded.width,
             decoded.height))
     {
@@ -147,7 +147,7 @@ void validateRequest(const KtxTextureCooker::Request& request)
             1u,
             baseHeight >> std::min(level, 31u));
         destination.payload.resize(textureMipByteSize(
-            TextureFormat::RGBA8UNorm,
+            asset::TextureFormat::RGBA8UNorm,
             destination.width,
             destination.height));
 
@@ -171,7 +171,7 @@ void validateRequest(const KtxTextureCooker::Request& request)
             static_cast<int>(destination.height),
             0,
             STBIR_RGBA,
-            request.colorSpace == TextureColorSpace::Srgb
+            request.colorSpace == asset::TextureColorSpace::Srgb
                 ? STBIR_TYPE_UINT8_SRGB
                 : STBIR_TYPE_UINT8);
         if (!stbir_set_filters(
@@ -197,13 +197,13 @@ KtxTextureCooker::Result KtxTextureCooker::cookToFile(
     const Request& request) const
 {
     validateRequest(request);
-    TextureAsset::CreateInfo decoded =
+    asset::TextureAsset::CreateInfo decoded =
         StbImageDecoder{}.decodeFile(request.inputPath);
     std::vector<Ktx2ImageLevel> mipLevels =
         buildMipChain(std::move(decoded), request);
     Ktx2ContainerWriteInfo writeInfo{};
     writeInfo.outputPath = request.outputPath;
-    writeInfo.sourceFormat = TextureFormat::RGBA8UNorm;
+    writeInfo.sourceFormat = asset::TextureFormat::RGBA8UNorm;
     writeInfo.transferFunction = request.colorSpace;
     writeInfo.levels = std::move(mipLevels);
     writeInfo.basis = request.basis;
@@ -222,7 +222,7 @@ KtxTextureCooker::Result KtxTextureCooker::cookToFile(
         mipLevelCount};
 }
 
-TextureAsset::CreateInfo KtxTextureCooker::cookAndImport(
+asset::TextureAsset::CreateInfo KtxTextureCooker::cookAndImport(
     const Request& request,
     const KtxTextureImporter::CreateInfo& importInfo) const
 {
@@ -230,4 +230,4 @@ TextureAsset::CreateInfo KtxTextureCooker::cookAndImport(
     return KtxTextureImporter{}.importFile(cooked.outputPath, importInfo);
 }
 
-} // namespace VkRenderer
+} // namespace rubia::importer::texture

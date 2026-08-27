@@ -8,14 +8,14 @@
 #include <string>
 #include <unordered_map>
 
-namespace VkRenderer
+namespace rubia::importer::texture
 {
 
 /// Editor/import-domain provenance for one runtime texture. TextureAsset stays
 /// source-independent and does not own these paths or cooking settings.
 struct TextureImportRecord
 {
-    TextureAssetHandle texture;
+    asset::TextureAssetHandle texture;
     std::filesystem::path sourcePath;
     std::filesystem::path cookedPath;
     TextureImportSettings settings;
@@ -26,7 +26,7 @@ struct TextureImportRecord
 
 struct TextureReimportRequest
 {
-    TextureAssetHandle texture;
+    asset::TextureAssetHandle texture;
     TextureImportSettings settings;
 };
 
@@ -37,14 +37,14 @@ public:
     void registerTexture(TextureImportRecord record);
 
     [[nodiscard]] const TextureImportRecord* find(
-        TextureAssetHandle texture) const noexcept;
-    [[nodiscard]] bool contains(TextureAssetHandle texture) const noexcept;
+        asset::TextureAssetHandle texture) const noexcept;
+    [[nodiscard]] bool contains(asset::TextureAssetHandle texture) const noexcept;
 
-    void markStarted(TextureAssetHandle texture);
+    void markStarted(asset::TextureAssetHandle texture);
     void markSucceeded(
-        TextureAssetHandle texture,
+        asset::TextureAssetHandle texture,
         TextureImportSettings settings);
-    void markFailed(TextureAssetHandle texture, std::string error);
+    void markFailed(asset::TextureAssetHandle texture, std::string error);
     void reset() noexcept;
 
     [[nodiscard]] std::size_t size() const noexcept
@@ -53,9 +53,9 @@ public:
     }
 
 private:
-    [[nodiscard]] static uint64_t key(TextureAssetHandle texture) noexcept;
+    [[nodiscard]] static uint64_t key(asset::TextureAssetHandle texture) noexcept;
 
     std::unordered_map<uint64_t, TextureImportRecord> records_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::importer::texture

@@ -5,7 +5,7 @@
 #include <string>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 namespace
 {
@@ -27,14 +27,14 @@ VkDeviceSize checkedBufferSize(
 
 Mesh::Mesh(
     UploadContext& uploadContext,
-    const MeshAsset& asset)
+    const asset::MeshAsset& asset)
 {
     create(uploadContext, asset);
 }
 
 void Mesh::create(
     UploadContext& uploadContext,
-    const MeshAsset& asset)
+    const asset::MeshAsset& asset)
 {
     if (asset.empty())
     {
@@ -43,11 +43,11 @@ void Mesh::create(
 
     const VkDeviceSize vertexSize = checkedBufferSize(
         asset.vertices().size(),
-        sizeof(Vertex),
+        sizeof(asset::Vertex),
         "mesh vertex data");
 
-    std::vector<SubmeshData> newSubmeshes = asset.submeshes();
-    const Aabb newLocalBounds = asset.localBounds();
+    std::vector<asset::SubmeshData> newSubmeshes = asset.submeshes();
+    const math::Aabb newLocalBounds = asset.localBounds();
     Buffer newVertexBuffer = uploadContext.uploadBuffer(
         asset.vertices().data(),
         vertexSize,
@@ -101,4 +101,4 @@ void Mesh::bind(VkCommandBuffer commandBuffer) const
     }
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

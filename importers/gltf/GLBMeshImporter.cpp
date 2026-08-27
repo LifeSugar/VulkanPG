@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::importer::gltf
 {
 namespace
 {
@@ -23,9 +23,9 @@ uint32_t checkedSize(std::size_t size, const char* description)
     return static_cast<uint32_t>(size);
 }
 
-Vertex convertVertex(const GLBVertex& source)
+asset::Vertex convertVertex(const GLBVertex& source)
 {
-    Vertex destination{};
+    asset::Vertex destination{};
     destination.position = source.position;
     destination.normal = source.normal;
     destination.texCoord = source.texCoord;
@@ -37,7 +37,7 @@ Vertex convertVertex(const GLBVertex& source)
     return destination;
 }
 
-MaterialAssetHandle resolveMaterial(
+asset::MaterialAssetHandle resolveMaterial(
     int sourceIndex,
     const GLBMeshImporter::CreateInfo& createInfo)
 {
@@ -50,7 +50,7 @@ MaterialAssetHandle resolveMaterial(
         static_cast<std::size_t>(sourceIndex) <
             createInfo.materials->size())
     {
-        const MaterialAssetHandle material =
+        const asset::MaterialAssetHandle material =
             (*createInfo.materials)[static_cast<std::size_t>(sourceIndex)];
         if (material)
         {
@@ -67,11 +67,11 @@ MaterialAssetHandle resolveMaterial(
         "GLB primitive references a material outside the imported material table");
 }
 
-MeshAsset::CreateInfo convertMesh(
+asset::MeshAsset::CreateInfo convertMesh(
     const GLBMesh& source,
     const GLBMeshImporter::CreateInfo& createInfo)
 {
-    MeshAsset::CreateInfo destination{};
+    asset::MeshAsset::CreateInfo destination{};
     destination.name = source.name;
 
     std::size_t vertexCount = 0;
@@ -92,7 +92,7 @@ MeshAsset::CreateInfo convertMesh(
             continue;
         }
 
-        SubmeshData submesh{};
+        asset::SubmeshData submesh{};
         submesh.firstVertex = checkedSize(
             destination.vertices.size(),
             "imported mesh vertex offset");
@@ -137,7 +137,7 @@ MeshAsset::CreateInfo convertMesh(
 
 } // namespace
 
-std::vector<MeshAssetHandle> GLBMeshImporter::import(
+std::vector<asset::MeshAssetHandle> GLBMeshImporter::import(
     const std::vector<GLBMesh>& source,
     const CreateInfo& createInfo) const
 {
@@ -152,7 +152,7 @@ std::vector<MeshAssetHandle> GLBMeshImporter::import(
         throw std::invalid_argument(
             "GLBMeshImporter fallback material is not owned by its AssetManager");
     }
-    std::vector<MeshAssetHandle> result;
+    std::vector<asset::MeshAssetHandle> result;
     result.reserve(source.size());
     for (const GLBMesh& mesh : source)
     {
@@ -162,4 +162,4 @@ std::vector<MeshAssetHandle> GLBMeshImporter::import(
     return result;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::importer::gltf

@@ -16,7 +16,7 @@
 
 struct ImDrawData;
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 class Mesh;
@@ -99,7 +99,7 @@ public:
     void resizeEditorViewport(VkExtent2D extent);
     /// Records, submits, and presents one scene snapshot.
     [[nodiscard]] RenderResult render(
-        const RenderFrame& frame,
+        const render::RenderFrame& frame,
         const RenderAssetCache& renderAssets,
         ImDrawData* uiDrawData = nullptr);
 
@@ -156,7 +156,7 @@ private:
     /// Replaces descriptor sets after scene color views are recreated.
     void recreatePresentDescriptorSets(uint32_t frameCount);
     /// Stages and uploads camera and object data for one frame slot.
-    void updateFrameData(uint32_t frameIndex, const RenderFrame& frame);
+    void updateFrameData(uint32_t frameIndex, const render::RenderFrame& frame);
     /// Records all draw commands for one acquired swapchain image.
     void recordCommandBuffer(
         VkCommandBuffer commandBuffer,
@@ -238,9 +238,9 @@ private:
     /// Frame slot selected for the next submission.
     uint32_t currentFrame_ = 0;
     /// Identity of the view whose GPU payload is currently staged.
-    RenderViewId stagedViewId_{};
+    render::RenderViewId stagedViewId_{};
     /// Revision of the currently staged view GPU payload.
     uint64_t stagedViewGpuDataRevision_ = 0;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

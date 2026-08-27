@@ -6,6 +6,8 @@
 
 #include <cstdint>
 
+namespace rubia::render
+{
 
 class Camera
 {
@@ -35,18 +37,18 @@ public:
     const glm::vec3 &getRotation() const;
 
     /// Selects the scene layers visible from this camera.
-    void setCullingMask(VkRenderer::LayerMask cullingMask) noexcept;
-    [[nodiscard]] VkRenderer::LayerMask getCullingMask() const noexcept;
-    void setCullingFlags(VkRenderer::CullingFlags cullingFlags) noexcept;
-    [[nodiscard]] VkRenderer::CullingFlags getCullingFlags() const noexcept;
+    void setCullingMask(LayerMask cullingMask) noexcept;
+    [[nodiscard]] LayerMask getCullingMask() const noexcept;
+    void setCullingFlags(CullingFlags cullingFlags) noexcept;
+    [[nodiscard]] CullingFlags getCullingFlags() const noexcept;
 
     const glm::mat4 &getViewMatrix() const;
     const glm::mat4 &getProjectionMatrix() const;
     const glm::mat4 &getViewProjectionMatrix() const;
-    [[nodiscard]] VkRenderer::CameraGpuData getGpuData() const;
+    [[nodiscard]] CameraGpuData getGpuData() const;
     /// Creates a consistent immutable snapshot for one render flow.
-    [[nodiscard]] VkRenderer::RenderView makeRenderView() const;
-    [[nodiscard]] VkRenderer::RenderViewId viewId() const noexcept
+    [[nodiscard]] RenderView makeRenderView() const;
+    [[nodiscard]] RenderViewId viewId() const noexcept
     {
         return m_viewId;
     }
@@ -67,9 +69,8 @@ private:
     glm::vec3 m_position;
     glm::vec3 m_rotation;
     Config m_config;
-    VkRenderer::LayerMask m_cullingMask = VkRenderer::LayerMask::all();
-    VkRenderer::CullingFlags m_cullingFlags =
-        VkRenderer::CullingFlags::All;
+    LayerMask m_cullingMask = LayerMask::all();
+    CullingFlags m_cullingFlags = CullingFlags::All;
 
     mutable glm::mat4 m_viewMatrix;
     mutable glm::mat4 m_projectionMatrix;
@@ -77,7 +78,7 @@ private:
 
     mutable bool m_isViewDirty = true;
     mutable bool m_isProjectionDirty = true;
-    VkRenderer::RenderViewId m_viewId;
+    RenderViewId m_viewId;
     uint64_t m_gpuDataRevision = 1;
 
 private:
@@ -85,3 +86,5 @@ private:
     void recalculateViewMatrix() const;
     void recalculateProjectionMatrix() const;
 };
+
+} // namespace rubia::render

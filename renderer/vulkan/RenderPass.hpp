@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 /// RAII wrapper for a Vulkan render pass.
@@ -43,4 +43,4 @@ private:
     VkRenderPass renderPass_ = VK_NULL_HANDLE;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

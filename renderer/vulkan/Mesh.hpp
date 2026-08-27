@@ -6,7 +6,7 @@
 
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 /// Owns the GPU buffers and draw ranges of one mesh.
@@ -18,7 +18,7 @@ public:
     /// Uploads mesh data into device-local vertex and index buffers.
     Mesh(
         UploadContext& uploadContext,
-        const MeshAsset& asset);
+        const asset::MeshAsset& asset);
 
     Mesh(const Mesh&) = delete;
     Mesh& operator=(const Mesh&) = delete;
@@ -31,7 +31,7 @@ public:
     /// Creates or replaces the GPU buffers from CPU-side mesh data.
     void create(
         UploadContext& uploadContext,
-        const MeshAsset& asset);
+        const asset::MeshAsset& asset);
     /// Releases the GPU buffers and submesh metadata.
     void reset() noexcept;
     /// Binds the vertex and index buffers to a command buffer.
@@ -42,9 +42,9 @@ public:
     /// Returns the uploaded index-buffer handle.
     [[nodiscard]] VkBuffer indexBuffer() const noexcept { return indexBuffer_.get(); }
     /// Returns draw ranges for the uploaded mesh primitives.
-    [[nodiscard]] const std::vector<SubmeshData>& submeshes() const noexcept { return submeshes_; }
+    [[nodiscard]] const std::vector<asset::SubmeshData>& submeshes() const noexcept { return submeshes_; }
     /// Returns the CPU-computed bounds in mesh-local space.
-    [[nodiscard]] const Aabb& localBounds() const noexcept { return localBounds_; }
+    [[nodiscard]] const math::Aabb& localBounds() const noexcept { return localBounds_; }
     /// Returns whether the mesh contains usable GPU buffers and draw ranges.
     [[nodiscard]] explicit operator bool() const noexcept
     {
@@ -57,9 +57,9 @@ private:
     /// Device-local storage for all mesh indices.
     Buffer indexBuffer_;
     /// Draw ranges corresponding to the source mesh primitives.
-    std::vector<SubmeshData> submeshes_;
+    std::vector<asset::SubmeshData> submeshes_;
     /// CPU metadata copied from the source MeshAsset for visibility tests.
-    Aabb localBounds_;
+    math::Aabb localBounds_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 struct RenderView;
@@ -34,4 +34,4 @@ public:
         const RenderView& view) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::render

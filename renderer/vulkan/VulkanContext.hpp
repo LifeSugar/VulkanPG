@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 class Window;
@@ -112,4 +112,4 @@ private:
     bool validationLayersEnabled_ = false;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

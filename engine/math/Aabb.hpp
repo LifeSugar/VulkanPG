@@ -4,7 +4,7 @@
 
 #include <cmath>
 
-namespace VkRenderer
+namespace rubia::math
 {
 
 /// Axis-aligned bounding box represented by inclusive minimum and maximum.
@@ -60,4 +60,4 @@ struct Aabb final
     };
 }
 
-} // namespace VkRenderer
+} // namespace rubia::math

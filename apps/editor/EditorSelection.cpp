@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 void EditorSelection::select(InspectorTarget target)
@@ -51,4 +51,4 @@ bool EditorSelection::empty() const noexcept
     return std::holds_alternative<std::monostate>(target_);
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

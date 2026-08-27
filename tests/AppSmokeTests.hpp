@@ -2,12 +2,13 @@
 
 #include "App.hpp"
 
-namespace VkRenderer
+namespace rubia::editor
 {
-
 class ApplicationGui;
+class App;
+}
 
-namespace Test
+namespace rubia::test
 {
 
 /// Existing command-line validation paths, kept outside the runtime App API.
@@ -17,12 +18,10 @@ public:
     static void runAssetImportTest();
     static void runRenderTest();
     static void runRenderTest(
-        App& app,
-        const App::RunConfig& config,
-        ApplicationGui& gui);
+        editor::App& app,
+        const editor::App::RunConfig& config,
+        editor::ApplicationGui& gui);
 };
 
-} // namespace Test
-} // namespace VkRenderer
-
+} // namespace rubia::test
 

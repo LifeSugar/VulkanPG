@@ -1,17 +1,15 @@
 #pragma once
 
+#include "EditorFwd.hpp"
 #include "asset/AssetFwd.hpp"
 
 #include <cstdint>
 #include <string>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
-class ApplicationGuiRenderBridge;
-class TextureAsset;
-
-namespace InspectorWidgets
+namespace widgets
 {
 
 [[nodiscard]] const char* displayName(
@@ -28,12 +26,12 @@ void drawProperty(const char* label, float value);
     int id);
 
 void drawTextureImage(
-    ApplicationGuiRenderBridge& texturePreviews,
-    TextureAssetHandle handle,
-    const TextureAsset& texture,
+    render::ApplicationGuiRenderBridge& texturePreviews,
+    asset::TextureAssetHandle handle,
+    const asset::TextureAsset& texture,
     float maxWidth,
     float maxHeight);
 
-} // namespace InspectorWidgets
+} // namespace widgets
 
-} // namespace VkRenderer
+} // namespace rubia::editor

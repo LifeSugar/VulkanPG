@@ -2,7 +2,7 @@
 
 #include "ApplicationGui.hpp"
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 /// Minimal GUI used by the non-editor runtime.
@@ -13,4 +13,4 @@ public:
         const ApplicationGuiContext& context) override;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

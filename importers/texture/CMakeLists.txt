@@ -1,4 +1,4 @@
-target_sources(lv_importers PRIVATE
+target_sources(rubia_importers PRIVATE
     Ktx2ContainerWriter.cpp
     Ktx2ContainerWriter.hpp
     Ktx2Format.cpp

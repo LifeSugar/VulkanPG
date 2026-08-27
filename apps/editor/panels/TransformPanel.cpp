@@ -9,7 +9,7 @@
 
 #include <cmath>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 namespace
 {
@@ -100,4 +100,4 @@ void TransformPanel::draw(
     }
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

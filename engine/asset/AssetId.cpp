@@ -3,7 +3,7 @@
 #include <array>
 #include <random>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 namespace
 {
@@ -128,4 +128,4 @@ std::size_t AssetIdHash::operator()(AssetId id) const noexcept
          (highHash << 6) + (highHash >> 2));
 }
 
-} // namespace VkRenderer
+} // namespace rubia::asset

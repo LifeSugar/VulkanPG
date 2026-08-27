@@ -13,7 +13,7 @@
 #include <system_error>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 namespace
 {
@@ -135,12 +135,12 @@ private:
     bool finished_ = false;
 };
 
-[[nodiscard]] KtxTextureCooker::Request makeCookRequest(
-    const TextureImportRecord& record,
-    const TextureImportSettings& settings,
+[[nodiscard]] importer::texture::KtxTextureCooker::Request makeCookRequest(
+    const importer::texture::TextureImportRecord& record,
+    const importer::texture::TextureImportSettings& settings,
     const std::filesystem::path& stagedPath)
 {
-    KtxTextureCooker::Request result{};
+    importer::texture::KtxTextureCooker::Request result{};
     result.inputPath = record.sourcePath;
     result.outputPath = stagedPath;
     result.colorSpace = settings.colorSpace;
@@ -166,7 +166,7 @@ void App::processPendingTextureReimport()
             return;
         }
 
-        const TextureAssetHandle completedTexture =
+        const asset::TextureAssetHandle completedTexture =
             activeTextureReimport_;
         const std::filesystem::path completedStagedPath =
             activeTextureReimportStagedPath_;
@@ -201,13 +201,13 @@ void App::processPendingTextureReimport()
                 // decode, Basis encoding, KTX2 IO, and Basis transcoding have
                 // already completed on the worker thread.
                 renderer.waitIdle();
-                const Device& device = vulkanContext.device();
-                CommandPool uploadCommandPool(
+                const rhi::vulkan::Device& device = vulkanContext.device();
+                rhi::vulkan::CommandPool uploadCommandPool(
                     device,
                     device.graphicsQueueFamily(),
                     VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
-                UploadContext uploadContext(device, uploadCommandPool);
-                GpuTexture replacementGpu =
+                rhi::vulkan::UploadContext uploadContext(device, uploadCommandPool);
+                rhi::vulkan::GpuTexture replacementGpu =
                     renderAssets.stageTextureReplacement(
                         device,
                         uploadContext,
@@ -217,7 +217,7 @@ void App::processPendingTextureReimport()
                 guiRenderBridge.invalidatePreview(
                     prepared.request.texture);
 
-                GpuTexture previousGpu =
+                rhi::vulkan::GpuTexture previousGpu =
                     renderAssets.commitTextureReplacement(
                         device,
                         assetManager,
@@ -225,7 +225,7 @@ void App::processPendingTextureReimport()
                         std::move(replacementGpu));
                 try
                 {
-                    TextureAsset previousAsset =
+                    asset::TextureAsset previousAsset =
                         assetManager.replaceTexture(
                             prepared.request.texture,
                             std::move(prepared.replacementAsset));
@@ -233,7 +233,7 @@ void App::processPendingTextureReimport()
                 }
                 catch (...)
                 {
-                    GpuTexture failedReplacement =
+                    rhi::vulkan::GpuTexture failedReplacement =
                         renderAssets.commitTextureReplacement(
                             device,
                             assetManager,
@@ -280,18 +280,18 @@ void App::processPendingTextureReimport()
         return;
     }
 
-    TextureReimportRequest request =
+    importer::texture::TextureReimportRequest request =
         std::move(pendingTextureReimports_.front());
     pendingTextureReimports_.pop_front();
-    const TextureAssetHandle requestedTexture = request.texture;
+    const asset::TextureAssetHandle requestedTexture = request.texture;
 
-    const TextureImportRecord* storedRecord =
+    const importer::texture::TextureImportRecord* storedRecord =
         textureImports.find(request.texture);
     if (storedRecord == nullptr)
     {
         return;
     }
-    TextureImportRecord record = *storedRecord;
+    importer::texture::TextureImportRecord record = *storedRecord;
 
     try
     {
@@ -303,7 +303,7 @@ void App::processPendingTextureReimport()
                 "reimport target is busy or absent from the CPU/GPU asset cache");
         }
 
-        KtxTextureImporter::CreateInfo importInfo{};
+        importer::texture::KtxTextureImporter::CreateInfo importInfo{};
         importInfo.name = assetManager.texture(request.texture).name();
         importInfo.sampler = assetManager.texture(request.texture).sampler();
         importInfo.transcodeFormat = request.settings.transcodeFormat;
@@ -331,8 +331,8 @@ void App::processPendingTextureReimport()
                 result.stagedPath = stagedPath;
                 try
                 {
-                    result.replacementAsset = TextureAsset(
-                        KtxTextureCooker{}.cookAndImport(
+                    result.replacementAsset = asset::TextureAsset(
+                        importer::texture::KtxTextureCooker{}.cookAndImport(
                             makeCookRequest(
                                 result.record,
                                 result.request.settings,
@@ -396,4 +396,4 @@ void App::discardTextureReimport() noexcept
     activeTextureReimport_ = {};
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

@@ -7,7 +7,7 @@
 #include <filesystem>
 #include <string>
 
-namespace VkRenderer
+namespace rubia::importer::texture
 {
 
 /// Converts a KTX2 container into an engine-owned TextureAsset payload.
@@ -17,20 +17,20 @@ public:
     struct CreateInfo
     {
         std::string name;
-        TextureSamplerDesc sampler;
+        asset::TextureSamplerDesc sampler;
         /// Used only when a BasisLZ/UASTC payload requires transcoding.
-        TextureFormat transcodeFormat = TextureFormat::BC7UNorm;
+        asset::TextureFormat transcodeFormat = asset::TextureFormat::BC7UNorm;
         bool highQuality = true;
     };
 
-    [[nodiscard]] TextureAsset::CreateInfo importMemory(
+    [[nodiscard]] asset::TextureAsset::CreateInfo importMemory(
         const void* data,
         std::size_t size,
         const CreateInfo& createInfo) const;
 
-    [[nodiscard]] TextureAsset::CreateInfo importFile(
+    [[nodiscard]] asset::TextureAsset::CreateInfo importFile(
         const std::filesystem::path& path,
         const CreateInfo& createInfo) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::importer::texture

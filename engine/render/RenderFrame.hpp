@@ -3,7 +3,7 @@
 #include "render/RenderList.hpp"
 #include "render/RenderView.hpp"
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 /// Complete renderer input for one frame.
@@ -15,4 +15,4 @@ struct RenderFrame
     RenderList renderList;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::render

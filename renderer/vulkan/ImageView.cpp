@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 ImageView::ImageView(VkDevice device, const CreateInfo& createInfo)
@@ -75,4 +75,4 @@ void ImageView::reset() noexcept
     imageView_ = VK_NULL_HANDLE;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

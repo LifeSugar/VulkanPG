@@ -3,7 +3,7 @@
 #include <cmath>
 #include <stdexcept>
 
-namespace VkRenderer
+namespace rubia::math
 {
 namespace
 {
@@ -80,4 +80,4 @@ bool Frustum::intersects(const Aabb& bounds) const noexcept
     return true;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::math

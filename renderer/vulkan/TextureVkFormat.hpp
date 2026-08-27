@@ -6,22 +6,22 @@
 
 #include <optional>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 struct TextureFormatMapping
 {
-    TextureFormat format = TextureFormat::Undefined;
-    TextureColorSpace colorSpace = TextureColorSpace::Linear;
+    asset::TextureFormat format = asset::TextureFormat::Undefined;
+    asset::TextureColorSpace colorSpace = asset::TextureColorSpace::Linear;
 };
 
 /// Converts an engine texture format and color space to Vulkan.
 [[nodiscard]] VkFormat textureVkFormat(
-    TextureFormat format,
-    TextureColorSpace colorSpace);
+    asset::TextureFormat format,
+    asset::TextureColorSpace colorSpace);
 
 /// Converts a Vulkan format supported by TextureAsset back to engine metadata.
 [[nodiscard]] std::optional<TextureFormatMapping>
 textureFormatFromVk(VkFormat format) noexcept;
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

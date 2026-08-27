@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <glm/glm.hpp>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
     /// Maximum number of camera records stored in one frame's uniform buffer.
@@ -76,4 +76,4 @@ namespace VkRenderer
     static_assert(sizeof(PresentPushConstants) == 16);
     static_assert(alignof(PresentPushConstants) == 16);
 
-} // namespace VkRenderer
+} // namespace rubia::render

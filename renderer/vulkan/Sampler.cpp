@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 Sampler::Sampler(VkDevice device, const VkSamplerCreateInfo& createInfo)
@@ -65,4 +65,4 @@ void Sampler::reset() noexcept
     sampler_ = VK_NULL_HANDLE;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

@@ -8,7 +8,7 @@
 #include <filesystem>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::importer::texture
 {
 
 struct Ktx2ImageLevel
@@ -21,8 +21,8 @@ struct Ktx2ImageLevel
 struct Ktx2ContainerWriteInfo
 {
     std::filesystem::path outputPath;
-    TextureFormat sourceFormat = TextureFormat::Undefined;
-    TextureColorSpace transferFunction = TextureColorSpace::Linear;
+    asset::TextureFormat sourceFormat = asset::TextureFormat::Undefined;
+    asset::TextureColorSpace transferFunction = asset::TextureColorSpace::Linear;
     std::vector<Ktx2ImageLevel> levels;
     KtxBasisEncodeSettings basis;
     uint32_t zstdLevel = 0;
@@ -33,4 +33,4 @@ struct Ktx2ContainerWriteInfo
 [[nodiscard]] std::filesystem::path writeKtx2Container(
     const Ktx2ContainerWriteInfo& writeInfo);
 
-} // namespace VkRenderer
+} // namespace rubia::importer::texture

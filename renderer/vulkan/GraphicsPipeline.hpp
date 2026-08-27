@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 class Device;
@@ -90,4 +90,4 @@ private:
     VkPipeline pipeline_ = VK_NULL_HANDLE;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

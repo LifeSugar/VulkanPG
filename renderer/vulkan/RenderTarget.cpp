@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 RenderTarget::RenderTarget(
@@ -142,4 +142,4 @@ const RenderTarget::AttachmentResources& RenderTarget::attachment(
     return attachments_[attachmentIndex];
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

@@ -7,7 +7,7 @@
 #include <limits>
 #include <stdexcept>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 void PerFrameBuffer::create(
@@ -118,4 +118,4 @@ VkBuffer PerFrameBuffer::get(uint32_t frameIndex) const
     return buffers_[frameIndex].get();
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

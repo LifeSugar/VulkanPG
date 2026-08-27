@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 inline constexpr uint32_t kInvalidShaderBinding =
@@ -102,4 +102,4 @@ private:
     uint64_t shaderInterfaceSignature_ = 0;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::asset

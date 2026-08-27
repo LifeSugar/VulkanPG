@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 MaterialAsset::MaterialAsset(CompiledCreateInfo createInfo)
@@ -23,4 +23,4 @@ void MaterialAsset::reset() noexcept
     textures_.clear();
 }
 
-} // namespace VkRenderer
+} // namespace rubia::asset

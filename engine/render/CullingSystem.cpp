@@ -7,7 +7,7 @@
 #include <optional>
 #include <stdexcept>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 CullingResults CullingSystem::cull(
@@ -27,10 +27,10 @@ CullingResults CullingSystem::cull(
         view.cullingFlags,
         CullingFlags::Frustum);
 
-    std::optional<Frustum> frustum;
+    std::optional<math::Frustum> frustum;
     if (testFrustum)
     {
-        frustum = Frustum::fromViewProjection(
+        frustum = math::Frustum::fromViewProjection(
             view.viewProjectionMatrix);
     }
 
@@ -65,4 +65,4 @@ CullingResults CullingSystem::cull(
     return result;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::render

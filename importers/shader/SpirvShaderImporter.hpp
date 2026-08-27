@@ -5,7 +5,7 @@
 #include <filesystem>
 #include <string>
 
-namespace VkRenderer
+namespace rubia::importer::shader
 {
 
 /// Imports one SPIR-V file into the source-independent ShaderAsset format.
@@ -14,15 +14,15 @@ class SpirvShaderImporter final
 public:
     struct CreateInfo
     {
-        AssetManager* assets = nullptr;
+        asset::AssetManager* assets = nullptr;
         std::filesystem::path path;
         std::string name;
-        ShaderStage stage = ShaderStage::Vertex;
+        asset::ShaderStage stage = asset::ShaderStage::Vertex;
         std::string entryPoint = "main";
     };
 
-    [[nodiscard]] ShaderAssetHandle import(
+    [[nodiscard]] asset::ShaderAssetHandle import(
         const CreateInfo& createInfo) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::importer::shader

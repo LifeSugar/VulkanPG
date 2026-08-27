@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 class Device;
@@ -43,11 +43,11 @@ public:
     void reset() noexcept;
 
     /// Stages the latest camera snapshot for all frame replicas.
-    void setCameraData(const CameraGpuData& cameraData);
+    void setCameraData(const render::CameraGpuData& cameraData);
     /// Stages an array of camera snapshots for all frame replicas.
-    void setCameraData(const CameraGpuData* cameraData, uint32_t cameraCount);
+    void setCameraData(const render::CameraGpuData* cameraData, uint32_t cameraCount);
     /// Stages the active object-data range for all frame replicas.
-    void setObjectData(const ObjectGpuData* objectData, uint32_t objectCount);
+    void setObjectData(const render::ObjectGpuData* objectData, uint32_t objectCount);
     /// Uploads stale camera and object data for one frame slot.
     void sync(uint32_t frameIndex);
 
@@ -71,7 +71,7 @@ public:
     /// Returns the maximum number of camera records per frame.
     [[nodiscard]] static constexpr uint32_t cameraCapacity() noexcept
     {
-        return MaxCameraCount;
+        return render::MaxCameraCount;
     }
 
 private:
@@ -91,4 +91,4 @@ private:
     uint32_t objectCapacity_ = 0;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

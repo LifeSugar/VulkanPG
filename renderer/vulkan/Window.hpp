@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 /// Owns a GLFW window and its share of the GLFW runtime.
@@ -85,4 +85,4 @@ private:
     bool framebufferResized_ = false;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

@@ -6,17 +6,17 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::importer::shader
 {
 
 /// CPU-only SPIR-V reflection. It does not create a Vulkan shader module.
 class SpirvReflection final
 {
 public:
-    [[nodiscard]] static ShaderInterface reflect(
+    [[nodiscard]] static asset::ShaderInterface reflect(
         const std::vector<uint32_t>& spirv,
-        ShaderStage stage,
+        asset::ShaderStage stage,
         const std::string& entryPoint);
 };
 
-} // namespace VkRenderer
+} // namespace rubia::importer::shader

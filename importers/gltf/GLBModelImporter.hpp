@@ -7,9 +7,7 @@
 #include <filesystem>
 #include <vector>
 
-struct GLBModel;
-
-namespace VkRenderer
+namespace rubia::importer::gltf
 {
 
 /// Orchestrates the GLB-specific importers and creates one ModelAsset.
@@ -18,26 +16,26 @@ class GLBModelImporter final
 public:
     struct CreateInfo
     {
-        AssetManager* assets = nullptr;
+        asset::AssetManager* assets = nullptr;
 
         std::filesystem::path baseDirectory;
-        TextureColorSpace textureColorSpace = TextureColorSpace::Srgb;
-        TextureSamplerDesc textureSampler;
-        TextureAssetHandle defaultTexture;
-        TextureAssetHandle defaultDataTexture;
-        TextureAssetHandle defaultNormalTexture;
+        asset::TextureColorSpace textureColorSpace = asset::TextureColorSpace::Srgb;
+        asset::TextureSamplerDesc textureSampler;
+        asset::TextureAssetHandle defaultTexture;
+        asset::TextureAssetHandle defaultDataTexture;
+        asset::TextureAssetHandle defaultNormalTexture;
         GLBTextureImporter::Decoder textureDecoder;
 
         GLBMaterialMapping materialMapping;
-        MaterialAssetHandle fallbackMaterial;
+        asset::MaterialAssetHandle fallbackMaterial;
     };
 
     struct Result
     {
-        ModelAssetHandle model;
-        std::vector<TextureAssetHandle> textures;
-        std::vector<MaterialAssetHandle> materials;
-        std::vector<MeshAssetHandle> meshes;
+        asset::ModelAssetHandle model;
+        std::vector<asset::TextureAssetHandle> textures;
+        std::vector<asset::MaterialAssetHandle> materials;
+        std::vector<asset::MeshAssetHandle> meshes;
     };
 
     [[nodiscard]] Result import(
@@ -45,4 +43,4 @@ public:
         const CreateInfo& createInfo) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::importer::gltf

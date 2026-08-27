@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 /// Backend-neutral texture token consumed by an application GUI.
@@ -41,9 +41,9 @@ public:
     }
     [[nodiscard]] virtual ApplicationGuiRenderFrame currentFrame() = 0;
     [[nodiscard]] virtual ApplicationGuiTexture preview(
-        TextureAssetHandle texture) = 0;
+        asset::TextureAssetHandle texture) = 0;
     /// Drops GUI descriptors that reference the texture's previous GPU view.
-    virtual void invalidatePreview(TextureAssetHandle texture) noexcept = 0;
+    virtual void invalidatePreview(asset::TextureAssetHandle texture) noexcept = 0;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::render

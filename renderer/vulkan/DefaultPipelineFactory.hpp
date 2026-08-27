@@ -2,18 +2,21 @@
 
 #include "vulkan/GraphicsPipeline.hpp"
 
-namespace VkRenderer
+namespace rubia::asset
+{
+class ShaderAsset;
+}
+
+namespace rubia::rhi::vulkan
 {
 
-class ShaderAsset;
-
 [[nodiscard]] GraphicsPipeline::CreateInfo makeDefaultScenePipeline(
-    const ShaderAsset& vertexShader,
-    const ShaderAsset& fragmentShader,
+    const asset::ShaderAsset& vertexShader,
+    const asset::ShaderAsset& fragmentShader,
     VkDescriptorSetLayout materialDescriptorSetLayout);
 
 [[nodiscard]] GraphicsPipeline::CreateInfo makeDefaultPresentPipeline(
-    const ShaderAsset& vertexShader,
-    const ShaderAsset& fragmentShader);
+    const asset::ShaderAsset& vertexShader,
+    const asset::ShaderAsset& fragmentShader);
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

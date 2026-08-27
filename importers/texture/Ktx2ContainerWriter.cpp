@@ -14,7 +14,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace VkRenderer
+namespace rubia::importer::texture
 {
 namespace
 {
@@ -155,4 +155,4 @@ std::filesystem::path writeKtx2Container(
     return outputPath;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::importer::texture

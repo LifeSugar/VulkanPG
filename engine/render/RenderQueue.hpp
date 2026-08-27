@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 /// Coarse draw order shared by material classification and list sorting.
@@ -26,7 +26,7 @@ enum class RenderQueue : uint16_t
 
 /// Maps backend-independent material state to its canonical draw queue.
 [[nodiscard]] constexpr RenderQueue renderQueueFor(
-    const MaterialRenderState& state) noexcept
+    const asset::MaterialRenderState& state) noexcept
 {
     if (state.transparent())
     {
@@ -51,9 +51,9 @@ static_assert(
     renderQueueValue(RenderQueue::AlphaClip) <
     renderQueueValue(RenderQueue::Transparent));
 static_assert(
-    renderQueueFor(makeOpaqueMaterialState()) == RenderQueue::Opaque);
+    renderQueueFor(asset::makeOpaqueMaterialState()) == RenderQueue::Opaque);
 static_assert(
-    renderQueueFor(makeTransparentMaterialState()) ==
+    renderQueueFor(asset::makeTransparentMaterialState()) ==
     RenderQueue::Transparent);
 
-} // namespace VkRenderer
+} // namespace rubia::render

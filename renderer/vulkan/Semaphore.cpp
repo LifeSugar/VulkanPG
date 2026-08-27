@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 Semaphore::Semaphore(VkDevice device)
@@ -64,4 +64,4 @@ void Semaphore::reset() noexcept
     semaphore_ = VK_NULL_HANDLE;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

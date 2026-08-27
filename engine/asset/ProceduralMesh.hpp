@@ -2,10 +2,10 @@
 
 #include "asset/MeshAsset.hpp"
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 /// Builds a renderer-ready cube without relying on any file importer.
 [[nodiscard]] MeshAsset::CreateInfo makeCubeMeshCreateInfo();
 
-} // namespace VkRenderer
+} // namespace rubia::asset

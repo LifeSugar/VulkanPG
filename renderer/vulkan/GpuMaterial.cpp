@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 namespace
 {
@@ -34,7 +34,7 @@ void validateTextures(const std::vector<const GpuTexture*>& textures)
 void writeTextureDescriptors(
     VkDevice device,
     VkDescriptorSet descriptorSet,
-    const MaterialTemplateAsset& materialTemplate,
+    const asset::MaterialTemplateAsset& materialTemplate,
     const std::vector<const GpuTexture*>& textures)
 {
     validateTextures(textures);
@@ -44,11 +44,11 @@ void writeTextureDescriptors(
             "GpuMaterial texture descriptor destination is invalid");
     }
 
-    const std::vector<MaterialTextureSlotDesc>& textureSlots =
+    const std::vector<asset::MaterialTextureSlotDesc>& textureSlots =
         materialTemplate.textureSlots();
     const uint32_t textureSlotCount =
         static_cast<uint32_t>(textureSlots.size());
-    for (const MaterialTextureSlotDesc& slot : textureSlots)
+    for (const asset::MaterialTextureSlotDesc& slot : textureSlots)
     {
         if (slot.slot >= textures.size())
         {
@@ -62,7 +62,7 @@ void writeTextureDescriptors(
     // Per-slot stack storage keeps this commit path allocation-free.
     for (uint32_t index = 0; index < textureSlotCount; ++index)
     {
-        const MaterialTextureSlotDesc& slot = textureSlots[index];
+        const asset::MaterialTextureSlotDesc& slot = textureSlots[index];
         VkDescriptorImageInfo imageInfo{};
         imageInfo.imageView = textures[slot.slot]->view();
         imageInfo.imageLayout =
@@ -95,8 +95,8 @@ void writeTextureDescriptors(
 
 void GpuMaterial::create(
     const Device& device,
-    const MaterialAsset& asset,
-    const MaterialTemplateAsset& materialTemplate,
+    const asset::MaterialAsset& asset,
+    const asset::MaterialTemplateAsset& materialTemplate,
     const std::vector<const GpuTexture*>& textures,
     VkDescriptorSet descriptorSet)
 {
@@ -156,7 +156,7 @@ void GpuMaterial::create(
 
 void GpuMaterial::updateTextures(
     const Device& device,
-    const MaterialTemplateAsset& materialTemplate,
+    const asset::MaterialTemplateAsset& materialTemplate,
     const std::vector<const GpuTexture*>& textures)
 {
     if (!device || !*this)
@@ -179,4 +179,4 @@ void GpuMaterial::reset() noexcept
     parameterBuffer_.reset();
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

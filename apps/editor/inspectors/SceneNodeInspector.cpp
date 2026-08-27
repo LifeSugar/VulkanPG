@@ -6,15 +6,15 @@
 
 #include <imgui.h>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 
 std::optional<InspectorTarget> SceneNodeInspector::draw(
-    const Scene& scene,
-    const AssetManager& assets,
+    const scene::Scene& scene,
+    const asset::AssetManager& assets,
     SceneNodeTarget target) const
 {
-    using namespace InspectorWidgets;
+    using namespace widgets;
 
     if (target.nodeIndex >= scene.nodes().size())
     {
@@ -22,18 +22,18 @@ std::optional<InspectorTarget> SceneNodeInspector::draw(
         return std::nullopt;
     }
 
-    const SceneNode& node = scene.nodes()[target.nodeIndex];
+    const scene::SceneNode& node = scene.nodes()[target.nodeIndex];
     ImGui::SeparatorText("Scene Node");
     drawProperty("Name", displayName(node.name, "Unnamed SceneNode"));
     drawProperty("Node Index", target.nodeIndex);
     drawProperty(
         "Parent",
-        node.parent == kInvalidSceneNodeIndex ? "Scene Root" : "SceneNode");
+        node.parent == scene::kInvalidSceneNodeIndex ? "Scene Root" : "SceneNode");
 
     ImGui::SeparatorText("Components");
     if (node.model && assets.contains(node.model))
     {
-        const ModelAsset& model = assets.model(node.model);
+        const asset::ModelAsset& model = assets.model(node.model);
         if (drawReference(
                 "Model",
                 displayName(model.name(), "Unnamed Model"),
@@ -50,4 +50,4 @@ std::optional<InspectorTarget> SceneNodeInspector::draw(
     return std::nullopt;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

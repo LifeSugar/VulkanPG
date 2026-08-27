@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 /// Source-independent ownership wrapper for SPIR-V shader bytecode.
@@ -46,4 +46,4 @@ private:
     ShaderInterface interface_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::asset

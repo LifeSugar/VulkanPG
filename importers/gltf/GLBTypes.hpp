@@ -8,6 +8,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+namespace rubia::importer::gltf
+{
+
 // ============================================================================
 // GLB / glTF 下游数据结构 —— 基于 GLM 数学库
 // ============================================================================
@@ -132,3 +135,5 @@ struct GLBModel {
     std::vector<GLBSkin>      skins;
     std::vector<GLBAnimation> animations;
 };
+
+} // namespace rubia::importer::gltf

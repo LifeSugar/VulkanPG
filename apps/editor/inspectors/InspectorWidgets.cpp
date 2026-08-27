@@ -5,7 +5,7 @@
 
 #include <imgui.h>
 
-namespace VkRenderer::InspectorWidgets
+namespace rubia::editor::widgets
 {
 
 const char* displayName(
@@ -49,9 +49,9 @@ bool drawReference(const char* label, const char* value, int id)
 }
 
 void drawTextureImage(
-    ApplicationGuiRenderBridge& texturePreviews,
-    TextureAssetHandle handle,
-    const TextureAsset& texture,
+    render::ApplicationGuiRenderBridge& texturePreviews,
+    asset::TextureAssetHandle handle,
+    const asset::TextureAsset& texture,
     float maxWidth,
     float maxHeight)
 {
@@ -62,7 +62,7 @@ void drawTextureImage(
         return;
     }
 
-    const ApplicationGuiTexture preview = texturePreviews.preview(handle);
+    const render::ApplicationGuiTexture preview = texturePreviews.preview(handle);
     if (!preview)
     {
         ImGui::TextDisabled("Preview unavailable");
@@ -89,4 +89,4 @@ void drawTextureImage(
         ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
 }
 
-} // namespace VkRenderer::InspectorWidgets
+} // namespace rubia::editor::widgets

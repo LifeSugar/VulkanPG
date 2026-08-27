@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 /// Stable, backend-independent identity of one material instance.
@@ -13,12 +13,12 @@ namespace VkRenderer
 /// GPU handles are neither deterministic nor valid outside one cache lifetime.
 struct MaterialKey
 {
-    uint32_t assetIndex = kInvalidAssetIndex;
+    uint32_t assetIndex = asset::kInvalidAssetIndex;
     uint32_t assetGeneration = 0;
 
     [[nodiscard]] constexpr bool valid() const noexcept
     {
-        return assetIndex != kInvalidAssetIndex;
+        return assetIndex != asset::kInvalidAssetIndex;
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept
@@ -28,7 +28,7 @@ struct MaterialKey
 };
 
 [[nodiscard]] constexpr MaterialKey makeMaterialKey(
-    MaterialAssetHandle material) noexcept
+    asset::MaterialAssetHandle material) noexcept
 {
     return {material.index, material.generation};
 }
@@ -64,8 +64,8 @@ struct MaterialKeyLess
 };
 
 static_assert(
-    makeMaterialKey(MaterialAssetHandle{7, 3}) == MaterialKey{7, 3});
+    makeMaterialKey(asset::MaterialAssetHandle{7, 3}) == MaterialKey{7, 3});
 static_assert(MaterialKeyLess{}(MaterialKey{1, 9}, MaterialKey{2, 1}));
 static_assert(MaterialKeyLess{}(MaterialKey{2, 1}, MaterialKey{2, 2}));
 
-} // namespace VkRenderer
+} // namespace rubia::render

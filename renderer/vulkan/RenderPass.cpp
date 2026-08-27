@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 RenderPass::RenderPass(VkDevice device, const VkRenderPassCreateInfo& createInfo)
@@ -61,4 +61,4 @@ void RenderPass::reset() noexcept
     renderPass_ = VK_NULL_HANDLE;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

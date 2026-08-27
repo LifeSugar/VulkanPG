@@ -10,34 +10,34 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 namespace
 {
 
-VkFilter textureFilter(TextureFilter filter)
+VkFilter textureFilter(asset::TextureFilter filter)
 {
-    return filter == TextureFilter::Nearest
+    return filter == asset::TextureFilter::Nearest
         ? VK_FILTER_NEAREST
         : VK_FILTER_LINEAR;
 }
 
-VkSamplerMipmapMode mipFilter(TextureFilter filter)
+VkSamplerMipmapMode mipFilter(asset::TextureFilter filter)
 {
-    return filter == TextureFilter::Nearest
+    return filter == asset::TextureFilter::Nearest
         ? VK_SAMPLER_MIPMAP_MODE_NEAREST
         : VK_SAMPLER_MIPMAP_MODE_LINEAR;
 }
 
-VkSamplerAddressMode addressMode(TextureAddressMode mode)
+VkSamplerAddressMode addressMode(asset::TextureAddressMode mode)
 {
     switch (mode)
     {
-    case TextureAddressMode::Repeat:
+    case asset::TextureAddressMode::Repeat:
         return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    case TextureAddressMode::MirroredRepeat:
+    case asset::TextureAddressMode::MirroredRepeat:
         return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-    case TextureAddressMode::ClampToEdge:
+    case asset::TextureAddressMode::ClampToEdge:
         return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     }
     return VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -124,7 +124,7 @@ void GpuTexture::create(
         throw std::invalid_argument(
             "cannot create GpuTexture from incomplete inputs");
     }
-    const TextureAsset& asset = *createInfo.asset;
+    const asset::TextureAsset& asset = *createInfo.asset;
 
     if (asset.mipLevels().size() >
         std::numeric_limits<uint32_t>::max())
@@ -139,7 +139,7 @@ void GpuTexture::create(
     copyRegions.reserve(mipCount);
     for (uint32_t mipIndex = 0; mipIndex < mipCount; ++mipIndex)
     {
-        const TextureMipLevel& mip = asset.mipLevels()[mipIndex];
+        const asset::TextureMipLevel& mip = asset.mipLevels()[mipIndex];
         const uint32_t expectedWidth =
             std::max(1u, asset.width() >> std::min(mipIndex, 31u));
         const uint32_t expectedHeight =
@@ -213,7 +213,7 @@ void GpuTexture::create(
     viewInfo.subresourceRange = viewRange;
     replacement.view_.create(device.get(), viewInfo);
 
-    const TextureSamplerDesc& sourceSampler = asset.sampler();
+    const asset::TextureSamplerDesc& sourceSampler = asset.sampler();
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerInfo.magFilter = textureFilter(sourceSampler.magFilter);
@@ -251,4 +251,4 @@ void GpuTexture::reset() noexcept
     device_ = VK_NULL_HANDLE;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

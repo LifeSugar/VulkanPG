@@ -7,12 +7,12 @@
 #include <utility>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 RenderFrame buildRenderFrame(
-    const Scene& scene,
-    const AssetManager& assets,
+    const scene::Scene& scene,
+    const asset::AssetManager& assets,
     RenderView view)
 {
     std::vector<RenderCandidate> candidates =
@@ -30,4 +30,4 @@ RenderFrame buildRenderFrame(
     return frame;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::render

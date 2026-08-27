@@ -8,20 +8,20 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::editor
 {
 namespace
 {
 
 struct GlobalTextureReimportBatch
 {
-    std::vector<TextureReimportRequest> requests;
+    std::vector<importer::texture::TextureReimportRequest> requests;
     bool busy = false;
 };
 
 [[nodiscard]] GlobalTextureReimportBatch collectTextureReimports(
-    const AssetManager& assets,
-    const TextureImportRegistry* textureImports)
+    const asset::AssetManager& assets,
+    const importer::texture::TextureImportRegistry* textureImports)
 {
     GlobalTextureReimportBatch result{};
     if (textureImports == nullptr)
@@ -29,9 +29,9 @@ struct GlobalTextureReimportBatch
         return result;
     }
 
-    for (TextureAssetHandle texture : assets.textureHandles())
+    for (asset::TextureAssetHandle texture : assets.textureHandles())
     {
-        const TextureImportRecord* record = textureImports->find(texture);
+        const importer::texture::TextureImportRecord* record = textureImports->find(texture);
         if (record == nullptr)
         {
             continue;
@@ -66,13 +66,13 @@ void popHandleId()
 
 } // namespace
 
-std::vector<TextureReimportRequest> AssetBrowserPanel::draw(
-    const AssetManager& assets,
-    const TextureImportRegistry* textureImports,
+std::vector<importer::texture::TextureReimportRequest> AssetBrowserPanel::draw(
+    const asset::AssetManager& assets,
+    const importer::texture::TextureImportRegistry* textureImports,
     EditorSelection& selection,
     bool* open) const
 {
-    std::vector<TextureReimportRequest> reimports;
+    std::vector<importer::texture::TextureReimportRequest> reimports;
     const bool visible = ImGui::Begin("Assets", open);
     if (!visible)
     {
@@ -108,19 +108,19 @@ std::vector<TextureReimportRequest> AssetBrowserPanel::draw(
         }
     }
 
-    const std::vector<ModelAssetHandle> models = assets.modelHandles();
+    const std::vector<asset::ModelAssetHandle> models = assets.modelHandles();
     const std::string modelHeader =
         "Models (" + std::to_string(models.size()) + ")";
     if (ImGui::CollapsingHeader(
             modelHeader.c_str(),
             ImGuiTreeNodeFlags_DefaultOpen))
     {
-        for (ModelAssetHandle handle : models)
+        for (asset::ModelAssetHandle handle : models)
         {
             pushHandleId(handle);
-            const ModelAsset& model = assets.model(handle);
+            const asset::ModelAsset& model = assets.model(handle);
             if (ImGui::Selectable(
-                    InspectorWidgets::displayName(
+                    widgets::displayName(
                         model.name(),
                         "Unnamed Model"),
                     isSelected(selection, handle)))
@@ -131,7 +131,7 @@ std::vector<TextureReimportRequest> AssetBrowserPanel::draw(
         }
     }
 
-    const std::vector<MaterialAssetHandle> materials =
+    const std::vector<asset::MaterialAssetHandle> materials =
         assets.materialHandles();
     const std::string materialHeader =
         "Materials (" + std::to_string(materials.size()) + ")";
@@ -139,12 +139,12 @@ std::vector<TextureReimportRequest> AssetBrowserPanel::draw(
             materialHeader.c_str(),
             ImGuiTreeNodeFlags_DefaultOpen))
     {
-        for (MaterialAssetHandle handle : materials)
+        for (asset::MaterialAssetHandle handle : materials)
         {
             pushHandleId(handle);
-            const MaterialAsset& material = assets.material(handle);
+            const asset::MaterialAsset& material = assets.material(handle);
             if (ImGui::Selectable(
-                    InspectorWidgets::displayName(
+                    widgets::displayName(
                         material.name(),
                         "Unnamed Material"),
                     isSelected(selection, handle)))
@@ -155,7 +155,7 @@ std::vector<TextureReimportRequest> AssetBrowserPanel::draw(
         }
     }
 
-    const std::vector<TextureAssetHandle> textures =
+    const std::vector<asset::TextureAssetHandle> textures =
         assets.textureHandles();
     const std::string textureHeader =
         "Textures (" + std::to_string(textures.size()) + ")";
@@ -163,12 +163,12 @@ std::vector<TextureReimportRequest> AssetBrowserPanel::draw(
             textureHeader.c_str(),
             ImGuiTreeNodeFlags_DefaultOpen))
     {
-        for (TextureAssetHandle handle : textures)
+        for (asset::TextureAssetHandle handle : textures)
         {
             pushHandleId(handle);
-            const TextureAsset& texture = assets.texture(handle);
+            const asset::TextureAsset& texture = assets.texture(handle);
             if (ImGui::Selectable(
-                    InspectorWidgets::displayName(
+                    widgets::displayName(
                         texture.name(),
                         "Unnamed Texture"),
                     isSelected(selection, handle)))
@@ -177,7 +177,7 @@ std::vector<TextureReimportRequest> AssetBrowserPanel::draw(
             }
             if (textureImports != nullptr)
             {
-                const TextureImportRecord* record =
+                const importer::texture::TextureImportRecord* record =
                     textureImports->find(handle);
                 if (record != nullptr && ImGui::IsItemHovered())
                 {
@@ -195,4 +195,4 @@ std::vector<TextureReimportRequest> AssetBrowserPanel::draw(
     return reimports;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::editor

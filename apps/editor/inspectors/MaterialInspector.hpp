@@ -1,34 +1,32 @@
 #pragma once
 
+#include "EditorFwd.hpp"
 #include "EditorSelection.hpp"
 #include "texture/TextureImportRegistry.hpp"
 
 #include <optional>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::editor
 {
-
-class AssetManager;
-class ApplicationGuiRenderBridge;
 
 struct MaterialInspectorOutput
 {
     std::optional<InspectorTarget> navigation;
-    std::vector<TextureReimportRequest> textureReimports;
+    std::vector<importer::texture::TextureReimportRequest> textureReimports;
 };
 
 class MaterialInspector final
 {
 public:
     [[nodiscard]] MaterialInspectorOutput drawMaterialAsset(
-        const AssetManager& assets,
-        ApplicationGuiRenderBridge& texturePreviews,
-        const TextureImportRegistry* textureImports,
-        MaterialAssetHandle target) const;
+        const asset::AssetManager& assets,
+        render::ApplicationGuiRenderBridge& texturePreviews,
+        const importer::texture::TextureImportRegistry* textureImports,
+        asset::MaterialAssetHandle target) const;
     [[nodiscard]] std::optional<InspectorTarget> drawMaterialTemplate(
-        const AssetManager& assets,
-        MaterialTemplateAssetHandle target) const;
+        const asset::AssetManager& assets,
+        asset::MaterialTemplateAssetHandle target) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

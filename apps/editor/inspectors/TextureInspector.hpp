@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EditorFwd.hpp"
 #include "asset/AssetFwd.hpp"
 #include "asset/TextureAsset.hpp"
 #include "texture/TextureImportRegistry.hpp"
@@ -10,33 +11,31 @@
 #include <optional>
 #include <unordered_map>
 
-namespace VkRenderer
+namespace rubia::editor
 {
-
-class AssetManager;
-class ApplicationGuiRenderBridge;
 
 class TextureInspector final
 {
 public:
-    [[nodiscard]] std::optional<TextureReimportRequest> draw(
-        const AssetManager& assets,
-        ApplicationGuiRenderBridge& texturePreviews,
-        const TextureImportRegistry* textureImports,
-        TextureAssetHandle target);
+    [[nodiscard]] std::optional<importer::texture::TextureReimportRequest> draw(
+        const asset::AssetManager& assets,
+        render::ApplicationGuiRenderBridge& texturePreviews,
+        const importer::texture::TextureImportRegistry* textureImports,
+        asset::TextureAssetHandle target);
 
 private:
     struct ImportDraft
     {
         bool initialized = false;
-        TextureColorSpace transferFunction = TextureColorSpace::Linear;
-        KtxPayloadEncoding payloadEncoding = KtxPayloadEncoding::Uncompressed;
+        asset::TextureColorSpace transferFunction = asset::TextureColorSpace::Linear;
+        importer::texture::KtxPayloadEncoding payloadEncoding = importer::texture::KtxPayloadEncoding::Uncompressed;
         bool generateMipmaps = false;
-        TextureMipFilter mipFilter = TextureMipFilter::Mitchell;
-        TextureMipEdgeMode mipEdgeMode = TextureMipEdgeMode::Clamp;
+        importer::texture::TextureMipFilter mipFilter = importer::texture::TextureMipFilter::Mitchell;
+        importer::texture::TextureMipEdgeMode mipEdgeMode = importer::texture::TextureMipEdgeMode::Clamp;
         bool normalMap = false;
         std::array<char, 5> inputSwizzle{};
-        uint32_t threadCount = defaultTextureImportThreadCount();
+        uint32_t threadCount =
+            importer::texture::defaultTextureImportThreadCount();
         uint32_t etc1sCompressionLevel = 2;
         uint32_t etc1sQualityLevel = 128;
         uint32_t uastcQualityLevel = 2;
@@ -44,16 +43,16 @@ private:
         float uastcRdoQualityScalar = 1.0f;
         uint32_t uastcRdoDictionarySize = 4096;
         uint32_t zstdLevel = 0;
-        TextureFormat transcodeFormat = TextureFormat::BC7UNorm;
+        asset::TextureFormat transcodeFormat = asset::TextureFormat::BC7UNorm;
         bool highQualityTranscode = true;
     };
 
     [[nodiscard]] ImportDraft& draftFor(
-        TextureAssetHandle target,
-        const TextureAsset& texture,
-        const TextureImportRecord* importRecord);
+        asset::TextureAssetHandle target,
+        const asset::TextureAsset& texture,
+        const importer::texture::TextureImportRecord* importRecord);
 
     std::unordered_map<uint64_t, ImportDraft> importDrafts_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor

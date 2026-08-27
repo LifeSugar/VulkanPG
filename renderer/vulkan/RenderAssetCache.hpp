@@ -12,7 +12,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 /// Renderer-owned GPU representations reachable from one or more ModelAssets.
@@ -30,36 +30,36 @@ public:
     void create(
         const Device& device,
         UploadContext& uploadContext,
-        const AssetManager& assets,
-        const std::vector<ModelAssetHandle>& models);
+        const asset::AssetManager& assets,
+        const std::vector<asset::ModelAssetHandle>& models);
     /// Builds a replacement without changing the live cache. This lets the
     /// caller finish disk/CPU validation before committing the GPU swap.
     [[nodiscard]] GpuTexture stageTextureReplacement(
         const Device& device,
         UploadContext& uploadContext,
-        const TextureAsset& replacement) const;
+        const asset::TextureAsset& replacement) const;
     /// Commits a staged texture under the existing handle and rewrites every
     /// cached material descriptor that references it. The caller must ensure
     /// no submitted frame is using the old descriptors/resources.
     [[nodiscard]] GpuTexture commitTextureReplacement(
         const Device& device,
-        const AssetManager& assets,
-        TextureAssetHandle handle,
+        const asset::AssetManager& assets,
+        asset::TextureAssetHandle handle,
         GpuTexture replacement);
     void reset() noexcept;
 
-    [[nodiscard]] const Mesh& mesh(MeshAssetHandle handle) const;
+    [[nodiscard]] const Mesh& mesh(asset::MeshAssetHandle handle) const;
     [[nodiscard]] const Mesh* tryMesh(
-        MeshAssetHandle handle) const noexcept;
+        asset::MeshAssetHandle handle) const noexcept;
     [[nodiscard]] const GpuMaterial& material(
-        MaterialAssetHandle handle) const;
+        asset::MaterialAssetHandle handle) const;
     [[nodiscard]] const GpuMaterial* tryMaterial(
-        MaterialAssetHandle handle) const noexcept;
+        asset::MaterialAssetHandle handle) const noexcept;
     /// Returns an uploaded texture for Editor previews and material binding.
     [[nodiscard]] const GpuTexture& texture(
-        TextureAssetHandle handle) const;
+        asset::TextureAssetHandle handle) const;
     [[nodiscard]] const GpuTexture* tryTexture(
-        TextureAssetHandle handle) const noexcept;
+        asset::TextureAssetHandle handle) const noexcept;
     [[nodiscard]] VkDescriptorSetLayout materialDescriptorSetLayout() const
         noexcept
     {
@@ -93,4 +93,4 @@ private:
     DescriptorPool materialDescriptorPool_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

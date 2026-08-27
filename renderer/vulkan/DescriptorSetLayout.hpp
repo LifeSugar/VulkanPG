@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 /// RAII wrapper for a Vulkan descriptor set layout.
@@ -49,4 +49,4 @@ private:
     VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

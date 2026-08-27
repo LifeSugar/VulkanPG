@@ -7,32 +7,32 @@
 #include <functional>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::importer::gltf
 {
 
 /// Converts GLB texture payloads into source-independent TextureAssets.
 class GLBTextureImporter final
 {
 public:
-    using Decoder = std::function<TextureAsset::CreateInfo(
+    using Decoder = std::function<asset::TextureAsset::CreateInfo(
         const GLBTexture&,
         const std::filesystem::path& baseDirectory)>;
 
     struct CreateInfo
     {
-        AssetManager* assets = nullptr;
+        asset::AssetManager* assets = nullptr;
         std::filesystem::path baseDirectory;
-        TextureColorSpace colorSpace = TextureColorSpace::Srgb;
+        asset::TextureColorSpace colorSpace = asset::TextureColorSpace::Srgb;
         /// Optional per-source override derived from material semantics.
-        const std::vector<TextureColorSpace>* colorSpaces = nullptr;
-        TextureSamplerDesc sampler;
-        TextureAssetHandle fallbackTexture;
+        const std::vector<asset::TextureColorSpace>* colorSpaces = nullptr;
+        asset::TextureSamplerDesc sampler;
+        asset::TextureAssetHandle fallbackTexture;
         Decoder decoder;
     };
 
-    [[nodiscard]] std::vector<TextureAssetHandle> import(
+    [[nodiscard]] std::vector<asset::TextureAssetHandle> import(
         const std::vector<GLBTexture>& source,
         const CreateInfo& createInfo) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::importer::gltf

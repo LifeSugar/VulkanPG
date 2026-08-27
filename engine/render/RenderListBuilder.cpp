@@ -8,14 +8,14 @@
 #include <cmath>
 #include <stdexcept>
 
-namespace VkRenderer
+namespace rubia::render
 {
 
 RenderList RenderListBuilder::build(
     const std::vector<RenderCandidate>& candidates,
     const CullingResults& cullingResults,
     const RenderView& view,
-    const AssetManager& assets) const
+    const asset::AssetManager& assets) const
 {
     RenderList result{};
     result.objectData.reserve(cullingResults.visibleCandidateIndices.size());
@@ -38,7 +38,7 @@ RenderList RenderListBuilder::build(
                 "render candidate has an invalid mesh or material handle");
         }
 
-        const MeshAsset& meshAsset = assets.mesh(candidate.mesh);
+        const asset::MeshAsset& meshAsset = assets.mesh(candidate.mesh);
         if (candidate.submeshIndex >= meshAsset.submeshes().size())
         {
             throw std::out_of_range(
@@ -50,9 +50,9 @@ RenderList RenderListBuilder::build(
                 "render candidate has invalid world bounds");
         }
 
-        const MaterialAsset& materialAsset =
+        const asset::MaterialAsset& materialAsset =
             assets.material(candidate.material);
-        const MaterialRenderState& renderState =
+        const asset::MaterialRenderState& renderState =
             materialAsset.renderState();
         const RenderQueue queue = renderQueueFor(renderState);
         const glm::vec4 viewCenter = view.viewMatrix * glm::vec4(
@@ -100,4 +100,4 @@ RenderList RenderListBuilder::build(
     return result;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::render

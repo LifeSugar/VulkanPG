@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 DescriptorSetLayout::DescriptorSetLayout(
@@ -75,4 +75,4 @@ void DescriptorSetLayout::reset() noexcept
     layout_ = VK_NULL_HANDLE;
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

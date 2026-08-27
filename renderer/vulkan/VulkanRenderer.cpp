@@ -12,7 +12,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 namespace
@@ -587,7 +587,7 @@ void VulkanRenderer::resizeEditorViewport(VkExtent2D extent)
 
 //the First render() 28/7/2026
 VulkanRenderer::RenderResult VulkanRenderer::render(
-    const RenderFrame& frameData,
+    const render::RenderFrame& frameData,
     const RenderAssetCache& renderAssets,
     ImDrawData* uiDrawData)
 {
@@ -912,7 +912,7 @@ VulkanRenderer::makePresentPipelineCreateInfo() const
 
 void VulkanRenderer::updateFrameData(
     uint32_t frameIndex,
-    const RenderFrame& frame)
+    const render::RenderFrame& frame)
 {
     if (frame.view.id != stagedViewId_ ||
         frame.view.gpuDataRevision != stagedViewGpuDataRevision_)
@@ -1056,7 +1056,7 @@ void VulkanRenderer::recordScenePass(
             boundMaterialDescriptorSet = materialDescriptorSet;
         }
 
-        DrawPushConstants pushConstants{};
+        render::DrawPushConstants pushConstants{};
         pushConstants.objectIndex = item.objectIndex;
         vkCmdPushConstants(
             commandBuffer,
@@ -1066,7 +1066,7 @@ void VulkanRenderer::recordScenePass(
             sizeof(pushConstants),
             &pushConstants);
 
-        const SubmeshData& submesh =
+        const asset::SubmeshData& submesh =
             mesh.submeshes()[item.submeshIndex];
         if (submesh.indexed())
         {
@@ -1182,7 +1182,7 @@ void VulkanRenderer::recordPresentPass(
         0,
         nullptr);
 
-    PresentPushConstants pushConstants{};
+    render::PresentPushConstants pushConstants{};
     pushConstants.outputTransferFunction =
         presentOutputTransferFunction_;
     vkCmdPushConstants(
@@ -1251,7 +1251,7 @@ void VulkanRenderer::recordEditorViewportPass(
         0,
         nullptr);
 
-    PresentPushConstants pushConstants{};
+    render::PresentPushConstants pushConstants{};
     // The Editor target is UNORM. Store display-encoded SDR so stock ImGui
     // can sample and copy it without a custom tone-mapping shader.
     pushConstants.outputTransferFunction = 1;
@@ -1299,4 +1299,4 @@ void VulkanRenderer::recordEditorUiPass(
     vkCmdEndRenderPass(commandBuffer);
 }
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

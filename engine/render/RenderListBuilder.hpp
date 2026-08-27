@@ -3,10 +3,13 @@
 #include "render/CullingSystem.hpp"
 #include "render/RenderList.hpp"
 
-namespace VkRenderer
+namespace rubia::asset
 {
-
 class AssetManager;
+}
+
+namespace rubia::render
+{
 struct RenderView;
 
 /// Resolves, classifies, and orders visible candidates for one RenderView.
@@ -17,7 +20,7 @@ public:
         const std::vector<RenderCandidate>& candidates,
         const CullingResults& cullingResults,
         const RenderView& view,
-        const AssetManager& assets) const;
+        const asset::AssetManager& assets) const;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::render

@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace VkRenderer
+namespace rubia::rhi::vulkan
 {
 
 /// RAII wrapper for a Vulkan image view.
@@ -59,4 +59,4 @@ private:
     VkImageView imageView_ = VK_NULL_HANDLE;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::rhi::vulkan

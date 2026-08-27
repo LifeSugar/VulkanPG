@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-namespace VkRenderer
+namespace rubia::asset
 {
 
 inline constexpr uint32_t kInvalidModelNodeIndex =
@@ -49,4 +49,4 @@ private:
     std::vector<ModelNode> nodes_;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::asset

@@ -19,14 +19,15 @@
 #include <optional>
 #include <string>
 
-namespace VkRenderer
-{
-
-class ApplicationGui;
-namespace Test
+namespace rubia::test
 {
 class AppSmokeTests;
 }
+
+namespace rubia::editor
+{
+
+class ApplicationGui;
 
 class App
 {
@@ -38,8 +39,8 @@ public:
         std::string windowTitle = "Vulkan";
         bool enableDocking = true;
         std::string imguiIniFilename;
-        VulkanRenderer::OutputMode outputMode =
-            VulkanRenderer::OutputMode::Runtime;
+        rhi::vulkan::VulkanRenderer::OutputMode outputMode =
+            rhi::vulkan::VulkanRenderer::OutputMode::Runtime;
         DemoContentLoader::CreateInfo demoContent{
             "ABeautifulGame_extracted/ABeautifulGame.gltf",
             "shaders/triangle.vert.spv",
@@ -48,11 +49,11 @@ public:
             "shaders/present.frag.spv",
             "assets",
             DemoContentLoader::TextureImportPolicy{
-                KtxPayloadEncoding::Uastc,
+                importer::texture::KtxPayloadEncoding::Uastc,
                 true,
-                TextureFormat::BC7UNorm,
-                TextureFormat::BC7UNorm,
-                TextureFormat::BC5UNorm,
+                asset::TextureFormat::BC7UNorm,
+                asset::TextureFormat::BC7UNorm,
+                asset::TextureFormat::BC5UNorm,
                 true}};
     };
 
@@ -65,10 +66,10 @@ public:
 private:
     struct PreparedTextureReimport
     {
-        TextureReimportRequest request;
-        TextureImportRecord record;
+        importer::texture::TextureReimportRequest request;
+        importer::texture::TextureImportRecord record;
         std::filesystem::path stagedPath;
-        TextureAsset replacementAsset;
+        asset::TextureAsset replacementAsset;
         std::string error;
     };
 
@@ -78,26 +79,26 @@ private:
     static constexpr bool kEnableValidationLayers = true;
 #endif
 
-    Window window;
-    VulkanContext vulkanContext;
-    AssetManager assetManager;
-    TextureImportRegistry textureImports;
+    rhi::vulkan::Window window;
+    rhi::vulkan::VulkanContext vulkanContext;
+    asset::AssetManager assetManager;
+    importer::texture::TextureImportRegistry textureImports;
     DemoContent demoContent;
-    Scene scene;
-    RenderAssetCache renderAssets;
-    VulkanRenderer renderer;
+    scene::Scene scene;
+    rhi::vulkan::RenderAssetCache renderAssets;
+    rhi::vulkan::VulkanRenderer renderer;
     // Must be destroyed before the renderer, device, and GLFW window.
     ImGuiLayer imguiLayer;
     // Must release ImGui descriptors before ImGuiLayer is destroyed.
-    VulkanApplicationGuiRenderBridge guiRenderBridge;
+    rhi::vulkan::VulkanApplicationGuiRenderBridge guiRenderBridge;
 
-    Camera camera;
+    render::Camera camera;
     static constexpr uint32_t kMaxFramesInFlight = 2;
     bool preferIntegratedGpu = false;
     bool swapChainRecreationRequested = false;
-    std::deque<TextureReimportRequest> pendingTextureReimports_;
+    std::deque<importer::texture::TextureReimportRequest> pendingTextureReimports_;
     std::future<PreparedTextureReimport> textureReimportFuture_;
-    TextureAssetHandle activeTextureReimport_;
+    asset::TextureAssetHandle activeTextureReimport_;
     std::filesystem::path activeTextureReimportStagedPath_;
     double lastFramebufferResizeTime = 0.0;
     static constexpr double kSwapChainResizeDebounceSeconds = 0.15;
@@ -119,9 +120,9 @@ private:
     void requestSwapChainRecreation();
     bool isSwapChainRecreationDue() const;
 
-    [[nodiscard]] RenderFrame makeRenderFrame();
+    [[nodiscard]] render::RenderFrame makeRenderFrame();
 
-    friend class Test::AppSmokeTests;
+    friend class rubia::test::AppSmokeTests;
 };
 
-} // namespace VkRenderer
+} // namespace rubia::editor
