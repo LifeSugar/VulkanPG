@@ -47,3 +47,6 @@ MinSizeRel/
 
 # Local design notes and generated documentation
 /docs/
+
+# Local sensitive session export
+/info
