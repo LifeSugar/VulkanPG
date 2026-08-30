@@ -39,3 +39,6 @@ MinSizeRel/
 
 # VS Code
 .vscode/
+
+# Local sensitive session export
+/info
