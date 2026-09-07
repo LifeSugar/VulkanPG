@@ -2,6 +2,8 @@
 
 #include "App.hpp"
 
+#include <filesystem>
+
 namespace rubia::editor
 {
 class ApplicationGui;
@@ -15,7 +17,8 @@ namespace rubia::test
 class AppSmokeTests final
 {
 public:
-    static void runAssetImportTest();
+    /// CPU-only validation of SPIR-V import and reflected ShaderInterface data.
+    static void runShaderAssetTest(const std::filesystem::path& shaderPath);
     static void runRenderTest();
     static void runRenderTest(
         editor::App& app,
@@ -24,4 +27,3 @@ public:
 };
 
 } // namespace rubia::test
-

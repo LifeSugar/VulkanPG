@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <set>
 #include <string>
 #include <tuple>
@@ -23,21 +24,21 @@ namespace rubia::asset
 namespace
 {
 
-[[nodiscard]] ShaderValueType shaderValueType(
+[[nodiscard]] ShaderDataType shaderDataType(
     MaterialValueType type) noexcept
 {
     switch (type)
     {
-    case MaterialValueType::Float: return ShaderValueType::Float;
-    case MaterialValueType::Float2: return ShaderValueType::Float2;
-    case MaterialValueType::Float3: return ShaderValueType::Float3;
-    case MaterialValueType::Float4: return ShaderValueType::Float4;
-    case MaterialValueType::Matrix4: return ShaderValueType::Matrix4;
-    case MaterialValueType::Int: return ShaderValueType::Int;
-    case MaterialValueType::UInt: return ShaderValueType::UInt;
-    case MaterialValueType::Bool: return ShaderValueType::Bool;
+    case MaterialValueType::Float: return ShaderDataType::Float;
+    case MaterialValueType::Float2: return ShaderDataType::Float2;
+    case MaterialValueType::Float3: return ShaderDataType::Float3;
+    case MaterialValueType::Float4: return ShaderDataType::Float4;
+    case MaterialValueType::Matrix4: return ShaderDataType::Matrix4;
+    case MaterialValueType::Int: return ShaderDataType::Int;
+    case MaterialValueType::UInt: return ShaderDataType::UInt;
+    case MaterialValueType::Bool: return ShaderDataType::Bool;
     }
-    return ShaderValueType::Unknown;
+    return ShaderDataType::Unknown;
 }
 
 [[nodiscard]] MaterialValueType materialValueType(
@@ -110,58 +111,89 @@ namespace
     return (static_cast<uint64_t>(set) << 32u) | binding;
 }
 
-[[nodiscard]] const ShaderResourceDesc* findResource(
+[[nodiscard]] const ShaderDescriptorBindingDesc* findDescriptorBinding(
     const std::vector<const ShaderAsset*>& shaders,
     uint32_t set,
     uint32_t binding,
-    ShaderResourceType type)
+    ShaderDescriptorType type)
 {
     for (const ShaderAsset* shader : shaders)
     {
-        for (const ShaderResourceDesc& resource :
-             shader->interface().resources)
+        for (const ShaderDescriptorBindingDesc& descriptor :
+             shader->interface().descriptorBindings)
         {
-            if (resource.set == set && resource.binding == binding &&
-                resource.type == type)
+            if (descriptor.set == set && descriptor.binding == binding &&
+                descriptor.type == type)
             {
-                return &resource;
+                return &descriptor;
             }
         }
     }
     return nullptr;
 }
 
-[[nodiscard]] const ShaderParameterBlockDesc* findParameterBlock(
+[[nodiscard]] const ShaderBufferLayoutDesc* findUniformBufferLayout(
     const std::vector<const ShaderAsset*>& shaders,
     uint32_t set,
     uint32_t binding)
 {
-    for (const ShaderAsset* shader : shaders)
-    {
-        for (const ShaderParameterBlockDesc& block :
-             shader->interface().parameterBlocks)
-        {
-            if (block.set == set && block.binding == binding)
-            {
-                return &block;
-            }
-        }
-    }
-    return nullptr;
+    const ShaderDescriptorBindingDesc* descriptor = findDescriptorBinding(
+        shaders,
+        set,
+        binding,
+        ShaderDescriptorType::UniformBuffer);
+    return descriptor != nullptr && descriptor->bufferLayout
+        ? &*descriptor->bufferLayout
+        : nullptr;
 }
 
-[[nodiscard]] const ShaderBlockMemberDesc* findMember(
-    const ShaderParameterBlockDesc& block,
+[[nodiscard]] const ShaderStructMemberDesc* findMember(
+    const ShaderBufferLayoutDesc& layout,
     const std::string& name)
 {
     const auto iterator = std::find_if(
-        block.members.begin(),
-        block.members.end(),
-        [&](const ShaderBlockMemberDesc& member)
+        layout.members.begin(),
+        layout.members.end(),
+        [&](const ShaderStructMemberDesc& member)
         {
             return member.name == name;
         });
-    return iterator == block.members.end() ? nullptr : &*iterator;
+    return iterator == layout.members.end() ? nullptr : &*iterator;
+}
+
+[[nodiscard]] bool sameBufferLayout(
+    const std::optional<ShaderBufferLayoutDesc>& left,
+    const std::optional<ShaderBufferLayoutDesc>& right)
+{
+    if (left.has_value() != right.has_value())
+    {
+        return false;
+    }
+    if (!left)
+    {
+        return true;
+    }
+    if (left->minimumByteSize != right->minimumByteSize ||
+        left->members.size() != right->members.size())
+    {
+        return false;
+    }
+    for (std::size_t index = 0; index < left->members.size(); ++index)
+    {
+        const ShaderStructMemberDesc& first = left->members[index];
+        const ShaderStructMemberDesc& second = right->members[index];
+        if (first.name != second.name || first.type != second.type ||
+            first.offset != second.offset || first.size != second.size ||
+            first.arrayCount != second.arrayCount ||
+            first.runtimeArray != second.runtimeArray ||
+            first.arrayStride != second.arrayStride ||
+            first.matrixStride != second.matrixStride ||
+            first.rowMajor != second.rowMajor)
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 [[nodiscard]] std::vector<const ShaderAsset*> resolveShaders(
@@ -246,12 +278,12 @@ void validateCrossStageIo(
         return;
     }
 
-    for (const ShaderStageIoDesc& input : fragment->interface().inputs)
+    for (const ShaderStageVariableDesc& input : fragment->interface().inputs)
     {
         const auto output = std::find_if(
             vertex->interface().outputs.begin(),
             vertex->interface().outputs.end(),
-            [&](const ShaderStageIoDesc& candidate)
+            [&](const ShaderStageVariableDesc& candidate)
             {
                 return candidate.location == input.location;
             });
@@ -278,30 +310,39 @@ void validateResourceCompatibility(
 {
     struct ResourceShape
     {
-        ShaderResourceType type;
+        ShaderDescriptorType type;
         uint32_t arrayCount;
+        std::optional<ShaderBufferLayoutDesc> bufferLayout;
     };
     std::unordered_map<uint64_t, ResourceShape> bindings;
     for (const ShaderAsset* shader : shaders)
     {
-        for (const ShaderResourceDesc& resource :
-             shader->interface().resources)
+        for (const ShaderDescriptorBindingDesc& descriptor :
+             shader->interface().descriptorBindings)
         {
-            const uint64_t key = bindingKey(resource.set, resource.binding);
+            const uint64_t key = bindingKey(
+                descriptor.set,
+                descriptor.binding);
             const auto existing = bindings.find(key);
             if (existing == bindings.end())
             {
                 bindings.emplace(
                     key,
-                    ResourceShape{resource.type, resource.arrayCount});
+                    ResourceShape{
+                        descriptor.type,
+                        descriptor.arrayCount,
+                        descriptor.bufferLayout});
             }
-            else if (existing->second.type != resource.type ||
-                     existing->second.arrayCount != resource.arrayCount)
+            else if (existing->second.type != descriptor.type ||
+                     existing->second.arrayCount != descriptor.arrayCount ||
+                     !sameBufferLayout(
+                         existing->second.bufferLayout,
+                         descriptor.bufferLayout))
             {
                 report.addError(
                     "Template.CrossStageResourceMismatch",
-                    "set " + std::to_string(resource.set) + " binding " +
-                        std::to_string(resource.binding),
+                    "set " + std::to_string(descriptor.set) + " binding " +
+                        std::to_string(descriptor.binding),
                     "shader stages declare incompatible descriptor resources");
             }
         }
@@ -382,7 +423,7 @@ uint64_t calculateShaderInterfaceSignature(
         const ShaderAsset& shader = assets.shader(handle);
         signatures.emplace_back(
             shader.stage(),
-            shader.interface().signature);
+            shader.interface().interfaceHash);
     }
     std::sort(signatures.begin(), signatures.end());
 
@@ -442,7 +483,7 @@ ValidationReport validateMaterialTemplateCreateInfo(
             "material parameter block binding is invalid");
     }
 
-    const ShaderParameterBlockDesc* reflectedBlock = findParameterBlock(
+    const ShaderBufferLayoutDesc* reflectedBlock = findUniformBufferLayout(
         shaders,
         parameterBinding.set,
         parameterBinding.binding);
@@ -499,7 +540,7 @@ ValidationReport validateMaterialTemplateCreateInfo(
 
         if (reflectedBlock != nullptr)
         {
-            const ShaderBlockMemberDesc* member =
+            const ShaderStructMemberDesc* member =
                 findMember(*reflectedBlock, parameter.name);
             if (member == nullptr)
             {
@@ -510,7 +551,7 @@ ValidationReport validateMaterialTemplateCreateInfo(
             }
             else
             {
-                if (member->type != shaderValueType(parameter.type))
+                if (member->type != shaderDataType(parameter.type))
                 {
                     report.addError(
                         "Template.ParameterTypeMismatch",
@@ -537,7 +578,7 @@ ValidationReport validateMaterialTemplateCreateInfo(
 
     if (reflectedBlock != nullptr)
     {
-        for (const ShaderBlockMemberDesc& member : reflectedBlock->members)
+        for (const ShaderStructMemberDesc& member : reflectedBlock->members)
         {
             if (parameterNames.count(member.name) == 0)
             {
@@ -550,7 +591,7 @@ ValidationReport validateMaterialTemplateCreateInfo(
         const uint32_t templateSize = createInfo.parameterDataSize == 0
             ? requiredBytes
             : createInfo.parameterDataSize;
-        if (templateSize != reflectedBlock->byteSize)
+        if (templateSize != reflectedBlock->minimumByteSize)
         {
             report.addError(
                 "Template.ParameterBlockSizeMismatch",
@@ -627,22 +668,22 @@ ValidationReport validateMaterialTemplateCreateInfo(
                 "parameter, image, and sampler bindings must use one material descriptor set");
         }
 
-        if (findResource(
+        if (findDescriptorBinding(
                 shaders,
                 slot.imageBinding.set,
                 slot.imageBinding.binding,
-                ShaderResourceType::SampledImage) == nullptr)
+                ShaderDescriptorType::SampledImage) == nullptr)
         {
             report.addWarning(
                 "Template.InactiveImageBinding",
                 path,
                 "current shader entry points do not use this sampled image binding");
         }
-        if (findResource(
+        if (findDescriptorBinding(
                 shaders,
                 slot.samplerBinding.set,
                 slot.samplerBinding.binding,
-                ShaderResourceType::Sampler) == nullptr)
+                ShaderDescriptorType::Sampler) == nullptr)
         {
             report.addWarning(
                 "Template.InactiveSamplerBinding",
@@ -653,30 +694,32 @@ ValidationReport validateMaterialTemplateCreateInfo(
 
     for (const ShaderAsset* shader : shaders)
     {
-        for (const ShaderResourceDesc& resource :
-             shader->interface().resources)
+        for (const ShaderDescriptorBindingDesc& descriptor :
+             shader->interface().descriptorBindings)
         {
-            if (resource.set != parameterBinding.set)
+            if (descriptor.set != parameterBinding.set)
             {
                 continue;
             }
-            const uint64_t key = bindingKey(resource.set, resource.binding);
-            if (resource.type == ShaderResourceType::SampledImage &&
+            const uint64_t key = bindingKey(
+                descriptor.set,
+                descriptor.binding);
+            if (descriptor.type == ShaderDescriptorType::SampledImage &&
                 declaredImageBindings.count(key) == 0)
             {
                 report.addError(
                     "Template.ShaderImageUndeclared",
-                    "set " + std::to_string(resource.set) + " binding " +
-                        std::to_string(resource.binding),
+                    "set " + std::to_string(descriptor.set) + " binding " +
+                        std::to_string(descriptor.binding),
                     "shader sampled image is absent from the template");
             }
-            else if (resource.type == ShaderResourceType::Sampler &&
+            else if (descriptor.type == ShaderDescriptorType::Sampler &&
                      declaredSamplerBindings.count(key) == 0)
             {
                 report.addError(
                     "Template.ShaderSamplerUndeclared",
-                    "set " + std::to_string(resource.set) + " binding " +
-                        std::to_string(resource.binding),
+                    "set " + std::to_string(descriptor.set) + " binding " +
+                        std::to_string(descriptor.binding),
                     "shader sampler is absent from the template");
             }
         }

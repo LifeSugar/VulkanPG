@@ -52,8 +52,6 @@ asset::ShaderAssetHandle SpirvShaderImporter::import(
     shaderInfo.name = createInfo.name.empty()
         ? createInfo.path.stem().string()
         : createInfo.name;
-    shaderInfo.stage = createInfo.stage;
-    shaderInfo.entryPoint = createInfo.entryPoint;
     shaderInfo.spirv.resize(
         static_cast<std::size_t>(byteSize) / sizeof(uint32_t));
 
@@ -69,8 +67,8 @@ asset::ShaderAssetHandle SpirvShaderImporter::import(
 
     shaderInfo.interface = SpirvReflection::reflect(
         shaderInfo.spirv,
-        shaderInfo.stage,
-        shaderInfo.entryPoint);
+        createInfo.stage,
+        createInfo.entryPoint);
 
     return createInfo.assets->createShader(std::move(shaderInfo));
 }

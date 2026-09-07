@@ -3,7 +3,10 @@
 #include "ApplicationGui.hpp"
 #include "render/ApplicationGuiRenderBridge.hpp"
 #include "asset/AssetId.hpp"
+#include "asset/ShaderAsset.hpp"
 #include "content/DemoContent.hpp"
+#include "shader/SpirvReflection.hpp"
+#include "shader/SpirvShaderImporter.hpp"
 #include "texture/KtxTextureImporter.hpp"
 #include "texture/KtxTextureCooker.hpp"
 #include "render/CullingSystem.hpp"
@@ -29,6 +32,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -57,6 +61,327 @@ namespace
         {
             return issue.code == code && issue.severity == severity;
         });
+}
+
+void requireShaderTest(bool condition, const std::string& message)
+{
+    if (!condition)
+    {
+        throw std::runtime_error("shader asset test: " + message);
+    }
+}
+
+[[nodiscard]] asset::ShaderStage shaderStageFromPath(
+    const std::filesystem::path& path)
+{
+    const std::string stageExtension = path.stem().extension().string();
+    if (stageExtension == ".vert" || stageExtension == ".vs")
+    {
+        return asset::ShaderStage::Vertex;
+    }
+    if (stageExtension == ".frag" || stageExtension == ".fs" ||
+        stageExtension == ".ps")
+    {
+        return asset::ShaderStage::Fragment;
+    }
+    if (stageExtension == ".comp" || stageExtension == ".cs")
+    {
+        return asset::ShaderStage::Compute;
+    }
+    throw std::invalid_argument(
+        "shader asset test: cannot infer stage from path; expected "
+        "*.vert.spv, *.frag.spv, or *.comp.spv");
+}
+
+[[nodiscard]] const char* shaderStageName(asset::ShaderStage stage) noexcept
+{
+    switch (stage)
+    {
+    case asset::ShaderStage::Vertex: return "Vertex";
+    case asset::ShaderStage::Fragment: return "Fragment";
+    case asset::ShaderStage::Compute: return "Compute";
+    }
+    return "Unknown";
+}
+
+[[nodiscard]] const char* shaderDataTypeName(
+    asset::ShaderDataType type) noexcept
+{
+    switch (type)
+    {
+    case asset::ShaderDataType::Unknown: return "Unknown";
+    case asset::ShaderDataType::Float: return "Float";
+    case asset::ShaderDataType::Float2: return "Float2";
+    case asset::ShaderDataType::Float3: return "Float3";
+    case asset::ShaderDataType::Float4: return "Float4";
+    case asset::ShaderDataType::Matrix4: return "Matrix4";
+    case asset::ShaderDataType::Int: return "Int";
+    case asset::ShaderDataType::UInt: return "UInt";
+    case asset::ShaderDataType::Bool: return "Bool";
+    }
+    return "Unknown";
+}
+
+[[nodiscard]] const char* descriptorTypeName(
+    asset::ShaderDescriptorType type) noexcept
+{
+    switch (type)
+    {
+    case asset::ShaderDescriptorType::UniformBuffer: return "UniformBuffer";
+    case asset::ShaderDescriptorType::StorageBuffer: return "StorageBuffer";
+    case asset::ShaderDescriptorType::SampledImage: return "SampledImage";
+    case asset::ShaderDescriptorType::Sampler: return "Sampler";
+    case asset::ShaderDescriptorType::CombinedImageSampler:
+        return "CombinedImageSampler";
+    }
+    return "Unknown";
+}
+
+[[nodiscard]] const char* resourceAccessName(
+    asset::ShaderResourceAccess access) noexcept
+{
+    switch (access)
+    {
+    case asset::ShaderResourceAccess::ReadOnly: return "ReadOnly";
+    case asset::ShaderResourceAccess::WriteOnly: return "WriteOnly";
+    case asset::ShaderResourceAccess::ReadWrite: return "ReadWrite";
+    }
+    return "Unknown";
+}
+
+void printBufferLayout(
+    const asset::ShaderBufferLayoutDesc& layout,
+    const std::string& indent)
+{
+    std::cout
+        << indent << "minimumByteSize: " << layout.minimumByteSize << '\n'
+        << indent << "runtimeSized: "
+        << (layout.runtimeSized() ? "true" : "false") << '\n'
+        << indent << "members (" << layout.members.size() << "):\n";
+    for (const asset::ShaderStructMemberDesc& member : layout.members)
+    {
+        std::cout
+            << indent << "  - name=" << std::quoted(member.name)
+            << " type=" << shaderDataTypeName(member.type)
+            << " offset=" << member.offset
+            << " size=" << member.size
+            << " arrayCount=" << member.arrayCount
+            << " runtimeArray="
+            << (member.runtimeArray ? "true" : "false")
+            << " arrayStride=" << member.arrayStride
+            << " matrixStride=" << member.matrixStride
+            << " rowMajor=" << (member.rowMajor ? "true" : "false")
+            << '\n';
+    }
+}
+
+void printShaderReflection(
+    const std::filesystem::path& shaderPath,
+    const asset::ShaderAsset& shader)
+{
+    const asset::ShaderInterface& interface = shader.interface();
+    std::cout
+        << "\n=== SPIR-V Reflection ===\n"
+        << "path: " << shaderPath << '\n'
+        << "name: " << std::quoted(shader.name()) << '\n'
+        << "stage: " << shaderStageName(interface.stage) << '\n'
+        << "entryPoint: " << std::quoted(interface.entryPoint) << '\n'
+        << "spirvWords: " << shader.spirv().size() << '\n'
+        << "interfaceHash: 0x" << std::hex << interface.interfaceHash
+        << std::dec << "\n\n";
+
+    const auto printStageVariables = [](const char* label, const auto& variables)
+    {
+        std::cout << label << " (" << variables.size() << "):\n";
+        for (const asset::ShaderStageVariableDesc& variable : variables)
+        {
+            std::cout
+                << "  - location=" << variable.location
+                << " type=" << shaderDataTypeName(variable.type)
+                << " name=" << std::quoted(variable.name) << '\n';
+        }
+        std::cout << '\n';
+    };
+    printStageVariables("inputs", interface.inputs);
+    printStageVariables("outputs", interface.outputs);
+
+    std::cout << "descriptors (" << interface.descriptorBindings.size()
+              << "):\n";
+    for (const asset::ShaderDescriptorBindingDesc& descriptor :
+         interface.descriptorBindings)
+    {
+        std::cout
+            << "  - set=" << descriptor.set
+            << " binding=" << descriptor.binding
+            << " type=" << descriptorTypeName(descriptor.type)
+            << " access=" << resourceAccessName(descriptor.access)
+            << " arrayCount=" << descriptor.arrayCount
+            << " name=" << std::quoted(descriptor.name) << '\n';
+        if (descriptor.bufferLayout)
+        {
+            printBufferLayout(*descriptor.bufferLayout, "      ");
+        }
+    }
+
+    std::cout << "\npushConstants (" << interface.pushConstantBlocks.size()
+              << "):\n";
+    for (const asset::ShaderPushConstantBlockDesc& pushConstant :
+         interface.pushConstantBlocks)
+    {
+        std::cout << "  - name=" << std::quoted(pushConstant.name) << '\n';
+        printBufferLayout(pushConstant.layout, "      ");
+    }
+    std::cout << "=== End Reflection ===\n\n";
+}
+
+void validateBufferLayout(
+    const asset::ShaderBufferLayoutDesc& layout,
+    const std::string& owner)
+{
+    for (std::size_t index = 0; index < layout.members.size(); ++index)
+    {
+        const asset::ShaderStructMemberDesc& member = layout.members[index];
+        if (member.runtimeArray)
+        {
+            requireShaderTest(
+                index + 1 == layout.members.size() && member.size == 0 &&
+                    member.arrayStride != 0 &&
+                    member.offset <= layout.minimumByteSize,
+                owner + " has an invalid runtime-array member");
+            continue;
+        }
+
+        const uint64_t memberEnd =
+            static_cast<uint64_t>(member.offset) + member.size;
+        requireShaderTest(
+            member.size != 0 && memberEnd <= layout.minimumByteSize,
+            owner + " contains a member outside its declared byte size");
+    }
+}
+
+void validateShaderAssetPipeline(const std::filesystem::path& shaderPath)
+{
+    requireShaderTest(
+        shaderPath.is_absolute(),
+        "shader path must be absolute: " + shaderPath.string());
+    requireShaderTest(
+        std::filesystem::is_regular_file(shaderPath),
+        "shader path is not a regular file: " + shaderPath.string());
+
+    const asset::ShaderStage expectedStage = shaderStageFromPath(shaderPath);
+    asset::AssetManager assets;
+    importer::shader::SpirvShaderImporter importer;
+
+    importer::shader::SpirvShaderImporter::CreateInfo createInfo{};
+    createInfo.assets = &assets;
+    createInfo.path = shaderPath;
+    createInfo.stage = expectedStage;
+    createInfo.entryPoint = "main";
+
+    const asset::ShaderAssetHandle handle = importer.import(createInfo);
+    requireShaderTest(
+        handle && assets.contains(handle),
+        "importer returned an invalid ShaderAsset handle");
+
+    const asset::ShaderAsset& shader = assets.shader(handle);
+    const asset::ShaderInterface& interface = shader.interface();
+    requireShaderTest(
+        shader.stage() == expectedStage &&
+            shader.entryPoint() == createInfo.entryPoint &&
+            interface.stage == expectedStage &&
+            interface.entryPoint == createInfo.entryPoint,
+        "stage or entry-point metadata changed during import");
+    requireShaderTest(
+        !shader.spirv().empty() &&
+            shader.spirv().front() == UINT32_C(0x07230203),
+        "imported bytecode is not SPIR-V");
+    requireShaderTest(
+        interface.interfaceHash != 0,
+        "reflected interface hash is zero");
+
+    printShaderReflection(shaderPath, shader);
+
+    const auto validateStageVariables = [](const auto& variables,
+                                           const char* direction)
+    {
+        std::unordered_set<uint32_t> locations;
+        for (const asset::ShaderStageVariableDesc& variable : variables)
+        {
+            requireShaderTest(
+                locations.insert(variable.location).second,
+                std::string("duplicate stage ") + direction +
+                    " location " + std::to_string(variable.location));
+        }
+    };
+    validateStageVariables(interface.inputs, "input");
+    validateStageVariables(interface.outputs, "output");
+
+    std::unordered_set<uint64_t> descriptorLocations;
+    for (const asset::ShaderDescriptorBindingDesc& descriptor :
+         interface.descriptorBindings)
+    {
+        const uint64_t location =
+            (static_cast<uint64_t>(descriptor.set) << 32u) |
+            descriptor.binding;
+        requireShaderTest(
+            descriptorLocations.insert(location).second,
+            "duplicate descriptor set/binding");
+
+        const bool isBuffer =
+            descriptor.type == asset::ShaderDescriptorType::UniformBuffer ||
+            descriptor.type == asset::ShaderDescriptorType::StorageBuffer;
+        requireShaderTest(
+            descriptor.bufferLayout.has_value() == isBuffer,
+            "descriptor buffer-layout presence disagrees with its type");
+
+        if (descriptor.type == asset::ShaderDescriptorType::UniformBuffer)
+        {
+            requireShaderTest(
+                descriptor.access == asset::ShaderResourceAccess::ReadOnly &&
+                    !descriptor.bufferLayout->runtimeSized(),
+                "uniform buffer must be fixed-size and read-only");
+        }
+        if (descriptor.bufferLayout)
+        {
+            validateBufferLayout(
+                *descriptor.bufferLayout,
+                "descriptor set " + std::to_string(descriptor.set) +
+                    " binding " + std::to_string(descriptor.binding));
+        }
+    }
+
+    for (const asset::ShaderPushConstantBlockDesc& pushConstant :
+         interface.pushConstantBlocks)
+    {
+        validateBufferLayout(
+            pushConstant.layout,
+            "push-constant block " + pushConstant.name);
+    }
+
+    const asset::ShaderInterface reflectedAgain =
+        importer::shader::SpirvReflection::reflect(
+            shader.spirv(),
+            shader.stage(),
+            shader.entryPoint());
+    requireShaderTest(
+        reflectedAgain.interfaceHash == interface.interfaceHash,
+        "repeated reflection produced a different interface hash");
+
+    bool missingEntryPointRejected = false;
+    try
+    {
+        static_cast<void>(importer::shader::SpirvReflection::reflect(
+            shader.spirv(),
+            shader.stage(),
+            "__rubia_missing_entry_point__"));
+    }
+    catch (const std::invalid_argument&)
+    {
+        missingEntryPointRejected = true;
+    }
+    requireShaderTest(
+        missingEntryPointRejected,
+        "reflection accepted a missing entry point");
 }
 
 void validateAssetId()
@@ -485,17 +810,20 @@ void validateOfflineMaterialAssets(
 
     const asset::ShaderAsset& fragmentShader = assets.shader(
         content.pbrFragmentShader);
-    const auto materialBlock = std::find_if(
-        fragmentShader.interface().parameterBlocks.begin(),
-        fragmentShader.interface().parameterBlocks.end(),
-        [](const asset::ShaderParameterBlockDesc& block)
+    const auto materialDescriptor = std::find_if(
+        fragmentShader.interface().descriptorBindings.begin(),
+        fragmentShader.interface().descriptorBindings.end(),
+        [](const asset::ShaderDescriptorBindingDesc& descriptor)
         {
-            return block.set == 1 && block.binding == 0;
+            return descriptor.set == 1 && descriptor.binding == 0 &&
+                descriptor.type == asset::ShaderDescriptorType::UniformBuffer;
         });
-    if (fragmentShader.interface().signature == 0 ||
-        materialBlock == fragmentShader.interface().parameterBlocks.end() ||
-        materialBlock->byteSize != 36 ||
-        materialBlock->members.size() != 4)
+    if (fragmentShader.interface().interfaceHash == 0 ||
+        materialDescriptor ==
+            fragmentShader.interface().descriptorBindings.end() ||
+        !materialDescriptor->bufferLayout ||
+        materialDescriptor->bufferLayout->minimumByteSize != 36 ||
+        materialDescriptor->bufferLayout->members.size() != 4)
     {
         throw std::runtime_error(
             "CPU-only SPIR-V reflection produced an invalid material interface");
@@ -991,75 +1319,10 @@ void validateGpuTextureReplacement(
 
 } // namespace
 
-void AppSmokeTests::runAssetImportTest()
+void AppSmokeTests::runShaderAssetTest(
+    const std::filesystem::path& shaderPath)
 {
-    editor::App app;
-
-    validateAssetId();
-    validateTextureFormats();
-    validateStableTextureAssetReplacement();
-    validateKtxFileCookAndImport();
-    validateRenderKeys();
-    validateRenderItemComparators();
-    validateCullingSystem();
-    const editor::App::RunConfig config{};
-    app.demoContent = editor::DemoContentLoader::load(
-        app.assetManager,
-        app.scene,
-        config.demoContent,
-        &app.textureImports);
-    if (app.textureImports.size() == 0)
-    {
-        throw std::runtime_error(
-            "extracted glTF registered no texture reimport provenance");
-    }
-    validateOfflineMaterialAssets(
-        app.assetManager,
-        app.demoContent,
-        app.textureImports);
-
-    const std::vector<render::RenderCandidate> candidates =
-        render::SceneRenderExtractor{}.extract(app.scene, app.assetManager);
-    if (candidates.empty())
-    {
-        throw std::runtime_error(
-            "CPU-only scene extraction produced no render candidates");
-    }
-    for (const render::RenderCandidate& candidate : candidates)
-    {
-        if (!app.assetManager.contains(candidate.mesh) ||
-            !app.assetManager.contains(candidate.material) ||
-            !candidate.worldBounds.valid())
-        {
-            throw std::runtime_error(
-                "CPU-only scene extraction produced an invalid candidate");
-        }
-    }
-
-    render::Camera frontendCamera;
-    frontendCamera.setPosition(glm::vec3(0.0f, 1.0f, 0.5f));
-    frontendCamera.setRotation(glm::vec3(-60.0f, 0.0f, 0.0f));
-    frontendCamera.setAspect(16.0f / 9.0f);
-    frontendCamera.Update();
-    const render::RenderFrame frontendFrame = render::buildRenderFrame(
-        app.scene,
-        app.assetManager,
-        frontendCamera.makeRenderView());
-    validateRenderFrame(frontendFrame);
-
-    const asset::ModelAsset& model =
-        app.assetManager.model(app.demoContent.model);
-    for (const asset::ModelNode& node : model.nodes())
-    {
-        for (asset::MeshAssetHandle meshHandle : node.meshes)
-        {
-            if (!app.assetManager.mesh(meshHandle).localBounds().valid())
-            {
-                throw std::runtime_error(
-                    "imported mesh produced invalid local bounds");
-            }
-        }
-    }
+    validateShaderAssetPipeline(shaderPath);
 }
 
 void AppSmokeTests::runRenderTest()

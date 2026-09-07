@@ -19,7 +19,8 @@ target_link_libraries(VulkanApp PRIVATE rubia_smoke_tests)
 
 if(BUILD_TESTING)
     add_test(NAME asset-smoke-test
-        COMMAND VulkanApp --asset-test
+        COMMAND VulkanApp
+            "${PROJECT_SOURCE_DIR}/Assets/shaders/triangle.vert.spv"
     )
     set_tests_properties(asset-smoke-test PROPERTIES
         WORKING_DIRECTORY "$<TARGET_FILE_DIR:VulkanApp>"
