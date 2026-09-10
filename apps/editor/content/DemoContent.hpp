@@ -20,6 +20,8 @@ struct DemoContent
     asset::ShaderAssetHandle pbrFragmentShader;
     asset::ShaderAssetHandle presentVertexShader;
     asset::ShaderAssetHandle presentFragmentShader;
+    asset::ShaderProgramAssetHandle pbrProgram;
+    asset::ShaderProgramAssetHandle presentProgram;
     asset::MaterialTemplateAssetHandle materialTemplate;
     asset::MaterialAssetHandle defaultMaterial;
     asset::ModelAssetHandle model;

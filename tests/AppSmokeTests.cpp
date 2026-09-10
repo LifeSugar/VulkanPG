@@ -505,11 +505,22 @@ void validateOfflineMaterialAssets(
         assets.materialTemplate(content.materialTemplate);
     asset::MaterialTemplateAsset::CreateInfo templateInfo{};
     templateInfo.name = materialTemplate.name();
-    templateInfo.shaders = materialTemplate.shaders();
-    templateInfo.parameterBlock = materialTemplate.parameterBlock();
-    templateInfo.parameterDataSize = materialTemplate.parameterDataSize();
-    templateInfo.parameters = materialTemplate.parameters();
-    templateInfo.textureSlots = materialTemplate.textureSlots();
+    templateInfo.program = materialTemplate.program();
+    templateInfo.textureSlots = {
+        {"baseColorTexture", "baseColorTexture", "baseColorSampler"},
+        {"metallicRoughnessTexture", "metallicRoughnessTexture", "metallicRoughnessSampler"},
+        {"normalTexture", "normalTexture", "normalSampler"},
+        {"occlusionTexture", "occlusionTexture", "occlusionSampler"},
+        {"emissiveTexture", "emissiveTexture", "emissiveSampler"}
+    };
+    for (const auto& member : materialBlock->members)
+    {
+        const auto parameter = std::find_if(materialTemplate.parameters().begin(), materialTemplate.parameters().end(),
+            [&](const auto& value) { return value.name == member.name; });
+        if (parameter == materialTemplate.parameters().end() || parameter->byteOffset != member.offset ||
+            asset::MaterialTemplateAsset::valueSize(parameter->type) != member.size)
+            throw std::runtime_error("generated material layout does not match SPIR-V");
+    }
 
     const asset::ValidationReport currentTemplateReport =
         assets.validateMaterialTemplate(templateInfo);
@@ -525,13 +536,13 @@ void validateOfflineMaterialAssets(
     }
 
     asset::MaterialTemplateAsset::CreateInfo invalidTemplate = templateInfo;
-    invalidTemplate.parameters.back().byteOffset = 36;
+    invalidTemplate.parameters.push_back({"missingParameter", true});
     const asset::ValidationReport invalidTemplateReport =
         assets.validateMaterialTemplate(invalidTemplate);
     if (invalidTemplateReport.valid() ||
         !hasValidationIssue(
             invalidTemplateReport,
-            "Template.ParameterOffsetMismatch",
+            "Template.InvalidParameterMetadata",
             asset::ValidationSeverity::Error))
     {
         throw std::runtime_error(

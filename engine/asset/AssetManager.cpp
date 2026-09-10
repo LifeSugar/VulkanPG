@@ -1,6 +1,7 @@
 #include "asset/AssetManager.hpp"
 
 #include "asset/MaterialValidation.hpp"
+#include "asset/MaterialTemplateBuilder.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -130,14 +131,13 @@ TextureAsset AssetManager::replaceTexture(
 MaterialTemplateAssetHandle AssetManager::createMaterialTemplate(
     MaterialTemplateAsset::CreateInfo createInfo)
 {
-    ValidationReport report = validateMaterialTemplate(createInfo);
+    ValidationReport report;
+    auto compiled = MaterialTemplateBuilder::build(createInfo, *this, report);
     if (!report.valid())
     {
         throw AssetValidationError(std::move(report));
     }
-    createInfo.shaderInterfaceSignature =
-        calculateShaderInterfaceSignature(createInfo.shaders, *this);
-    return materialTemplates_.emplace(std::move(createInfo));
+    return materialTemplates_.emplace(std::move(compiled));
 }
 
 MaterialAssetHandle AssetManager::createMaterial(
@@ -302,6 +302,22 @@ ShaderAssetHandle AssetManager::createShader(
     return shaders_.emplace(std::move(createInfo));
 }
 
+ShaderProgramAssetHandle AssetManager::createShaderProgram(
+    ShaderProgramAsset::CreateInfo createInfo)
+{
+    return shaderPrograms_.insert(ShaderProgramBuilder::build(std::move(createInfo), *this));
+}
+
+const ShaderProgramAsset& AssetManager::shaderProgram(ShaderProgramAssetHandle handle) const
+{
+    return shaderPrograms_.get(handle);
+}
+
+bool AssetManager::contains(ShaderProgramAssetHandle handle) const noexcept
+{
+    return shaderPrograms_.contains(handle);
+}
+
 ModelAssetHandle AssetManager::createModel(ModelAsset::CreateInfo createInfo)
 {
     for (const ModelNode& node : createInfo.nodes)
@@ -388,9 +404,9 @@ bool AssetManager::isMaterialTemplateCurrent(
     }
     const MaterialTemplateAsset& materialTemplate =
         materialTemplates_.get(handle);
-    return calculateShaderInterfaceSignature(
-        materialTemplate.shaders(),
-        *this) == materialTemplate.shaderInterfaceSignature();
+    return contains(materialTemplate.program()) &&
+        shaderProgram(materialTemplate.program()).interfaceSignature() ==
+            materialTemplate.programInterfaceSignature();
 }
 
 std::vector<TextureAssetHandle> AssetManager::textureHandles() const
@@ -414,6 +430,7 @@ void AssetManager::reset() noexcept
     meshes_.reset();
     materials_.reset();
     materialTemplates_.reset();
+    shaderPrograms_.reset();
     shaders_.reset();
     textures_.reset();
 }

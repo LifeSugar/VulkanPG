@@ -1,7 +1,7 @@
 #include "vulkan/DefaultPipelineFactory.hpp"
 
 #include "asset/MeshAsset.hpp"
-#include "asset/ShaderAsset.hpp"
+#include "asset/AssetManager.hpp"
 #include "render/RenderData.hpp"
 
 #include <array>
@@ -11,10 +11,14 @@ namespace rubia::rhi::vulkan
 {
 
 GraphicsPipeline::CreateInfo makeDefaultScenePipeline(
-    const asset::ShaderAsset& vertexShader,
-    const asset::ShaderAsset& fragmentShader,
+    const asset::AssetManager& assets,
+    asset::ShaderProgramAssetHandle program,
     VkDescriptorSetLayout materialDescriptorSetLayout)
 {
+    // ShaderProgramBuilder stores the validated VS/PS pair in stage order.
+    const auto& shaders = assets.shaderProgram(program).shaders();
+    const auto& vertexShader = assets.shader(shaders.at(0));
+    const auto& fragmentShader = assets.shader(shaders.at(1));
     GraphicsPipeline::CreateInfo createInfo{};
     createInfo.vertexShaderSpirv = vertexShader.spirv();
     createInfo.vertexEntryPoint = vertexShader.entryPoint();
@@ -62,9 +66,13 @@ GraphicsPipeline::CreateInfo makeDefaultScenePipeline(
 }
 
 GraphicsPipeline::CreateInfo makeDefaultPresentPipeline(
-    const asset::ShaderAsset& vertexShader,
-    const asset::ShaderAsset& fragmentShader)
+    const asset::AssetManager& assets,
+    asset::ShaderProgramAssetHandle program)
 {
+    // ShaderProgramBuilder stores the validated VS/PS pair in stage order.
+    const auto& shaders = assets.shaderProgram(program).shaders();
+    const auto& vertexShader = assets.shader(shaders.at(0));
+    const auto& fragmentShader = assets.shader(shaders.at(1));
     GraphicsPipeline::CreateInfo createInfo{};
     createInfo.vertexShaderSpirv = vertexShader.spirv();
     createInfo.vertexEntryPoint = vertexShader.entryPoint();

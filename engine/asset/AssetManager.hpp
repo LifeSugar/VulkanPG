@@ -6,6 +6,7 @@
 #include "asset/MeshAsset.hpp"
 #include "asset/ModelAsset.hpp"
 #include "asset/ShaderAsset.hpp"
+#include "asset/ShaderProgramAsset.hpp"
 #include "asset/TextureAsset.hpp"
 #include "asset/ValidationReport.hpp"
 
@@ -34,6 +35,8 @@ public:
         MeshAsset::CreateInfo createInfo);
     [[nodiscard]] ShaderAssetHandle createShader(
         ShaderAsset::CreateInfo createInfo);
+    [[nodiscard]] ShaderProgramAssetHandle createShaderProgram(
+        ShaderProgramAsset::CreateInfo createInfo);
     [[nodiscard]] ModelAssetHandle createModel(
         ModelAsset::CreateInfo createInfo);
 
@@ -43,6 +46,7 @@ public:
     [[nodiscard]] const MaterialAsset& material(MaterialAssetHandle handle) const;
     [[nodiscard]] const MeshAsset& mesh(MeshAssetHandle handle) const;
     [[nodiscard]] const ShaderAsset& shader(ShaderAssetHandle handle) const;
+    [[nodiscard]] const ShaderProgramAsset& shaderProgram(ShaderProgramAssetHandle handle) const;
     [[nodiscard]] const ModelAsset& model(ModelAssetHandle handle) const;
 
     [[nodiscard]] bool contains(TextureAssetHandle handle) const noexcept;
@@ -50,6 +54,7 @@ public:
     [[nodiscard]] bool contains(MaterialAssetHandle handle) const noexcept;
     [[nodiscard]] bool contains(MeshAssetHandle handle) const noexcept;
     [[nodiscard]] bool contains(ShaderAssetHandle handle) const noexcept;
+    [[nodiscard]] bool contains(ShaderProgramAssetHandle handle) const noexcept;
     [[nodiscard]] bool contains(ModelAssetHandle handle) const noexcept;
     [[nodiscard]] bool isMaterialTemplateCurrent(
         MaterialTemplateAssetHandle handle) const noexcept;
@@ -66,6 +71,7 @@ private:
     AssetRegistry<MaterialAsset> materials_;
     AssetRegistry<MeshAsset> meshes_;
     AssetRegistry<ShaderAsset> shaders_;
+    AssetRegistry<ShaderProgramAsset> shaderPrograms_;
     AssetRegistry<ModelAsset> models_;
 };
 

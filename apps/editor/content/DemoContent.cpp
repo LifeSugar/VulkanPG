@@ -244,22 +244,17 @@ DemoContent DemoContentLoader::loadBuiltins(
 
     asset::MaterialTemplateAsset::CreateInfo templateInfo{};
     templateInfo.name = "glTF Metallic-Roughness PBR";
-    templateInfo.shaders = {
-        content.pbrVertexShader,
-        content.pbrFragmentShader
-    };
-    templateInfo.parameters = {
-        {"baseColorFactor", asset::MaterialValueType::Float4, 0, true},
-        {"emissiveFactor", asset::MaterialValueType::Float3, 16, true},
-        {"metallicFactor", asset::MaterialValueType::Float, 28, true},
-        {"roughnessFactor", asset::MaterialValueType::Float, 32, true}
-    };
+    content.pbrProgram = assets.createShaderProgram({
+        "PBR", {content.pbrVertexShader, content.pbrFragmentShader}});
+    content.presentProgram = assets.createShaderProgram({
+        "Present", {content.presentVertexShader, content.presentFragmentShader}});
+    templateInfo.program = content.pbrProgram;
     templateInfo.textureSlots = {
-        {"baseColorTexture", 0, true, {1, 1}, {1, 6}},
-        {"metallicRoughnessTexture", 1, true, {1, 2}, {1, 7}},
-        {"normalTexture", 2, true, {1, 3}, {1, 8}},
-        {"occlusionTexture", 3, true, {1, 4}, {1, 9}},
-        {"emissiveTexture", 4, true, {1, 5}, {1, 10}}
+        {"baseColorTexture", "baseColorTexture", "baseColorSampler"},
+        {"metallicRoughnessTexture", "metallicRoughnessTexture", "metallicRoughnessSampler"},
+        {"normalTexture", "normalTexture", "normalSampler"},
+        {"occlusionTexture", "occlusionTexture", "occlusionSampler"},
+        {"emissiveTexture", "emissiveTexture", "emissiveSampler"}
     };
     content.materialTemplate =
         assets.createMaterialTemplate(std::move(templateInfo));

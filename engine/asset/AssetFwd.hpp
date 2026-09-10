@@ -10,6 +10,7 @@ class MaterialTemplateAsset;
 class MeshAsset;
 class ModelAsset;
 class ShaderAsset;
+class ShaderProgramAsset;
 class TextureAsset;
 
 using MaterialAssetHandle = AssetHandle<MaterialAsset>;
@@ -17,6 +18,7 @@ using MaterialTemplateAssetHandle = AssetHandle<MaterialTemplateAsset>;
 using MeshAssetHandle = AssetHandle<MeshAsset>;
 using ModelAssetHandle = AssetHandle<ModelAsset>;
 using ShaderAssetHandle = AssetHandle<ShaderAsset>;
+using ShaderProgramAssetHandle = AssetHandle<ShaderProgramAsset>;
 using TextureAssetHandle = AssetHandle<TextureAsset>;
 
 } // namespace rubia::asset

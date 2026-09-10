@@ -125,12 +125,13 @@ void App::updateContentLoading()
             const auto& prepared = *preparedContent_;
             renderer.createSceneResources(
                 rhi::vulkan::makeDefaultScenePipeline(
-                    prepared.assets.shader(prepared.content.pbrVertexShader),
-                    prepared.assets.shader(prepared.content.pbrFragmentShader),
+                    prepared.assets,
+                    prepared.assets.materialTemplate(
+                        prepared.content.materialTemplate).program(),
                     renderAssets.materialDescriptorSetLayout()),
                 rhi::vulkan::makeDefaultPresentPipeline(
-                    prepared.assets.shader(prepared.content.presentVertexShader),
-                    prepared.assets.shader(prepared.content.presentFragmentShader)));
+                    prepared.assets,
+                    prepared.content.presentProgram));
 
             // No partially imported assets are exposed to inspectors. Handles
             // remain valid because the complete registries move together.

@@ -197,32 +197,29 @@ void RenderAssetCache::initialize(
         throw std::invalid_argument("RenderAssetCache requires a device");
     }
     reset();
-    const uint32_t textureSlotCount =
-        static_cast<uint32_t>(materialTemplate.textureSlots().size());
-    std::vector<VkDescriptorSetLayoutBinding> bindings(
-        1 + textureSlotCount * 2);
-    bindings[0].binding =
-        materialTemplate.parameterBlock().descriptor.binding;
-    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    bindings[0].descriptorCount = 1;
-    bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    for (uint32_t index = 0; index < textureSlotCount; ++index)
+    if (materialTemplate.parameterBlock().descriptor.set != 1)
+        throw std::invalid_argument("Vulkan scene materials currently require descriptor set 1");
+    std::vector<VkDescriptorSetLayoutBinding> bindings;
+    for (const auto& resource : materialTemplate.bindings())
     {
-        const asset::MaterialTextureSlotDesc& slot =
-            materialTemplate.textureSlots()[index];
-        VkDescriptorSetLayoutBinding& imageBinding =
-            bindings[1 + index];
-        imageBinding.binding = slot.imageBinding.binding;
-        imageBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        imageBinding.descriptorCount = 1;
-        imageBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        VkDescriptorSetLayoutBinding& samplerBinding =
-            bindings[1 + textureSlotCount + index];
-        samplerBinding.binding = slot.samplerBinding.binding;
-        samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-        samplerBinding.descriptorCount = 1;
-        samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutBinding binding{};
+        binding.binding = resource.binding;
+        binding.descriptorCount = resource.arrayCount;
+        if (resource.stages & asset::shaderStageMask(asset::ShaderStage::Vertex))
+            binding.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+        if (resource.stages & asset::shaderStageMask(asset::ShaderStage::Fragment))
+            binding.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        switch (resource.type)
+        {
+        case asset::ShaderResourceType::UniformBuffer:
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; break;
+        case asset::ShaderResourceType::SampledImage:
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; break;
+        case asset::ShaderResourceType::Sampler:
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER; break;
+        default: throw std::invalid_argument("unsupported material descriptor type");
+        }
+        bindings.push_back(binding);
     }
     materialDescriptorSetLayout_.create(device.get(), bindings);
 

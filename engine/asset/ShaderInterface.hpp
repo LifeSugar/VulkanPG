@@ -52,6 +52,9 @@ struct ShaderBlockMemberDesc
     ShaderValueType type = ShaderValueType::Unknown;
     uint32_t offset = 0;
     uint32_t size = 0;
+    uint32_t arrayCount = 1;
+    uint32_t matrixStride = 0;
+    bool rowMajor = false;
 };
 
 struct ShaderParameterBlockDesc
@@ -62,6 +65,8 @@ struct ShaderParameterBlockDesc
     uint32_t byteSize = 0;
     ShaderStage stage = ShaderStage::Vertex;
     std::vector<ShaderBlockMemberDesc> members;
+    // Recursive physical type/layout signature, including nested structures.
+    uint64_t layoutSignature = 0;
 };
 
 struct ShaderStageIoDesc
@@ -76,6 +81,7 @@ struct ShaderPushConstantDesc
     std::string name;
     uint32_t byteSize = 0;
     ShaderStage stage = ShaderStage::Vertex;
+    uint32_t offset = 0;
 };
 
 /// Backend-independent interface reflected from one SPIR-V entry point.

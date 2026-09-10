@@ -22,6 +22,10 @@ target_sources(rubia_engine PRIVATE
     ShaderAsset.cpp
     ShaderAsset.hpp
     ShaderInterface.hpp
+    ShaderProgramAsset.cpp
+    ShaderProgramAsset.hpp
+    MaterialTemplateBuilder.cpp
+    MaterialTemplateBuilder.hpp
     TextureAsset.cpp
     TextureAsset.hpp
     ValidationReport.cpp
