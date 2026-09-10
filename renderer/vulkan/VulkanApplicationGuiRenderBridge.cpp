@@ -25,7 +25,8 @@ void VulkanApplicationGuiRenderBridge::attach(
     renderer_ = &renderer;
     renderAssets_ = &renderAssets;
 
-    if (renderer.outputMode() == VulkanRenderer::OutputMode::Editor)
+    if (renderer.sceneReady() &&
+        renderer.outputMode() == VulkanRenderer::OutputMode::Editor)
     {
         registerViewportTextures();
     }
@@ -43,7 +44,7 @@ void VulkanApplicationGuiRenderBridge::resizeSceneViewport(
     uint32_t width,
     uint32_t height)
 {
-    if (renderer_ == nullptr ||
+    if (renderer_ == nullptr || !renderer_->sceneReady() ||
         renderer_->outputMode() != VulkanRenderer::OutputMode::Editor ||
         width == 0 || height == 0)
     {
@@ -84,6 +85,14 @@ VulkanApplicationGuiRenderBridge::currentFrame()
     if (renderer_ == nullptr)
     {
         return {};
+    }
+    if (!renderer_->sceneReady())
+    {
+        const VkExtent2D extent = renderer_->extent();
+        render::ApplicationGuiRenderFrame frame{};
+        frame.width = extent.width;
+        frame.height = extent.height;
+        return frame;
     }
 
     render::ApplicationGuiRenderFrame frame{};
@@ -174,7 +183,7 @@ void VulkanApplicationGuiRenderBridge::invalidatePreview(
 
 void VulkanApplicationGuiRenderBridge::registerViewportTextures()
 {
-    if (renderer_ == nullptr ||
+    if (renderer_ == nullptr || !renderer_->sceneReady() ||
         renderer_->outputMode() != VulkanRenderer::OutputMode::Editor ||
         renderer_->frameCount() == 0)
     {
@@ -212,7 +221,7 @@ void VulkanApplicationGuiRenderBridge::registerViewportTextures()
 
 void VulkanApplicationGuiRenderBridge::refreshViewportTexturesIfNeeded()
 {
-    if (renderer_ == nullptr || renderer_->frameCount() == 0)
+    if (renderer_ == nullptr || !renderer_->sceneReady() || renderer_->frameCount() == 0)
     {
         return;
     }

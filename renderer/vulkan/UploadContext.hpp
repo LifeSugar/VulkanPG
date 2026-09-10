@@ -9,7 +9,7 @@
 namespace rubia::rhi::vulkan
 {
 
-    /// Performs synchronous staging uploads to device-local buffers.
+    /// Staging uploads; explicit batches submit without blocking the frame loop.
     class UploadContext final
     {
     public:
@@ -42,8 +42,22 @@ namespace rubia::rhi::vulkan
             VkAccessFlags finalAccessMask = VK_ACCESS_SHADER_READ_BIT;
         };
 
-        /// References a device and command pool used for synchronous uploads.
+        /// Uploads are synchronous unless the caller explicitly starts a batch.
         UploadContext(const Device &device, CommandPool &commandPool);
+        ~UploadContext();
+        UploadContext(const UploadContext&) = delete;
+        UploadContext& operator=(const UploadContext&) = delete;
+
+        /// Record several uploads, retaining staging memory until the fence signals.
+        /// Destination resources must outlive the submitted batch. Queue submission
+        /// and polling are performed by the render thread.
+        void beginBatch();
+        void submitBatch();
+        [[nodiscard]] bool pollBatch();
+        void waitBatch();
+        /// Waits for submitted work, or discards a batch that was never submitted.
+        void discardBatch() noexcept;
+        [[nodiscard]] VkDeviceSize stagedByteCount() const noexcept { return stagedBytes_; }
 
         /// Uploads CPU data into a new device-local destination buffer.
         [[nodiscard]] Buffer uploadBuffer(
@@ -55,16 +69,15 @@ namespace rubia::rhi::vulkan
         void uploadImage(const ImageUploadInfo& uploadInfo);
 
     private:
-        /// Copies data between buffers using a one-time command submission.
-        void copyBuffer(
-            VkBuffer source,
-            VkBuffer destination,
-            VkDeviceSize size);
-
         /// Non-owning device used for allocation and queue submission.
         const Device *device_ = nullptr;
         /// Non-owning command pool used for transfer command buffers.
         CommandPool *commandPool_ = nullptr;
+        VkCommandBuffer commandBuffer_ = VK_NULL_HANDLE;
+        VkFence fence_ = VK_NULL_HANDLE;
+        bool submitted_ = false;
+        std::vector<Buffer> stagingBuffers_;
+        VkDeviceSize stagedBytes_ = 0;
     };
 
 } // namespace rubia::rhi::vulkan

@@ -1,5 +1,6 @@
 add_library(rubia_smoke_tests STATIC
     AppSmokeTests.cpp
+    AppStartupTests.cpp
     AppSmokeTests.hpp
 )
 target_include_directories(rubia_smoke_tests PUBLIC
@@ -24,4 +25,13 @@ if(BUILD_TESTING)
     set_tests_properties(asset-smoke-test PROPERTIES
         WORKING_DIRECTORY "$<TARGET_FILE_DIR:VulkanApp>"
     )
+    option(RUBIA_ENABLE_GPU_TESTS "Register hidden-window Vulkan smoke tests" OFF)
+    if(RUBIA_ENABLE_GPU_TESTS)
+        add_test(NAME startup-smoke-test COMMAND VulkanApp --startup-test)
+        add_test(NAME runtime-smoke-test COMMAND VulkanApp --render-test)
+        add_test(NAME editor-smoke-test COMMAND VulkanApp --editor-test)
+        set_tests_properties(startup-smoke-test runtime-smoke-test editor-smoke-test
+            PROPERTIES WORKING_DIRECTORY "$<TARGET_FILE_DIR:VulkanApp>"
+            RUN_SERIAL TRUE TIMEOUT 180)
+    endif()
 endif()

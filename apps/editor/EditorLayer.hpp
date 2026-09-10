@@ -20,7 +20,7 @@ public:
         const ApplicationGuiContext& context) override;
 
 private:
-    void drawDockSpace();
+    [[nodiscard]] bool drawDockSpace(const ContentLoadStatus* loading);
     [[nodiscard]] std::optional<float> drawSceneViewport(
         const ApplicationGuiContext& context);
     void drawRendererStats(const ApplicationGuiContext& context);

@@ -17,8 +17,8 @@ namespace rubia::editor
 ApplicationGuiFrameOutput EditorLayer::draw(
     const ApplicationGuiContext& context)
 {
-    drawDockSpace();
     ApplicationGuiFrameOutput output{};
+    output.loadContent = drawDockSpace(context.contentLoading);
     sceneViewportWidth_ = 0;
     sceneViewportHeight_ = 0;
 
@@ -84,8 +84,9 @@ ApplicationGuiFrameOutput EditorLayer::draw(
     return output;
 }
 
-void EditorLayer::drawDockSpace()
+bool EditorLayer::drawDockSpace(const ContentLoadStatus* loading)
 {
+    bool loadContent = false;
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);
     ImGui::SetNextWindowSize(viewport->WorkSize);
@@ -114,6 +115,12 @@ void EditorLayer::drawDockSpace()
     {
         if (ImGui::BeginMenu("File"))
         {
+            const bool failed = loading && loading->state == ContentLoadState::Failed;
+            const bool canLoad = loading &&
+                (loading->state == ContentLoadState::Idle || failed);
+            loadContent = ImGui::MenuItem(
+                failed ? "Retry loading demo" : "Load demo", nullptr, false, canLoad);
+            ImGui::Separator();
             ImGui::TextDisabled("Scene persistence is not connected yet");
             ImGui::EndMenu();
         }
@@ -171,6 +178,7 @@ void EditorLayer::drawDockSpace()
     }
     ImGui::DockSpace(dockspaceId, ImVec2(0.0f, 0.0f), dockspaceFlags);
     ImGui::End();
+    return loadContent;
 }
 
 std::optional<float> EditorLayer::drawSceneViewport(

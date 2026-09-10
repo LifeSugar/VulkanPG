@@ -16,6 +16,11 @@ int main(int argc, char** argv)
             rubia::test::AppSmokeTests::runAssetImportTest();
             std::cout << "[OK] Asset import test passed\n";
         }
+        else if (argc == 2 && std::string_view(argv[1]) == "--startup-test")
+        {
+            rubia::test::AppSmokeTests::runStartupTest();
+            std::cout << "[OK] Startup test passed\n";
+        }
         else if (argc == 2 && std::string_view(argv[1]) == "--render-test")
         {
             rubia::test::AppSmokeTests::runRenderTest();
@@ -26,6 +31,12 @@ int main(int argc, char** argv)
             rubia::editor::EditorApp editor;
             editor.runRenderTest();
             std::cout << "[OK] Editor render test passed\n";
+        }
+        else if (argc == 3 && std::string_view(argv[1]) == "--editor" &&
+                 std::string_view(argv[2]) == "--empty")
+        {
+            rubia::editor::EditorApp editor;
+            editor.run(false);
         }
         else if (argc == 2 && std::string_view(argv[1]) == "--editor")
         {

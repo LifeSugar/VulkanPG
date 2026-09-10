@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EditorFwd.hpp"
+#include "content/ContentLoadStatus.hpp"
 #include "texture/TextureImportRegistry.hpp"
 
 #include <optional>
@@ -16,6 +17,7 @@ struct ApplicationGuiContext
     scene::Scene& scene;
     render::ApplicationGuiRenderBridge& render;
     const importer::texture::TextureImportRegistry* textureImports = nullptr;
+    const ContentLoadStatus* contentLoading = nullptr;
 };
 
 /// Per-frame GUI decisions consumed before building the scene RenderFrame.
@@ -23,6 +25,7 @@ struct ApplicationGuiFrameOutput
 {
     std::optional<float> sceneAspectRatio;
     std::vector<importer::texture::TextureReimportRequest> textureReimports;
+    bool loadContent = false;
 };
 
 /// UI business layer consumed by App without depending on Runtime or Editor UI.

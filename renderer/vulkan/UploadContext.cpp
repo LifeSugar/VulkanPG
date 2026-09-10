@@ -4,6 +4,7 @@
 #include <cstring>
 #include <limits>
 #include <stdexcept>
+#include <utility>
 
 namespace rubia::rhi::vulkan
 {
@@ -193,74 +194,187 @@ UploadContext::UploadContext(const Device& device, CommandPool& commandPool)
     }
 }
 
+UploadContext::~UploadContext()
+{
+    discardBatch();
+}
+
+void UploadContext::beginBatch()
+{
+    if (commandBuffer_ != VK_NULL_HANDLE)
+    {
+        throw std::logic_error("previous upload batch has not been completed");
+    }
+    commandBuffer_ = commandPool_->allocatePrimary();
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(commandBuffer_, &beginInfo) != VK_SUCCESS)
+    {
+        discardBatch();
+        throw std::runtime_error("failed to begin upload batch");
+    }
+}
+
+void UploadContext::submitBatch()
+{
+    if (commandBuffer_ == VK_NULL_HANDLE || submitted_)
+    {
+        throw std::logic_error("no upload batch is recording");
+    }
+    if (vkEndCommandBuffer(commandBuffer_) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to record upload batch");
+    }
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    if (vkCreateFence(device_->get(), &fenceInfo, nullptr, &fence_) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create upload fence");
+    }
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer_;
+    if (vkQueueSubmit(device_->graphicsQueue(), 1, &submitInfo, fence_) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to submit upload batch");
+    }
+    submitted_ = true;
+}
+
+bool UploadContext::pollBatch()
+{
+    if (!submitted_)
+    {
+        return commandBuffer_ == VK_NULL_HANDLE;
+    }
+    const VkResult result = vkGetFenceStatus(device_->get(), fence_);
+    if (result == VK_NOT_READY)
+    {
+        return false;
+    }
+    if (result != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to query upload fence");
+    }
+    submitted_ = false;
+    discardBatch();
+    return true;
+}
+
+void UploadContext::waitBatch()
+{
+    if (submitted_ && vkWaitForFences(device_->get(), 1, &fence_, VK_TRUE,
+            std::numeric_limits<uint64_t>::max()) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to wait for upload fence");
+    }
+    submitted_ = false;
+    discardBatch();
+}
+
+void UploadContext::discardBatch() noexcept
+{
+    if (submitted_)
+    {
+        vkWaitForFences(device_->get(), 1, &fence_, VK_TRUE,
+            std::numeric_limits<uint64_t>::max());
+    }
+    submitted_ = false;
+    if (commandBuffer_ != VK_NULL_HANDLE)
+    {
+        commandPool_->free(commandBuffer_);
+        commandBuffer_ = VK_NULL_HANDLE;
+    }
+    if (fence_ != VK_NULL_HANDLE)
+    {
+        vkDestroyFence(device_->get(), fence_, nullptr);
+        fence_ = VK_NULL_HANDLE;
+    }
+    stagingBuffers_.clear();
+    stagedBytes_ = 0;
+}
+
 Buffer UploadContext::uploadBuffer(
     const void* data,
     VkDeviceSize size,
     VkBufferUsageFlags destinationUsage)
 {
-    if (data == nullptr || size == 0 || destinationUsage == 0)
+    if (data == nullptr || size == 0 || destinationUsage == 0 || submitted_)
     {
-        throw std::invalid_argument("cannot upload an empty buffer or use empty destination usage flags");
+        throw std::invalid_argument("invalid buffer upload or a batch is still in flight");
     }
     if (size > std::numeric_limits<std::size_t>::max())
     {
         throw std::overflow_error("upload buffer size exceeds the host address range");
     }
-
-    Buffer stagingBuffer(
-        *device_,
-        size,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    Buffer stagingBuffer(*device_, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-    void* mappedData = stagingBuffer.map();
-    std::memcpy(mappedData, data, static_cast<std::size_t>(size));
+    std::memcpy(stagingBuffer.map(), data, static_cast<std::size_t>(size));
     stagingBuffer.unmap();
-
-    Buffer destinationBuffer(
-        *device_,
-        size,
+    Buffer destinationBuffer(*device_, size,
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | destinationUsage,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    copyBuffer(stagingBuffer.get(), destinationBuffer.get(), size);
+    const bool synchronous = commandBuffer_ == VK_NULL_HANDLE;
+    try
+    {
+        if (synchronous) beginBatch();
+        stagingBuffers_.push_back(std::move(stagingBuffer));
+        stagedBytes_ += size;
+        VkBufferCopy region{};
+        region.size = size;
+        vkCmdCopyBuffer(commandBuffer_, stagingBuffers_.back().get(),
+            destinationBuffer.get(), 1, &region);
+        // The next graphics submissions may consume these buffers as vertices,
+        // indices or shader data. Publish transfer writes before those reads.
+        VkBufferMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.buffer = destinationBuffer.get();
+        barrier.size = VK_WHOLE_SIZE;
+        vkCmdPipelineBarrier(commandBuffer_, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
+        if (synchronous)
+        {
+            submitBatch();
+            waitBatch();
+        }
+    }
+    catch (...)
+    {
+        discardBatch();
+        throw;
+    }
     return destinationBuffer;
 }
 
 void UploadContext::uploadImage(const ImageUploadInfo& uploadInfo)
 {
     validateImageUpload(uploadInfo);
+    if (submitted_)
+    {
+        throw std::logic_error("an upload batch is still in flight");
+    }
     if (uploadInfo.sourceSize > std::numeric_limits<std::size_t>::max())
     {
-        throw std::overflow_error(
-            "upload image size exceeds the host address range");
+        throw std::overflow_error("upload image size exceeds the host address range");
     }
-
-    Buffer stagingBuffer(
-        *device_,
-        uploadInfo.sourceSize,
+    Buffer stagingBuffer(*device_, uploadInfo.sourceSize,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    void* mappedData = stagingBuffer.map();
-    std::memcpy(
-        mappedData,
-        uploadInfo.sourceData,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    std::memcpy(stagingBuffer.map(), uploadInfo.sourceData,
         static_cast<std::size_t>(uploadInfo.sourceSize));
     stagingBuffer.unmap();
-
-    const VkCommandBuffer commandBuffer = commandPool_->allocatePrimary();
+    const bool synchronous = commandBuffer_ == VK_NULL_HANDLE;
     try
     {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-        {
-            throw std::runtime_error(
-                "failed to begin image upload command buffer");
-        }
-
+        if (synchronous) beginBatch();
+        stagingBuffers_.push_back(std::move(stagingBuffer));
+        stagedBytes_ += uploadInfo.sourceSize;
         VkImageMemoryBarrier toTransfer{};
         toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         toTransfer.oldLayout = uploadInfo.oldLayout;
@@ -272,7 +386,7 @@ void UploadContext::uploadImage(const ImageUploadInfo& uploadInfo)
         toTransfer.srcAccessMask = uploadInfo.sourceAccessMask;
         toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         vkCmdPipelineBarrier(
-            commandBuffer,
+            commandBuffer_,
             uploadInfo.sourceStageMask,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             0,
@@ -284,8 +398,8 @@ void UploadContext::uploadImage(const ImageUploadInfo& uploadInfo)
             &toTransfer);
 
         vkCmdCopyBufferToImage(
-            commandBuffer,
-            stagingBuffer.get(),
+            commandBuffer_,
+            stagingBuffers_.back().get(),
             uploadInfo.destination.image,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             static_cast<uint32_t>(uploadInfo.copyRegions.size()),
@@ -297,7 +411,7 @@ void UploadContext::uploadImage(const ImageUploadInfo& uploadInfo)
         toFinal.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         toFinal.dstAccessMask = uploadInfo.finalAccessMask;
         vkCmdPipelineBarrier(
-            commandBuffer,
+            commandBuffer_,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             uploadInfo.finalStageMask,
             0,
@@ -308,83 +422,17 @@ void UploadContext::uploadImage(const ImageUploadInfo& uploadInfo)
             1,
             &toFinal);
 
-        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+        if (synchronous)
         {
-            throw std::runtime_error(
-                "failed to record image upload command buffer");
-        }
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-        if (vkQueueSubmit(
-                device_->graphicsQueue(),
-                1,
-                &submitInfo,
-                VK_NULL_HANDLE) != VK_SUCCESS)
-        {
-            throw std::runtime_error(
-                "failed to submit image upload command buffer");
-        }
-        if (vkQueueWaitIdle(device_->graphicsQueue()) != VK_SUCCESS)
-        {
-            throw std::runtime_error(
-                "failed to wait for image upload completion");
+            submitBatch();
+            waitBatch();
         }
     }
     catch (...)
     {
-        commandPool_->free(commandBuffer);
+        discardBatch();
         throw;
     }
-
-    commandPool_->free(commandBuffer);
-}
-
-void UploadContext::copyBuffer(
-    VkBuffer source,
-    VkBuffer destination,
-    VkDeviceSize size)
-{
-    VkCommandBuffer commandBuffer = commandPool_->allocatePrimary();
-
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-    {
-        commandPool_->free(commandBuffer);
-        throw std::runtime_error("failed to begin upload command buffer");
-    }
-
-    VkBufferCopy copyRegion{};
-    copyRegion.size = size;
-    vkCmdCopyBuffer(commandBuffer, source, destination, 1, &copyRegion);
-
-    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-    {
-        commandPool_->free(commandBuffer);
-        throw std::runtime_error("failed to record upload command buffer");
-    }
-
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
-
-    if (vkQueueSubmit(device_->graphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
-    {
-        commandPool_->free(commandBuffer);
-        throw std::runtime_error("failed to submit upload command buffer");
-    }
-    if (vkQueueWaitIdle(device_->graphicsQueue()) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to wait for buffer upload completion");
-    }
-
-    commandPool_->free(commandBuffer);
 }
 
 } // namespace rubia::rhi::vulkan

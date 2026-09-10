@@ -67,12 +67,36 @@ void RenderAssetCache::create(
     const asset::AssetManager& assets,
     const std::vector<asset::ModelAssetHandle>& models)
 {
-    if (!device || models.empty())
+    beginUpload(device, assets, models);
+    try
     {
-        throw std::invalid_argument(
-            "RenderAssetCache requires a device and at least one model");
+        while (pendingUploadCount() != 0)
+        {
+            uploadNext(device, uploadContext, assets);
+        }
     }
+    catch (...)
+    {
+        uploadContext.discardBatch();
+        reset();
+        throw;
+    }
+}
 
+void RenderAssetCache::beginUpload(
+    const Device& device,
+    const asset::AssetManager& assets,
+    const std::vector<asset::ModelAssetHandle>& models)
+{
+    if (!device)
+    {
+        throw std::invalid_argument("RenderAssetCache requires a device");
+    }
+    if (models.empty())
+    {
+        reset();
+        return;
+    }
     std::vector<asset::MeshAssetHandle> meshHandles;
     std::vector<asset::MaterialAssetHandle> materialHandles;
     std::vector<asset::TextureAssetHandle> textureHandles;
@@ -128,36 +152,9 @@ void RenderAssetCache::create(
     const uint32_t textureSlotCount = static_cast<uint32_t>(
         materialTemplate.textureSlots().size());
 
-    reset();
+    initialize(device, materialTemplate);
     try
     {
-        std::vector<VkDescriptorSetLayoutBinding> bindings(
-            1 + textureSlotCount * 2);
-        bindings[0].binding =
-            materialTemplate.parameterBlock().descriptor.binding;
-        bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        bindings[0].descriptorCount = 1;
-        bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        for (uint32_t index = 0; index < textureSlotCount; ++index)
-        {
-            const asset::MaterialTextureSlotDesc& slot =
-                materialTemplate.textureSlots()[index];
-            VkDescriptorSetLayoutBinding& imageBinding =
-                bindings[1 + index];
-            imageBinding.binding = slot.imageBinding.binding;
-            imageBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-            imageBinding.descriptorCount = 1;
-            imageBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-            VkDescriptorSetLayoutBinding& samplerBinding =
-                bindings[1 + textureSlotCount + index];
-            samplerBinding.binding = slot.samplerBinding.binding;
-            samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-            samplerBinding.descriptorCount = 1;
-            samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        }
-        materialDescriptorSetLayout_.create(device.get(), bindings);
-
         const uint32_t materialCount =
             static_cast<uint32_t>(materialHandles.size());
         const uint32_t materialTextureDescriptors =
@@ -172,58 +169,110 @@ void RenderAssetCache::create(
                 {VK_DESCRIPTOR_TYPE_SAMPLER, materialTextureDescriptors}
             },
             materialCount);
-        const std::vector<VkDescriptorSet> materialDescriptorSets =
+        uploadMaterialSets_ =
             materialDescriptorPool_.allocate(
                 materialDescriptorSetLayout_.get(),
                 materialCount);
 
         textures_.resize(requiredSlotCount(textureHandles));
-        for (asset::TextureAssetHandle handle : textureHandles)
-        {
-            TextureEntry& entry = textures_[handle.index];
-            entry.generation = handle.generation;
-            GpuTexture::CreateInfo textureInfo{};
-            textureInfo.asset = &assets.texture(handle);
-            entry.texture.create(
-                device,
-                uploadContext,
-                textureInfo);
-        }
-
         materials_.resize(requiredSlotCount(materialHandles));
-        for (uint32_t index = 0; index < materialCount; ++index)
-        {
-            const asset::MaterialAssetHandle handle = materialHandles[index];
-            const asset::MaterialAsset& materialAsset = assets.material(handle);
-            std::vector<const GpuTexture*> materialTextures;
-            materialTextures.reserve(textureCount);
-            for (asset::TextureAssetHandle textureHandle : materialAsset.textures())
-            {
-                materialTextures.push_back(&texture(textureHandle));
-            }
-
-            MaterialEntry& entry = materials_[handle.index];
-            entry.generation = handle.generation;
-            entry.material.create(
-                device,
-                materialAsset,
-                materialTemplate,
-                materialTextures,
-                materialDescriptorSets[index]);
-        }
-
         meshes_.resize(requiredSlotCount(meshHandles));
-        for (asset::MeshAssetHandle handle : meshHandles)
-        {
-            MeshEntry& entry = meshes_[handle.index];
-            entry.generation = handle.generation;
-            entry.mesh.create(uploadContext, assets.mesh(handle));
-        }
+        pendingTextures_ = std::move(textureHandles);
+        pendingMaterials_ = std::move(materialHandles);
+        pendingMeshes_ = std::move(meshHandles);
     }
     catch (...)
     {
         reset();
         throw;
+    }
+}
+
+void RenderAssetCache::initialize(
+    const Device& device,
+    const asset::MaterialTemplateAsset& materialTemplate)
+{
+    if (!device)
+    {
+        throw std::invalid_argument("RenderAssetCache requires a device");
+    }
+    reset();
+    const uint32_t textureSlotCount =
+        static_cast<uint32_t>(materialTemplate.textureSlots().size());
+    std::vector<VkDescriptorSetLayoutBinding> bindings(
+        1 + textureSlotCount * 2);
+    bindings[0].binding =
+        materialTemplate.parameterBlock().descriptor.binding;
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    bindings[0].descriptorCount = 1;
+    bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    for (uint32_t index = 0; index < textureSlotCount; ++index)
+    {
+        const asset::MaterialTextureSlotDesc& slot =
+            materialTemplate.textureSlots()[index];
+        VkDescriptorSetLayoutBinding& imageBinding =
+            bindings[1 + index];
+        imageBinding.binding = slot.imageBinding.binding;
+        imageBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        imageBinding.descriptorCount = 1;
+        imageBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        VkDescriptorSetLayoutBinding& samplerBinding =
+            bindings[1 + textureSlotCount + index];
+        samplerBinding.binding = slot.samplerBinding.binding;
+        samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+        samplerBinding.descriptorCount = 1;
+        samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+    materialDescriptorSetLayout_.create(device.get(), bindings);
+
+}
+
+std::size_t RenderAssetCache::pendingUploadCount() const noexcept
+{
+    return pendingTextures_.size() - uploadedTextures_ +
+        pendingMaterials_.size() - uploadedMaterials_ +
+        pendingMeshes_.size() - uploadedMeshes_;
+}
+
+void RenderAssetCache::uploadNext(
+    const Device& device,
+    UploadContext& uploadContext,
+    const asset::AssetManager& assets)
+{
+    if (uploadedTextures_ < pendingTextures_.size())
+    {
+        const auto handle = pendingTextures_[uploadedTextures_];
+        TextureEntry& entry = textures_[handle.index];
+        GpuTexture::CreateInfo info{};
+        info.asset = &assets.texture(handle);
+        entry.texture.create(device, uploadContext, info);
+        entry.generation = handle.generation;
+        ++uploadedTextures_;
+    }
+    else if (uploadedMaterials_ < pendingMaterials_.size())
+    {
+        const auto handle = pendingMaterials_[uploadedMaterials_];
+        const auto& materialAsset = assets.material(handle);
+        const auto& materialTemplate = assets.materialTemplate(materialAsset.materialTemplate());
+        std::vector<const GpuTexture*> materialTextures;
+        for (auto textureHandle : materialAsset.textures())
+        {
+            materialTextures.push_back(&texture(textureHandle));
+        }
+        MaterialEntry& entry = materials_[handle.index];
+        entry.material.create(device, materialAsset, materialTemplate,
+            materialTextures, uploadMaterialSets_[uploadedMaterials_]);
+        entry.generation = handle.generation;
+        ++uploadedMaterials_;
+    }
+    else if (uploadedMeshes_ < pendingMeshes_.size())
+    {
+        const auto handle = pendingMeshes_[uploadedMeshes_];
+        MeshEntry& entry = meshes_[handle.index];
+        entry.mesh.create(uploadContext, assets.mesh(handle));
+        entry.generation = handle.generation;
+        ++uploadedMeshes_;
     }
 }
 
@@ -308,6 +357,11 @@ GpuTexture RenderAssetCache::commitTextureReplacement(
 
 void RenderAssetCache::reset() noexcept
 {
+    pendingTextures_.clear();
+    pendingMaterials_.clear();
+    pendingMeshes_.clear();
+    uploadMaterialSets_.clear();
+    uploadedTextures_ = uploadedMaterials_ = uploadedMeshes_ = 0;
     materialDescriptorPool_.reset();
     meshes_.clear();
     materials_.clear();

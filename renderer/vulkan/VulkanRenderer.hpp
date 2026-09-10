@@ -88,6 +88,16 @@ public:
 
     /// Creates or replaces all renderer-owned resources.
     void create(const CreateInfo& createInfo);
+    /// Creates a GUI-capable swapchain without any scene assets or shaders.
+    void createPresentation(const CreateInfo& createInfo);
+    /// Adds scene rendering to an existing presentation session.
+    void createSceneResources(
+        const GraphicsPipeline::CreateInfo& graphicsPipeline,
+        const GraphicsPipeline::CreateInfo& presentPipeline,
+        uint32_t maxRenderObjects = 1024);
+    /// Releases scene resources while keeping the GUI presentation alive.
+    void resetSceneResources() noexcept;
+    [[nodiscard]] bool sceneReady() const noexcept;
     /// Releases all renderer-owned resources and cached frame data.
     void reset() noexcept;
     /// Waits until all device work has completed.
@@ -102,6 +112,7 @@ public:
         const render::RenderFrame& frame,
         const RenderAssetCache& renderAssets,
         ImDrawData* uiDrawData = nullptr);
+    [[nodiscard]] RenderResult renderGui(ImDrawData* uiDrawData);
 
     /// Returns the current swapchain extent.
     [[nodiscard]] VkExtent2D extent() const noexcept
@@ -134,10 +145,14 @@ public:
     /// Returns one Editor LDR image suitable for ImGui texture registration.
     [[nodiscard]] EditorViewportOutput editorViewportOutput(
         uint32_t frameIndex) const;
-    /// Returns whether the renderer is fully initialized.
+    /// Returns whether base presentation is initialized; sceneReady is separate.
     [[nodiscard]] explicit operator bool() const noexcept;
 
 private:
+    [[nodiscard]] RenderResult renderFrame(
+        const render::RenderFrame* frame,
+        const RenderAssetCache* renderAssets,
+        ImDrawData* uiDrawData);
     /// Creates one reusable command and synchronization context per frame slot.
     void createFrameContexts(uint32_t frameCount);
     /// Completes pipeline settings with renderer-owned layouts and render pass.
@@ -164,7 +179,8 @@ private:
         uint32_t imageIndex,
         VkDescriptorSet descriptorSet,
         const VulkanDrawList& drawList,
-        ImDrawData* uiDrawData);
+        ImDrawData* uiDrawData,
+        bool drawScene);
     /// Records all scene draws into the offscreen target for one frame slot.
     void recordScenePass(
         VkCommandBuffer commandBuffer,

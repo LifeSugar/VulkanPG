@@ -16,6 +16,7 @@ class AppSmokeTests final
 {
 public:
     static void runAssetImportTest();
+    static void runStartupTest();
     static void runRenderTest();
     static void runRenderTest(
         editor::App& app,
@@ -24,4 +25,3 @@ public:
 };
 
 } // namespace rubia::test
-

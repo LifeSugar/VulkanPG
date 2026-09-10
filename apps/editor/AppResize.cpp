@@ -25,6 +25,10 @@ void App::recreateSwapChain(ApplicationGui& gui)
     VkExtent2D extent = window.framebufferExtent();
     while (extent.width == 0 || extent.height == 0)
     {
+        if (window.shouldClose())
+        {
+            return;
+        }
         window.waitEvents();
         extent = window.framebufferExtent();
     }
@@ -47,7 +51,8 @@ void App::recreateSwapChain(ApplicationGui& gui)
         assetManager,
         scene,
         guiRenderBridge,
-        &textureImports};
+        &textureImports,
+        &contentLoadStatus_};
     gui.attach(guiContext);
 
     const VkExtent2D renderExtent = renderer.extent();

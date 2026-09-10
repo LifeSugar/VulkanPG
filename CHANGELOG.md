@@ -8,6 +8,9 @@
 
 ### Added
 
+- 添加独立于 demo 资源的 GUI 启动流程、后台 CPU 内容准备与分帧 GPU 上传；加载失败可在界面重试。
+- 添加 `--editor --empty` 空编辑器入口、`--startup-test` 启动与退出测试，以及可选 GPU CTest 注册。
+- 拆分基础呈现与场景渲染初始化、内置资源与模型导入；上传批次用 fence 管理 staging 生命周期，移除上传中的队列空闲等待。设计见 `apps/editor/content/README.md`。
 - 添加强类型 `RenderLayer` 与可组合的 `LayerMask`。
 - `SceneNode` 现在保存实例级渲染 Layer Mask，并支持运行时修改。
 - `Camera` 现在保存 Culling Mask，为后续按 View 构建 RenderList 和 Layer 剔除提供数据。

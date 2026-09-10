@@ -3,6 +3,7 @@
 #include "asset/AssetManager.hpp"
 #include "render/Camera.hpp"
 #include "content/DemoContent.hpp"
+#include "content/ContentLoadStatus.hpp"
 #include "ImGuiLayer.hpp"
 #include "texture/TextureImportRegistry.hpp"
 #include "vulkan/RenderAssetCache.hpp"
@@ -13,9 +14,11 @@
 #include "vulkan/Window.hpp"
 
 #include <cstdint>
+#include <atomic>
 #include <deque>
 #include <filesystem>
 #include <future>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -38,6 +41,7 @@ public:
         uint32_t windowHeight = 720;
         std::string windowTitle = "RubiaEngine";
         bool enableDocking = true;
+        bool autoLoadDemo = true;
         std::string imguiIniFilename;
         rhi::vulkan::VulkanRenderer::OutputMode outputMode =
             rhi::vulkan::VulkanRenderer::OutputMode::Runtime;
@@ -64,6 +68,14 @@ public:
     void run();
     void run(const RunConfig& config, ApplicationGui& gui);
 private:
+    struct PreparedContent
+    {
+        asset::AssetManager assets;
+        scene::Scene scene;
+        importer::texture::TextureImportRegistry textureImports;
+        DemoContent content;
+    };
+
     struct PreparedTextureReimport
     {
         importer::texture::TextureReimportRequest request;
@@ -94,6 +106,14 @@ private:
 
     render::Camera camera;
     static constexpr uint32_t kMaxFramesInFlight = 2;
+    ContentLoadStatus contentLoadStatus_;
+    DemoContentLoader::CreateInfo contentLoadConfig_;
+    bool loadAfterFirstFrame_ = false;
+    std::shared_ptr<std::atomic<bool>> contentLoadCancelled_;
+    std::future<std::unique_ptr<PreparedContent>> contentLoadFuture_;
+    std::unique_ptr<PreparedContent> preparedContent_;
+    std::unique_ptr<rhi::vulkan::CommandPool> contentUploadPool_;
+    std::unique_ptr<rhi::vulkan::UploadContext> contentUploads_;
     bool preferIntegratedGpu = false;
     bool swapChainRecreationRequested = false;
     std::deque<importer::texture::TextureReimportRequest> pendingTextureReimports_;
@@ -106,6 +126,9 @@ private:
 private:
     void initWindow(const RunConfig& config, bool visible = true);
     void initVulkan(const RunConfig& config);
+    void startContentLoading();
+    void updateContentLoading();
+    void discardContentLoading() noexcept;
     void initImGui(const RunConfig& config);
     void mainLoop(ApplicationGui& gui);
     void cleanup();

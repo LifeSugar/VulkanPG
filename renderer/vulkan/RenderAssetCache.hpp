@@ -32,6 +32,16 @@ public:
         UploadContext& uploadContext,
         const asset::AssetManager& assets,
         const std::vector<asset::ModelAssetHandle>& models);
+    /// Establishes the material interface without requiring a model instance.
+    void initialize(const Device& device, const asset::MaterialTemplateAsset& materialTemplate);
+    /// Allocates cache slots and descriptors; leaves resource uploads to uploadNext.
+    void beginUpload(const Device& device, const asset::AssetManager& assets,
+        const std::vector<asset::ModelAssetHandle>& models);
+    /// Prepares one texture, material or mesh. An explicit UploadContext batch
+    /// lets the caller submit it and poll completion between GUI frames.
+    void uploadNext(const Device& device, UploadContext& uploadContext,
+        const asset::AssetManager& assets);
+    [[nodiscard]] std::size_t pendingUploadCount() const noexcept;
     /// Builds a replacement without changing the live cache. This lets the
     /// caller finish disk/CPU validation before committing the GPU swap.
     [[nodiscard]] GpuTexture stageTextureReplacement(
@@ -91,6 +101,13 @@ private:
     std::vector<MaterialEntry> materials_;
     std::vector<MeshEntry> meshes_;
     DescriptorPool materialDescriptorPool_;
+    std::vector<asset::TextureAssetHandle> pendingTextures_;
+    std::vector<asset::MaterialAssetHandle> pendingMaterials_;
+    std::vector<asset::MeshAssetHandle> pendingMeshes_;
+    std::vector<VkDescriptorSet> uploadMaterialSets_;
+    std::size_t uploadedTextures_ = 0;
+    std::size_t uploadedMaterials_ = 0;
+    std::size_t uploadedMeshes_ = 0;
 };
 
 } // namespace rubia::rhi::vulkan

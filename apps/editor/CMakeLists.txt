@@ -1,5 +1,6 @@
 add_library(rubia_editor STATIC
     App.cpp
+    AppContentLoading.cpp
     App.hpp
     ApplicationGui.hpp
     AppResize.cpp
@@ -29,6 +30,7 @@ add_library(rubia_editor STATIC
     panels/AssetBrowserPanel.hpp
     panels/ConsolePanel.cpp
     panels/ConsolePanel.hpp
+    content/ContentLoadStatus.hpp
     panels/InspectorPanel.cpp
     panels/InspectorPanel.hpp
     panels/SceneHierarchyPanel.cpp

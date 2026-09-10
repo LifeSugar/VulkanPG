@@ -1076,6 +1076,12 @@ void AppSmokeTests::runRenderTest(
 {
     app.initWindow(config, false);
     app.initVulkan(config);
+    app.setupCamera();
+    if (!app.renderer || app.renderer.sceneReady() ||
+        !app.assetManager.modelHandles().empty())
+    {
+        throw std::runtime_error("presentation startup unexpectedly depends on scene assets");
+    }
     validateKtxTextureImportAndUpload(app.vulkanContext.device());
     app.initImGui(config);
     app.guiRenderBridge.attach(app.renderer, app.renderAssets);
@@ -1085,6 +1091,74 @@ void AppSmokeTests::runRenderTest(
         app.guiRenderBridge
     };
     gui.attach(guiContext);
+    const auto drawLoadingFrame = [&]
+    {
+        app.window.pollEvents();
+        app.imguiLayer.beginFrame();
+        app.drawGui(gui);
+        ImDrawData* drawData = app.imguiLayer.endFrame();
+        const auto result = app.renderer.renderGui(drawData);
+        if (result == rhi::vulkan::VulkanRenderer::RenderResult::NeedsResize)
+        {
+            app.recreateSwapChain(gui);
+        }
+    };
+    drawLoadingFrame();
+    app.recreateSwapChain(gui);
+    drawLoadingFrame();
+
+    // A missing resource must leave presentation, resize and retry usable.
+    app.contentLoadConfig_ = config.demoContent;
+    app.contentLoadConfig_.pbrVertexShader = "__missing_startup_shader__.spv";
+    app.startContentLoading();
+    auto loadingDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+    while (app.contentLoadStatus_.state == editor::ContentLoadState::Preparing &&
+        std::chrono::steady_clock::now() < loadingDeadline)
+    {
+        app.updateContentLoading();
+        drawLoadingFrame();
+    }
+    if (app.contentLoadStatus_.state != editor::ContentLoadState::Failed ||
+        !app.renderer || app.renderer.sceneReady() ||
+        !app.assetManager.textureHandles().empty())
+    {
+        throw std::runtime_error("failed content import did not preserve the empty GUI session");
+    }
+    app.recreateSwapChain(gui);
+    drawLoadingFrame();
+
+    app.contentLoadConfig_ = config.demoContent;
+    app.startContentLoading();
+    std::size_t uploadFrames = 0;
+    loadingDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+    while (app.contentLoadStatus_.state != editor::ContentLoadState::Ready &&
+        std::chrono::steady_clock::now() < loadingDeadline)
+    {
+        app.updateContentLoading();
+        if (app.contentLoadStatus_.state == editor::ContentLoadState::Failed)
+        {
+            throw std::runtime_error(app.contentLoadStatus_.message);
+        }
+        if (app.contentLoadStatus_.state == editor::ContentLoadState::Ready)
+        {
+            break;
+        }
+        if (!app.assetManager.textureHandles().empty() || !app.scene.nodes().empty())
+        {
+            throw std::runtime_error("partially loaded content leaked into the live GUI");
+        }
+        if (app.contentLoadStatus_.state == editor::ContentLoadState::Uploading)
+        {
+            ++uploadFrames;
+        }
+        drawLoadingFrame();
+    }
+    if (!app.renderer.sceneReady() || uploadFrames == 0)
+    {
+        throw std::runtime_error("asynchronous content loading failed to render GUI upload frames");
+    }
+    std::clog << "[Startup] GUI remained active for " << uploadFrames
+        << " upload frames; failure, resize and retry passed\n";
     asset::TextureAssetHandle editorPreviewTexture{};
     const std::vector<render::RenderCandidate> previewCandidates =
         render::SceneRenderExtractor{}.extract(app.scene, app.assetManager);
