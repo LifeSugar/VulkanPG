@@ -5,6 +5,7 @@
 #include "vulkan/RenderAssetCache.hpp"
 #include "vulkan/VulkanDrawListCompiler.hpp"
 #include "vulkan/VulkanContext.hpp"
+#include "vulkan/VulkanScenePreparation.hpp"
 
 #include <imgui_impl_vulkan.h>
 
@@ -315,6 +316,8 @@ void updatePresentDescriptorSets(
 
 } // namespace
 
+VulkanRenderer::VulkanRenderer() = default;
+
 VulkanRenderer::VulkanRenderer(const CreateInfo& createInfo)
 {
     create(createInfo);
@@ -386,12 +389,56 @@ void VulkanRenderer::createPresentation(const CreateInfo& createInfo)
     }
 }
 
+void VulkanRenderer::beginScenePreparation(
+    RenderAssetCache& renderAssets, render::SceneResourceRequest request)
+{
+    if (!*this || hasSceneResources() ||
+        (scenePreparation_ && scenePreparation_->ownsResources()) ||
+        renderAssets.materialDescriptorSetLayout() != VK_NULL_HANDLE)
+    {
+        throw std::logic_error("scene preparation requires presentation and an empty scene/cache");
+    }
+    scenePreparation_ = std::make_unique<VulkanScenePreparation>(
+        context_->device(), *this, renderAssets, std::move(request));
+    scenePreparation_->begin();
+}
+
+void VulkanRenderer::advanceScenePreparation()
+{
+    if (scenePreparation_)
+    {
+        scenePreparation_->advance();
+    }
+}
+
+render::ScenePreparationStatus VulkanRenderer::scenePreparationStatus() const
+{
+    return scenePreparation_ ? scenePreparation_->status() : render::ScenePreparationStatus{};
+}
+
+void VulkanRenderer::activatePreparedScene()
+{
+    if (!scenePreparation_)
+    {
+        throw std::logic_error("no scene preparation to activate");
+    }
+    scenePreparation_->activate();
+}
+
+void VulkanRenderer::cancelScenePreparation() noexcept
+{
+    if (scenePreparation_)
+    {
+        scenePreparation_->cancel();
+    }
+}
+
 void VulkanRenderer::createSceneResources(
     const GraphicsPipeline::CreateInfo& graphicsPipeline,
     const GraphicsPipeline::CreateInfo& presentPipeline,
     uint32_t maxRenderObjects)
 {
-    if (!*this || sceneReady() || maxRenderObjects == 0)
+    if (!*this || hasSceneResources() || maxRenderObjects == 0)
     {
         throw std::logic_error("scene initialization requires presentation and no active scene");
     }
@@ -413,12 +460,22 @@ void VulkanRenderer::createSceneResources(
     }
     catch (...)
     {
-        resetSceneResources();
+        releaseSceneResources();
         throw;
     }
 }
 
 void VulkanRenderer::resetSceneResources() noexcept
+{
+    if (scenePreparation_ && scenePreparation_->ownsResources())
+    {
+        scenePreparation_->cancel();
+        return;
+    }
+    releaseSceneResources();
+}
+
+void VulkanRenderer::releaseSceneResources() noexcept
 {
     if (context_ != nullptr)
     {
@@ -449,6 +506,7 @@ void VulkanRenderer::resetSceneResources() noexcept
 void VulkanRenderer::reset() noexcept
 {
     resetSceneResources();
+    scenePreparation_.reset();
     frameContexts_.clear();
     swapchainResources_.reset();
     outputMode_ = OutputMode::Runtime;
@@ -497,7 +555,7 @@ void VulkanRenderer::resize(VkExtent2D framebufferExtent)
     createInfo.framebufferExtent = framebufferExtent;
     const bool pipelineCompatibilityChanged =
         swapchainResources_.recreate(device, createInfo);
-    if (!sceneReady())
+    if (!hasSceneResources())
     {
         return;
     }
@@ -560,7 +618,7 @@ void VulkanRenderer::resizeEditorViewport(VkExtent2D extent)
             "cannot resize the Editor viewport to an empty extent");
     }
 
-    if (!sceneReady())
+    if (!hasSceneResources())
     {
         return;
     }
@@ -776,6 +834,11 @@ VulkanRenderer::operator bool() const noexcept
 }
 
 bool VulkanRenderer::sceneReady() const noexcept
+{
+    return (!scenePreparation_ || !scenePreparation_->ownsResources()) && hasSceneResources();
+}
+
+bool VulkanRenderer::hasSceneResources() const noexcept
 {
     const bool editorResourcesValid = outputMode_ != OutputMode::Editor ||
         (static_cast<bool>(editorViewportRenderPass_) &&

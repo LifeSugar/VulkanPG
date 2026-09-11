@@ -111,9 +111,7 @@ private:
     bool loadAfterFirstFrame_ = false;
     std::shared_ptr<std::atomic<bool>> contentLoadCancelled_;
     std::future<std::unique_ptr<PreparedContent>> contentLoadFuture_;
-    std::unique_ptr<PreparedContent> preparedContent_;
-    std::unique_ptr<rhi::vulkan::CommandPool> contentUploadPool_;
-    std::unique_ptr<rhi::vulkan::UploadContext> contentUploads_;
+    std::shared_ptr<PreparedContent> preparedContent_;
     bool preferIntegratedGpu = false;
     bool swapChainRecreationRequested = false;
     std::deque<importer::texture::TextureReimportRequest> pendingTextureReimports_;

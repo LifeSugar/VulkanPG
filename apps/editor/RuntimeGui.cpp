@@ -27,20 +27,8 @@ ApplicationGuiFrameOutput RuntimeGui::draw(
     ImGui::TextUnformatted(context.contentLoading &&
         context.contentLoading->state != ContentLoadState::Ready
         ? "Draws: UI" : "Draws: scene + present + UI overlay");
-    ApplicationGuiFrameOutput output{};
-    if (context.contentLoading)
-    {
-        if (context.contentLoading->state == ContentLoadState::Failed)
-        {
-            output.loadContent = ImGui::Button("Retry loading demo");
-        }
-        else if (context.contentLoading->state == ContentLoadState::Idle)
-        {
-            output.loadContent = ImGui::Button("Load demo");
-        }
-    }
     ImGui::End();
-    return output;
+    return {};
 }
 
 } // namespace rubia::editor

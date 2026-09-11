@@ -6,12 +6,14 @@
 #include "vulkan/FrameDataResources.hpp"
 #include "vulkan/GraphicsPipeline.hpp"
 #include "render/RenderFrame.hpp"
+#include "render/SceneResourcePreparation.hpp"
 #include "vulkan/RenderPass.hpp"
 #include "vulkan/RenderTarget.hpp"
 #include "vulkan/Sampler.hpp"
 #include "vulkan/SwapchainResources.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 struct ImDrawData;
@@ -22,6 +24,7 @@ namespace rubia::rhi::vulkan
 class Mesh;
 class RenderAssetCache;
 class VulkanContext;
+class VulkanScenePreparation;
 struct VulkanDrawList;
 
 // Owns the Vulkan objects and synchronization needed to execute one render
@@ -73,7 +76,7 @@ public:
     };
 
     /// Creates an empty renderer.
-    VulkanRenderer() = default;
+    VulkanRenderer();
     /// Creates a renderer from the supplied settings.
     VulkanRenderer(const CreateInfo& createInfo);
     /// Releases all renderer-owned resources.
@@ -90,6 +93,19 @@ public:
     void create(const CreateInfo& createInfo);
     /// Creates a GUI-capable swapchain without any scene assets or shaders.
     void createPresentation(const CreateInfo& createInfo);
+    /// Main-thread-only preparation into an empty scene/cache. The cache must
+    /// outlive this renderer and remain untouched during preparation. CPU assets
+    /// are retained until activation, cancellation, or failure.
+    void beginScenePreparation(
+        RenderAssetCache& renderAssets, render::SceneResourceRequest request);
+    /// Polls uploads and advances one soft-budgeted batch or the pipeline stage.
+    void advanceScenePreparation();
+    [[nodiscard]] render::ScenePreparationStatus scenePreparationStatus() const;
+    /// Publishes ready GPU resources; caller then publishes matching CPU content.
+    void activatePreparedScene();
+    /// Cancels pending/ready work and safely releases its partial resources.
+    /// May wait for in-flight uploads. Activated scene resources are unaffected.
+    void cancelScenePreparation() noexcept;
     /// Adds scene rendering to an existing presentation session.
     void createSceneResources(
         const GraphicsPipeline::CreateInfo& graphicsPipeline,
@@ -149,6 +165,9 @@ public:
     [[nodiscard]] explicit operator bool() const noexcept;
 
 private:
+    friend class VulkanScenePreparation;
+    [[nodiscard]] bool hasSceneResources() const noexcept;
+    void releaseSceneResources() noexcept;
     [[nodiscard]] RenderResult renderFrame(
         const render::RenderFrame* frame,
         const RenderAssetCache* renderAssets,
@@ -257,6 +276,8 @@ private:
     render::RenderViewId stagedViewId_{};
     /// Revision of the currently staged view GPU payload.
     uint64_t stagedViewGpuDataRevision_ = 0;
+    // Destroy/cancel before scene objects, frame contexts, cache, or device.
+    std::unique_ptr<VulkanScenePreparation> scenePreparation_;
 };
 
 } // namespace rubia::rhi::vulkan

@@ -194,10 +194,6 @@ void App::drawGui(ApplicationGui& gui)
         &textureImports,
         &contentLoadStatus_};
     const ApplicationGuiFrameOutput output = gui.draw(context);
-    if (output.loadContent)
-    {
-        startContentLoading();
-    }
     for (const importer::texture::TextureReimportRequest& request : output.textureReimports)
     {
         const bool alreadyQueued = std::any_of(

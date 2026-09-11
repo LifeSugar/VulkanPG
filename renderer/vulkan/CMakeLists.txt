@@ -62,6 +62,8 @@ add_library(rubia_rhi_vulkan STATIC
     VulkanMemoryConfig.hpp
     VulkanRenderer.cpp
     VulkanRenderer.hpp
+    VulkanScenePreparation.cpp
+    VulkanScenePreparation.hpp
     Window.cpp
     Window.hpp
 )

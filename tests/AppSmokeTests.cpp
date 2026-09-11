@@ -1168,6 +1168,20 @@ void AppSmokeTests::runRenderTest(
     {
         throw std::runtime_error("asynchronous content loading failed to render GUI upload frames");
     }
+    if (app.renderer.scenePreparationStatus().state != render::ScenePreparationState::Activated ||
+        app.preparedContent_)
+    {
+        throw std::runtime_error("scene activation did not complete the CPU/GPU handoff");
+    }
+    bool replacementRejected = false;
+    try { app.renderer.beginScenePreparation(app.renderAssets, {}); }
+    catch (const std::logic_error&) { replacementRejected = true; }
+    app.renderer.cancelScenePreparation();
+    if (!replacementRejected || !app.renderer.sceneReady() ||
+        app.renderAssets.materialDescriptorSetLayout() == VK_NULL_HANDLE)
+    {
+        throw std::runtime_error("preparation request or cancellation destroyed the activated scene");
+    }
     std::clog << "[Startup] GUI remained active for " << uploadFrames
         << " upload frames; failure, resize and retry passed\n";
     asset::TextureAssetHandle editorPreviewTexture{};

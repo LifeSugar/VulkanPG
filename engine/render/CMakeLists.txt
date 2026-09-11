@@ -23,4 +23,5 @@ target_sources(rubia_engine PRIVATE
     RenderView.hpp
     SceneRenderExtractor.cpp
     SceneRenderExtractor.hpp
+    SceneResourcePreparation.hpp
 )

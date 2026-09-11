@@ -25,7 +25,6 @@ struct ApplicationGuiFrameOutput
 {
     std::optional<float> sceneAspectRatio;
     std::vector<importer::texture::TextureReimportRequest> textureReimports;
-    bool loadContent = false;
 };
 
 /// UI business layer consumed by App without depending on Runtime or Editor UI.

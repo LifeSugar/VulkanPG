@@ -1,7 +1,6 @@
 #include "App.hpp"
 
-#include "vulkan/DefaultPipelineFactory.hpp"
-#include "vulkan/UploadContext.hpp"
+#include "render/SceneResourcePreparation.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -64,80 +63,68 @@ void App::updateContentLoading()
                 return;
             }
             preparedContent_ = contentLoadFuture_.get();
-            const auto& device = vulkanContext.device();
-            contentUploadPool_ = std::make_unique<rhi::vulkan::CommandPool>(
-                device, device.graphicsQueueFamily(), VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
-            contentUploads_ = std::make_unique<rhi::vulkan::UploadContext>(
-                device, *contentUploadPool_);
-            renderAssets.beginUpload(device, preparedContent_->assets,
-                {preparedContent_->content.model});
+            render::SceneResourceRequest request;
+            // Aliasing ownership keeps the whole prepared bundle alive while
+            // the backend reads its immutable AssetManager.
+            request.assets = std::shared_ptr<const asset::AssetManager>(
+                preparedContent_, &preparedContent_->assets);
+            request.models = {preparedContent_->content.model};
+            request.materialTemplate = preparedContent_->content.materialTemplate;
+            request.presentProgram = preparedContent_->content.presentProgram;
+            renderer.beginScenePreparation(renderAssets, std::move(request));
+            const auto status = renderer.scenePreparationStatus();
+            if (status.state == render::ScenePreparationState::Failed)
+            {
+                throw std::runtime_error(status.error);
+            }
             contentLoadStatus_ = {ContentLoadState::Uploading,
-                "Uploading scene resources...", 0, renderAssets.pendingUploadCount()};
+                "Preparing scene resources...", status.completed, status.total};
             std::clog << "[Content] " << contentLoadStatus_.message
                 << " 0/" << contentLoadStatus_.total << '\n';
             return;
         }
-        if (contentLoadStatus_.state == ContentLoadState::Uploading)
+        if (contentLoadStatus_.state == ContentLoadState::Uploading ||
+            contentLoadStatus_.state == ContentLoadState::Finalizing)
         {
-            // Staging buffers and destinations stay alive until the submitted
-            // batch completes. No queue-idle wait is used in the frame loop.
-            if (!contentUploads_->pollBatch())
+            renderer.advanceScenePreparation();
+            const auto status = renderer.scenePreparationStatus();
+            if (status.state == render::ScenePreparationState::Failed)
             {
-                return;
+                throw std::runtime_error(status.error);
             }
+            if (status.state == render::ScenePreparationState::Cancelled)
+            {
+                throw std::runtime_error("Scene resource preparation cancelled");
+            }
+
             const std::size_t previousCompleted = contentLoadStatus_.completed;
-            contentLoadStatus_.completed = contentLoadStatus_.total -
-                renderAssets.pendingUploadCount();
-            // Log at most once per 10% milestone, after GPU completion, so
-            // progress remains visible in Console without per-frame spam.
-            if (contentLoadStatus_.total != 0 &&
-                contentLoadStatus_.completed * 10 / contentLoadStatus_.total >
-                    previousCompleted * 10 / contentLoadStatus_.total)
+            contentLoadStatus_.completed = status.completed;
+            contentLoadStatus_.total = status.total;
+            if (status.total != 0 && status.completed * 10 / status.total >
+                previousCompleted * 10 / status.total)
             {
-                std::clog << "[Content] Uploaded " << contentLoadStatus_.completed
-                    << '/' << contentLoadStatus_.total << " resources ("
-                    << contentLoadStatus_.completed * 100 / contentLoadStatus_.total
-                    << "%)\n";
+                std::clog << "[Content] Uploaded " << status.completed
+                    << '/' << status.total << " resources ("
+                    << status.completed * 100 / status.total << "%)\n";
             }
-            if (renderAssets.pendingUploadCount() == 0)
+            if (status.state == render::ScenePreparationState::PreparingPipelines &&
+                contentLoadStatus_.state != ContentLoadState::Finalizing)
             {
                 contentLoadStatus_.state = ContentLoadState::Finalizing;
                 contentLoadStatus_.message = "Preparing scene rendering...";
                 std::clog << "[Content] " << contentLoadStatus_.message << '\n';
+            }
+            if (status.state != render::ScenePreparationState::Ready)
+            {
                 return;
             }
-            const auto deadline = std::chrono::steady_clock::now() + 4ms;
-            contentUploads_->beginBatch();
-            std::size_t count = 0;
-            do
-            {
-                renderAssets.uploadNext(vulkanContext.device(), *contentUploads_,
-                    preparedContent_->assets);
-                ++count;
-            } while (renderAssets.pendingUploadCount() != 0 && count < 16 &&
-                contentUploads_->stagedByteCount() < 16 * 1024 * 1024 &&
-                std::chrono::steady_clock::now() < deadline);
-            contentUploads_->submitBatch();
-            return;
-        }
-        if (contentLoadStatus_.state == ContentLoadState::Finalizing)
-        {
-            const auto& prepared = *preparedContent_;
-            renderer.createSceneResources(
-                rhi::vulkan::makeDefaultScenePipeline(
-                    prepared.assets,
-                    prepared.assets.materialTemplate(
-                        prepared.content.materialTemplate).program(),
-                    renderAssets.materialDescriptorSetLayout()),
-                rhi::vulkan::makeDefaultPresentPipeline(
-                    prepared.assets,
-                    prepared.content.presentProgram));
 
             // No partially imported assets are exposed to inspectors. Handles
             // remain valid because the complete registries move together.
             static_assert(std::is_nothrow_move_assignable_v<asset::AssetManager>);
             static_assert(std::is_nothrow_move_assignable_v<scene::Scene>);
             static_assert(std::is_nothrow_move_assignable_v<importer::texture::TextureImportRegistry>);
+            renderer.activatePreparedScene();
             assetManager = std::move(preparedContent_->assets);
             scene = std::move(preparedContent_->scene);
             textureImports = std::move(preparedContent_->textureImports);
@@ -149,10 +136,7 @@ void App::updateContentLoading()
     }
     catch (const std::exception& error)
     {
-        // Drain any submitted upload before destroying its destination objects.
         discardContentLoading();
-        renderer.resetSceneResources();
-        renderAssets.reset();
         contentLoadStatus_ = {ContentLoadState::Failed, error.what()};
         std::cerr << "[Content] " << error.what() << '\n';
     }
@@ -171,8 +155,7 @@ void App::discardContentLoading() noexcept
         try { static_cast<void>(contentLoadFuture_.get()); }
         catch (...) {}
     }
-    contentUploads_.reset();
-    contentUploadPool_.reset();
+    renderer.cancelScenePreparation();
     preparedContent_.reset();
     contentLoadCancelled_.reset();
 }

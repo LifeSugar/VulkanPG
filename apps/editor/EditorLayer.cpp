@@ -18,7 +18,7 @@ ApplicationGuiFrameOutput EditorLayer::draw(
     const ApplicationGuiContext& context)
 {
     ApplicationGuiFrameOutput output{};
-    output.loadContent = drawDockSpace(context.contentLoading);
+    drawDockSpace();
     sceneViewportWidth_ = 0;
     sceneViewportHeight_ = 0;
 
@@ -84,9 +84,8 @@ ApplicationGuiFrameOutput EditorLayer::draw(
     return output;
 }
 
-bool EditorLayer::drawDockSpace(const ContentLoadStatus* loading)
+void EditorLayer::drawDockSpace()
 {
-    bool loadContent = false;
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);
     ImGui::SetNextWindowSize(viewport->WorkSize);
@@ -115,12 +114,6 @@ bool EditorLayer::drawDockSpace(const ContentLoadStatus* loading)
     {
         if (ImGui::BeginMenu("File"))
         {
-            const bool failed = loading && loading->state == ContentLoadState::Failed;
-            const bool canLoad = loading &&
-                (loading->state == ContentLoadState::Idle || failed);
-            loadContent = ImGui::MenuItem(
-                failed ? "Retry loading demo" : "Load demo", nullptr, false, canLoad);
-            ImGui::Separator();
             ImGui::TextDisabled("Scene persistence is not connected yet");
             ImGui::EndMenu();
         }
@@ -178,7 +171,6 @@ bool EditorLayer::drawDockSpace(const ContentLoadStatus* loading)
     }
     ImGui::DockSpace(dockspaceId, ImVec2(0.0f, 0.0f), dockspaceFlags);
     ImGui::End();
-    return loadContent;
 }
 
 std::optional<float> EditorLayer::drawSceneViewport(
